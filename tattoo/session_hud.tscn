@@ -86,7 +86,7 @@ theme_override_font_sizes/font_size = 20
 text = "ЛКМ — бить · ПКМ — показать недобитое"
 horizontal_alignment = 1
 
-[node name="Result" type="PanelContainer" parent="."]
+[node name="Done" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -95,31 +95,27 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -220.0
-offset_top = -130.0
+offset_top = -90.0
 offset_right = 220.0
-offset_bottom = 130.0
+offset_bottom = 90.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("result_style")
 
-[node name="Box" type="VBoxContainer" parent="Result"]
+[node name="Box" type="VBoxContainer" parent="Done"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="Grade" type="Label" parent="Result/Box"]
+[node name="Title" type="Label" parent="Done/Box"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 40
+text = "Татуировка готова"
 horizontal_alignment = 1
 
-[node name="Details" type="Label" parent="Result/Box"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-horizontal_alignment = 1
-
-[node name="Continue" type="Label" parent="Result/Box"]
+[node name="Continue" type="Label" parent="Done/Box"]
 modulate = Color(1, 1, 1, 0.6)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18

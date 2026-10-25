@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://tattoo/tattoo_machine.gd" id="1_script"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/machine_buzz.wav" id="2_hum"]
 
 [node name="TattooMachine" type="Node2D"]
 script = ExtResource("1_script")
@@ -17,3 +18,7 @@ initial_velocity_max = 50.0
 scale_amount_min = 1.5
 scale_amount_max = 3.0
 color = Color(0.1, 0.08, 0.14, 1)
+
+[node name="Hum" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_hum")
+volume_db = -14.0

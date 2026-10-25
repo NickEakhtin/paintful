@@ -4,6 +4,7 @@
 [ext_resource type="Resource" path="res://data/stencils/sigil/sigil.tres" id="2_stencil"]
 [ext_resource type="PackedScene" path="res://tattoo/tattoo_machine.tscn" id="3_machine"]
 [ext_resource type="PackedScene" path="res://tattoo/session_hud.tscn" id="4_hud"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/ding.wav" id="5_ding"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -66,27 +67,10 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Highlight" type="TextureRect" parent="Canvas"]
-modulate = Color(1, 0.9, 0.3, 0)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-expand_mode = 1
-
-[node name="Ink" type="TextureRect" parent="Canvas"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-expand_mode = 1
-
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 
 [node name="Machine" parent="." instance=ExtResource("3_machine")]
+
+[node name="Ding" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_ding")
+volume_db = -6.0

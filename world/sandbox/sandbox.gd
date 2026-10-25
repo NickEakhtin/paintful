@@ -31,10 +31,10 @@ func _on_tattoo_chair_interacted(_by: Player) -> void:
 	session.start(TEST_STENCIL)
 	await Transition.fade_in()
 
-	var result: TattooResult = await session.finished
+	await session.finished
 	await Transition.fade_out()
 	session.queue_free()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	await Transition.fade_in()
 	_player.unlock_controls(&"tattoo")
-	Events.objective_changed.emit("Сеанс: %s" % result.grade_name())
+	Events.objective_changed.emit("Сеанс завершён")

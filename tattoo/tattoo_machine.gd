@@ -1,37 +1,41 @@
 class_name TattooMachine
 extends Node2D
-## Tattoo machine that replaces the mouse cursor. The needle tip is at the node origin.
+## Tattoo machine drawn in place of the mouse cursor. The needle tip is at the node origin.
+## It only reports the mouse (`pointer`); the session decides where the needle goes (`needle`).
 
 ## Visual buzz while working, in pixels. Doesn't move where the ink goes.
 @export var buzz: float = 1.5
 
 var working: bool = false
-
-var _pointer: Vector2 = Vector2.ZERO
+## Mouse position in viewport pixels.
+var pointer: Vector2 = Vector2.ZERO
+## Where the needle actually is; set by the session every frame.
+var needle: Vector2 = Vector2.ZERO
 
 @onready var _spray: CPUParticles2D = $Spray
+@onready var _hum: AudioStreamPlayer = $Hum
 
 
 func _ready() -> void:
-	_pointer = get_viewport().get_mouse_position()
+	pointer = get_viewport().get_mouse_position()
+	needle = pointer
 
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		_pointer = event.position
+		pointer = event.position
 
 
 func _process(_delta: float) -> void:
 	var shake: Vector2 = Vector2.ZERO
 	if working:
 		shake = Vector2(randf_range(-buzz, buzz), randf_range(-buzz, buzz))
-	global_position = needle_position() + shake
+	global_position = needle + shake
 	_spray.emitting = working
-
-
-## Where the needle touches the skin. Spirit tasks (step 3) will shift it.
-func needle_position() -> Vector2:
-	return _pointer
+	if working and not _hum.playing:
+		_hum.play()
+	elif not working and _hum.playing:
+		_hum.stop()
 
 
 func _draw() -> void:

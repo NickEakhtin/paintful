@@ -11,9 +11,7 @@ var _flash_tween: Tween
 @onready var _parts: VBoxContainer = $Parts
 @onready var _flash: Label = $Flash
 @onready var _hint: Label = $Hint
-@onready var _result: PanelContainer = $Result
-@onready var _grade: Label = $Result/Box/Grade
-@onready var _details: Label = $Result/Box/Details
+@onready var _done_panel: PanelContainer = $Done
 
 
 func setup(part_names: PackedStringArray) -> void:
@@ -26,7 +24,7 @@ func setup(part_names: PackedStringArray) -> void:
 		_parts.add_child(label)
 		_part_labels.append(label)
 	_flash.modulate.a = 0.0
-	_result.visible = false
+	_done_panel.visible = false
 
 
 func show_progress(canvas: InkCanvas) -> void:
@@ -52,9 +50,8 @@ func flash_part(index: int) -> void:
 	_flash_tween.tween_property(_flash, "modulate:a", 0.0, 0.4)
 
 
-func show_result(result: TattooResult) -> void:
+func show_done() -> void:
 	_hint.visible = false
-	_result.visible = true
-	_grade.text = result.grade_name()
-	_details.text = "Время: %d:%02d\nПромахи: %d (%.1f%% площади)" % [
-		floori(result.time / 60.0), floori(result.time) % 60, result.mistakes, result.mistake_ratio * 100.0]
+	_done_panel.visible = true
+	_done_panel.modulate.a = 0.0
+	create_tween().tween_property(_done_panel, "modulate:a", 1.0, 0.4).set_delay(0.6)
