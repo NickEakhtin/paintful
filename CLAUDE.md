@@ -14,6 +14,20 @@
   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit-after 120 2>&1
 - Commit after each working step.
 
+# Code conventions
+- Static typing everywhere: `var speed: float = 5.0`, `func f(x: int) -> void`.
+- Files and folders in snake_case. Add `class_name` (PascalCase) only when the class is used as a type elsewhere.
+- Feature folders: a scene and its script sit side by side (`main/`, `world/sandbox/`, later `player/`, `tattoo/`...).
+- Systems talk through the `Events` signal bus, not through absolute node paths into other scenes.
+- Autoloads (`autoload/`):
+  - `Events` — global signal bus; add signals when a feature needs them.
+  - `GameState` — playthrough progress (`day`, `client_index`).
+  - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after).
+- Input actions: `move_forward/back/left/right` (WASD), `interact` (E), `use` (LMB), `pause` (Esc). Keys are physical, so they work on any keyboard layout.
+- Commit the `.uid` files Godot creates next to scripts.
+- Scenes: `main/main.tscn` is the start screen; `world/sandbox/sandbox.tscn` is a test ground (E shows the next "Day N" card).
+- To test a flow headless, put a temporary scene in `_test/` that drives it with `Input.parse_input_event`, run it with `--headless --path . res://_test/<scene>.tscn`, then delete `_test/`.
+
 # Game concept
 First-person game. The player is a tattoo artist with esoteric leanings: believes in spirits, does occult tattoos.
 At the start a dark spirit contacts them: it must be freed, and for that the artist has to carry out its tasks every day.
