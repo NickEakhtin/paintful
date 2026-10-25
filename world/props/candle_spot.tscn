@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://items/item_slot.tscn" id="1_slot"]
+[ext_resource type="Script" path="res://world/props/candle_spot.gd" id="2_script"]
+
+[node name="CandleSpot" instance=ExtResource("1_slot")]
+script = ExtResource("2_script")
+accepts = Array[StringName]([&"candle"])
+
+[node name="Flame" type="OmniLight3D" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+visible = false
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 0.9
+omni_range = 3.5

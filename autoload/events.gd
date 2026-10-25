@@ -9,3 +9,11 @@ signal interaction_prompt_changed(text: String)
 ## Current goal shown in the HUD; empty hides it.
 @warning_ignore("unused_signal")
 signal objective_changed(text: String)
+
+## The OPEN sign was turned: the working day starts.
+@warning_ignore("unused_signal")
+signal studio_opened
+
+## The sign was turned back to CLOSED: no more clients today.
+@warning_ignore("unused_signal")
+signal studio_closed
