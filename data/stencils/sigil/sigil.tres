@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="StencilData" format=3]
+
+[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" path="res://data/stencils/sigil/outer_ring.png" id="3_outer"]
+[ext_resource type="Texture2D" path="res://data/stencils/sigil/inner_ring.png" id="4_inner"]
+[ext_resource type="Texture2D" path="res://data/stencils/sigil/star.png" id="5_star"]
+[ext_resource type="Texture2D" path="res://data/stencils/sigil/dots.png" id="6_dots"]
+
+[sub_resource type="Resource" id="part_outer"]
+script = ExtResource("2_part")
+display_name = "Внешнее кольцо"
+texture = ExtResource("3_outer")
+
+[sub_resource type="Resource" id="part_inner"]
+script = ExtResource("2_part")
+display_name = "Внутреннее кольцо"
+texture = ExtResource("4_inner")
+
+[sub_resource type="Resource" id="part_star"]
+script = ExtResource("2_part")
+display_name = "Пентаграмма"
+texture = ExtResource("5_star")
+
+[sub_resource type="Resource" id="part_dots"]
+script = ExtResource("2_part")
+display_name = "Точки"
+texture = ExtResource("6_dots")
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Сигил"
+parts = Array[ExtResource("2_part")]([SubResource("part_outer"), SubResource("part_inner"), SubResource("part_star"), SubResource("part_dots")])
