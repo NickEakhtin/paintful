@@ -10,6 +10,7 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	_save("ding.wav", _ding())
 	_save("machine_buzz.wav", _buzz())
+	_save("dip.wav", _dip())
 	quit()
 
 
@@ -21,6 +22,17 @@ func _ding() -> PackedFloat32Array:
 		var envelope: float = exp(-t * 5.0) * minf(1.0, t * 200.0)
 		var tone: float = 0.6 * sin(TAU * 1320.0 * t) + 0.3 * sin(TAU * 1980.0 * t) + 0.15 * sin(TAU * 2640.0 * t)
 		samples.append(envelope * tone * 0.5)
+	return samples
+
+
+## Wet "bloop" for dipping the needle: a sine gliding up with a quick decay.
+func _dip() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var phase: float = 0.0
+	for i in int(RATE * 0.18):
+		var t: float = float(i) / RATE
+		phase += TAU * lerpf(280.0, 720.0, t / 0.18) / RATE
+		samples.append(sin(phase) * exp(-t * 18.0) * minf(1.0, t * 400.0) * 0.6)
 	return samples
 
 

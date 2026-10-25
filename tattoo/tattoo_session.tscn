@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://tattoo/tattoo_machine.tscn" id="3_machine"]
 [ext_resource type="PackedScene" path="res://tattoo/session_hud.tscn" id="4_hud"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/ding.wav" id="5_ding"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/dip.wav" id="6_dip"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -13,6 +14,19 @@ corner_radius_top_right = 280
 corner_radius_bottom_right = 280
 corner_radius_bottom_left = 280
 corner_detail = 32
+
+[sub_resource type="StyleBoxFlat" id="cap_style"]
+bg_color = Color(0.06, 0.05, 0.08, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.85, 0.85, 0.9, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+corner_detail = 16
 
 [node name="TattooSession" type="CanvasLayer"]
 layer = 10
@@ -67,6 +81,36 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="InkCap" type="Panel" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 120.0
+offset_top = -170.0
+offset_right = 200.0
+offset_bottom = -90.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cap_style")
+
+[node name="Label" type="Label" parent="InkCap"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -60.0
+offset_top = 6.0
+offset_right = 60.0
+offset_bottom = 30.0
+grow_horizontal = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 16
+text = "Чернила"
+horizontal_alignment = 1
+
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 
 [node name="Machine" parent="." instance=ExtResource("3_machine")]
@@ -74,3 +118,7 @@ mouse_filter = 2
 [node name="Ding" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("5_ding")
 volume_db = -6.0
+
+[node name="DipSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_dip")
+volume_db = -4.0

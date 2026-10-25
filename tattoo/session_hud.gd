@@ -12,6 +12,7 @@ var _flash_tween: Tween
 @onready var _flash: Label = $Flash
 @onready var _hint: Label = $Hint
 @onready var _done_panel: PanelContainer = $Done
+@onready var _ink_warning: Label = $InkWarning
 
 
 func setup(part_names: PackedStringArray) -> void:
@@ -50,8 +51,13 @@ func flash_part(index: int) -> void:
 	_flash_tween.tween_property(_flash, "modulate:a", 0.0, 0.4)
 
 
+func set_ink_empty(empty: bool) -> void:
+	_ink_warning.visible = empty
+
+
 func show_done() -> void:
 	_hint.visible = false
+	_ink_warning.visible = false
 	_done_panel.visible = true
 	_done_panel.modulate.a = 0.0
 	create_tween().tween_property(_done_panel, "modulate:a", 1.0, 0.4).set_delay(0.6)

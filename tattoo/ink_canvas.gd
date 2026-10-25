@@ -33,12 +33,14 @@ func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 
 ## Adds ink in a soft circle: full `amount` at the centre, half at the edge.
 ## `center` and `radius` are in cells. Cells outside the stencil are skipped.
-func stamp(center: Vector2, radius: float, amount: float) -> void:
+## Returns the ink actually laid down, in filled-cell units.
+func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var x0: int = maxi(0, floori(center.x - radius))
 	var x1: int = mini(SIZE - 1, ceili(center.x + radius))
 	var y0: int = maxi(0, floori(center.y - radius))
 	var y1: int = mini(SIZE - 1, ceili(center.y + radius))
 	var r2: float = radius * radius
+	var laid: float = 0.0
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * SIZE + x
@@ -46,15 +48,18 @@ func stamp(center: Vector2, radius: float, amount: float) -> void:
 				continue
 			var d2: float = Vector2(x + 0.5, y + 0.5).distance_squared_to(center)
 			if d2 <= r2:
-				_add_ink(cell, amount * (1.0 - 0.5 * d2 / r2))
+				laid += _add_ink(cell, amount * (1.0 - 0.5 * d2 / r2))
+	return laid
 
 
 ## Stamps along a segment. `amount` is split so ink per cell depends on how long
-## the needle stays over it, not on how fast the mouse moves.
-func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> void:
+## the needle stays over it, not on how fast the mouse moves. Returns the ink laid down.
+func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * 0.5)))
+	var laid: float = 0.0
 	for i in steps:
-		stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
+		laid += stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
+	return laid
 
 
 ## Centre of the nearest stencil cell that still needs ink, or Vector2.INF if none within `radius`.
@@ -110,16 +115,17 @@ func is_complete() -> bool:
 	return not _part_done.has(0)
 
 
-func _add_ink(cell: int, amount: float) -> void:
+func _add_ink(cell: int, amount: float) -> float:
 	var before: float = _ink[cell]
 	if before >= 1.0:
-		return
+		return 0.0
 	var after: float = minf(1.0, before + amount)
 	_set_ink(cell, after)
 	if after >= 1.0:
 		var part: int = _part_of[cell]
 		_part_filled[part] += 1
 		_check_part(part)
+	return after - before
 
 
 func _set_ink(cell: int, value: float) -> void:

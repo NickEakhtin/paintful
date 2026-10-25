@@ -25,8 +25,18 @@ const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 ## How fast the needle catches up with where it should be; higher is snappier.
 @export var needle_follow: float = 25.0
 
+@export_group("Ink supply")
+## Ink the machine holds, in filled-cell units (the sigil is about 18 700 cells).
+@export var ink_capacity: float = 3000.0
+## Seconds to fill an empty machine while holding LMB over the ink cap.
+@export var refill_time: float = 0.6
+## Share of the tank below which the gauge warns.
+@export_range(0.0, 1.0) var low_ink: float = 0.25
+
 var canvas: InkCanvas
 
+var _ink_left: float = 0.0
+var _dipping: bool = false
 var _running: bool = false
 var _waiting_for_close: bool = false
 var _done_msec: int = 0
@@ -41,6 +51,8 @@ var _highlight_tween: Tween
 @onready var _machine: TattooMachine = $Machine
 @onready var _hud: Control = $HUD
 @onready var _ding: AudioStreamPlayer = $Ding
+@onready var _dip_sound: AudioStreamPlayer = $DipSound
+@onready var _ink_cap: Control = $InkCap
 
 
 func _ready() -> void:
@@ -76,6 +88,8 @@ func start(new_stencil: StencilData) -> void:
 	_hud.show_progress(canvas)
 
 	_machine.needle = _machine.pointer
+	_ink_left = ink_capacity
+	_update_ink_display()
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	_running = true
 
@@ -85,6 +99,7 @@ func _process(delta: float) -> void:
 		return
 	_update_needle(delta)
 	_paint(delta)
+	_update_ink_display()
 	canvas.flush()
 	_hud.show_progress(canvas)
 	if canvas.is_complete():
@@ -115,16 +130,41 @@ func _update_needle(delta: float) -> void:
 
 
 func _paint(delta: float) -> void:
-	var inking: bool = Input.is_action_pressed("use")
-	_machine.working = inking
+	var pressing: bool = Input.is_action_pressed("use")
 	var cell: Vector2 = _to_cell(_machine.needle)
-	if inking:
+	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
+	_set_dipping(pressing and over_cap)
+	if _dipping:
+		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
+	var inking: bool = pressing and not over_cap
+	_machine.working = inking
+	if inking and _ink_left > 0.0:
+		var laid: float
 		if _was_inking:
-			canvas.stroke(_last_cell, cell, brush_radius, ink_rate * delta)
+			laid = canvas.stroke(_last_cell, cell, brush_radius, ink_rate * delta)
 		else:
-			canvas.stamp(cell, brush_radius, ink_rate * delta)
+			laid = canvas.stamp(cell, brush_radius, ink_rate * delta)
+		_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
 	_was_inking = inking
+
+
+func _set_dipping(dipping: bool) -> void:
+	if dipping and not _dipping and _ink_left < ink_capacity:
+		_dip_sound.play()
+	_dipping = dipping
+
+
+func _update_ink_display() -> void:
+	var level: float = _ink_left / ink_capacity
+	_machine.ink_level = level
+	_machine.low_ink = level < low_ink
+	_hud.set_ink_empty(level <= 0.0)
+	# The cap pulses when the machine runs dry, so it's obvious where to go.
+	var pulse: float = 0.0
+	if level <= 0.0:
+		pulse = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 120.0)
+	_ink_cap.modulate = Color.WHITE.lerp(Color(1.0, 0.75, 0.3), pulse)
 
 
 func _to_cell(screen_position: Vector2) -> Vector2:
