@@ -43,6 +43,7 @@ func show_progress(canvas: InkCanvas) -> void:
 func setup_tasks(modifiers: Array[TattooModifier]) -> void:
 	for modifier in modifiers:
 		var label: Label = _make_label(20)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.modulate = modifier.data.color.lerp(Color.WHITE, 0.35)
 		_tasks.add_child(label)
 		_task_labels.append(label)

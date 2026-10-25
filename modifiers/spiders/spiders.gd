@@ -71,7 +71,7 @@ func skin_offset() -> Vector2:
 
 
 func status_text() -> String:
-	return "%s: раздавлено %d, сбежало %d (можно %d)" % [data.display_name, squashed_count, escaped_count, allowed_escapes]
+	return "%s: раздавлено %d, сбежало %d (можно %d)" % [title(), squashed_count, escaped_count, allowed_escapes]
 
 
 func is_passed() -> bool:

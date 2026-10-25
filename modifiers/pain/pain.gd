@@ -13,7 +13,7 @@ enum Phase { CALM, TENSE, JERK, HOLD, RETURN }
 @export var return_time: float = 0.6
 @export var jerk_distance_min: float = 80.0
 @export var jerk_distance_max: float = 140.0
-@export var tense_color: Color = Color(1.0, 0.6, 0.55)
+@export var tense_color: Color = Color(1.0, 0.75, 0.7)
 
 var jerk_count: int = 0
 
@@ -57,10 +57,7 @@ func skin_offset() -> Vector2:
 
 
 func status_text() -> String:
-	var text: String = data.display_name
-	if intensity > 1:
-		text += " ×%d" % intensity
-	return text + (": сейчас дёрнется!" if _phase == Phase.TENSE else ": клиент дёргает рукой")
+	return title() + (": сейчас дёрнется!" if _phase == Phase.TENSE else ": клиент дёргает рукой")
 
 
 func stop() -> void:

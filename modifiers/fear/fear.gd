@@ -35,10 +35,7 @@ func needle_offset() -> Vector2:
 
 
 func status_text() -> String:
-	var text: String = data.display_name
-	if intensity > 1:
-		text += " ×%d" % intensity
-	return text + (": паника!" if _panic() > 0.6 else ": руки дрожат")
+	return title() + (": паника!" if _panic() > 0.6 else ": руки дрожат")
 
 
 ## 0 when calm, 1 at the peak of a panic attack.

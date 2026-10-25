@@ -22,7 +22,12 @@ func skin_offset() -> Vector2:
 
 ## One line for the session HUD; empty hides it.
 func status_text() -> String:
-	return data.display_name
+	return title()
+
+
+## Task name with "×2" when the roulette landed on it more than once.
+func title() -> String:
+	return data.display_name + (" ×%d" % intensity if intensity > 1 else "")
 
 
 ## Whether the spirit is satisfied. Asked once the tattoo is done.
