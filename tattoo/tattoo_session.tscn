@@ -11,6 +11,7 @@ corner_radius_top_left = 280
 corner_radius_top_right = 280
 corner_radius_bottom_right = 280
 corner_radius_bottom_left = 280
+corner_detail = 32
 
 [node name="TattooSession" type="CanvasLayer"]
 layer = 10

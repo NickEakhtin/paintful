@@ -46,6 +46,12 @@ size = Vector3(0.08, 0.12, 0.08)
 [sub_resource type="BoxMesh" id="gloves_mesh"]
 size = Vector3(0.18, 0.03, 0.12)
 
+[sub_resource type="BoxShape3D" id="chair_shape"]
+size = Vector3(0.9, 1.3, 0.9)
+
+[sub_resource type="StandardMaterial3D" id="chair_material"]
+albedo_color = Color(0.12, 0.12, 0.14, 1)
+
 [node name="Sandbox" type="Node3D"]
 script = ExtResource("1_script")
 
@@ -192,5 +198,29 @@ prompt = "Следующий день"
 [node name="Shape" type="CollisionShape3D" parent="DaySign/Interactable"]
 shape = SubResource("sign_shape")
 
+[node name="TattooChair" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 3)
+
+[node name="Seat" type="CSGBox3D" parent="TattooChair"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+use_collision = true
+size = Vector3(0.8, 0.5, 0.8)
+material = SubResource("chair_material")
+
+[node name="Back" type="CSGBox3D" parent="TattooChair"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -0.35)
+use_collision = true
+size = Vector3(0.8, 1, 0.1)
+material = SubResource("chair_material")
+
+[node name="Interactable" type="Area3D" parent="TattooChair"]
+script = ExtResource("3_interactable")
+prompt = "Начать сеанс"
+
+[node name="Shape" type="CollisionShape3D" parent="TattooChair/Interactable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("chair_shape")
+
 [connection signal="interacted" from="DaySign/Interactable" to="." method="_on_day_sign_interacted"]
 [connection signal="item_placed" from="Table/NeedleSlot" to="." method="_on_needle_placed"]
+[connection signal="interacted" from="TattooChair/Interactable" to="." method="_on_tattoo_chair_interacted"]
