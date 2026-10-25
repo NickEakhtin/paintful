@@ -42,7 +42,17 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.1, 0.07, 0.1, 1)
 
-[node name="Skin" type="Panel" parent="."]
+[node name="Body" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Skin" type="Panel" parent="Body"]
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -57,8 +67,8 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("skin_style")
 
-[node name="Canvas" type="Control" parent="."]
-layout_mode = 3
+[node name="Canvas" type="Control" parent="Body"]
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -72,7 +82,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Stencil" type="Control" parent="Canvas"]
+[node name="Stencil" type="Control" parent="Body/Canvas"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -80,6 +90,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="Modifiers" type="Node2D" parent="Body"]
 
 [node name="InkCap" type="Panel" parent="."]
 anchors_preset = 2

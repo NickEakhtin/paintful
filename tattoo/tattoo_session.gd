@@ -2,15 +2,20 @@ class_name TattooSession
 extends CanvasLayer
 ## Tattoo mini-game screen, modeled on PowerWash Simulator: no timer, no penalties,
 ## ink only lands inside the stencil and the needle is pulled toward what's left.
-## Add it to the tree and call start(stencil); `finished` fires once the player closes
+## Spirit tasks (TattooModifier) sit on top of the skin and push the needle or the skin around.
+## Add it to the tree and call start(stencil, tasks); `finished` fires once the player closes
 ## the "done" panel. The caller frees it and restores the mouse mode.
 ## Running this scene on its own starts it with `stencil` and restarts when done.
 
-signal finished
+signal finished(result: SessionResult)
 
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 
 @export var stencil: StencilData
+
+@export_group("Spirit tasks")
+## Tasks for a session started by running this scene on its own, e.g. to tune one task.
+@export var fixed_tasks: Array[ModifierData] = []
 
 @export_group("Tuning")
 ## Needle size in grid cells; the grid is InkCanvas.SIZE cells wide.
@@ -34,6 +39,8 @@ const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 @export_range(0.0, 1.0) var low_ink: float = 0.25
 
 var canvas: InkCanvas
+## The skin panel; tasks may tint it.
+@onready var skin: Panel = $Body/Skin
 
 var _ink_left: float = 0.0
 var _dipping: bool = false
@@ -45,9 +52,15 @@ var _last_cell: Vector2 = Vector2.ZERO
 var _materials: Array[ShaderMaterial] = []
 var _completed_parts: int = 0
 var _highlight_tween: Tween
+var _modifiers: Array[TattooModifier] = []
+## Needle after magnet and smoothing, before task offsets.
+var _steady_needle: Vector2 = Vector2.ZERO
+var _result: SessionResult = null
 
-@onready var _canvas_rect: Control = $Canvas
-@onready var _stencil_layer: Control = $Canvas/Stencil
+@onready var _body: Control = $Body
+@onready var _canvas_rect: Control = $Body/Canvas
+@onready var _stencil_layer: Control = $Body/Canvas/Stencil
+@onready var _modifier_layer: Node2D = $Body/Modifiers
 @onready var _machine: TattooMachine = $Machine
 @onready var _hud: Control = $HUD
 @onready var _ding: AudioStreamPlayer = $Ding
@@ -56,16 +69,18 @@ var _highlight_tween: Tween
 
 
 func _ready() -> void:
+	_machine.visible = false
 	_start_if_main_scene.call_deferred()
 
 
 func _start_if_main_scene() -> void:
 	if get_tree().current_scene == self and stencil != null and canvas == null:
-		finished.connect(get_tree().reload_current_scene)
-		start(stencil)
+		finished.connect(func(_done: SessionResult) -> void: get_tree().reload_current_scene())
+		start(stencil, fixed_tasks)
 
 
-func start(new_stencil: StencilData) -> void:
+## `tasks` may repeat a task: each repeat raises its intensity.
+func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
 	canvas = InkCanvas.new(stencil, completion_threshold)
 	canvas.part_completed.connect(_on_part_completed)
@@ -86,8 +101,11 @@ func start(new_stencil: StencilData) -> void:
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud.setup(part_names)
 	_hud.show_progress(canvas)
+	_add_modifiers(tasks)
 
+	_machine.visible = true
 	_machine.needle = _machine.pointer
+	_steady_needle = _machine.pointer
 	_ink_left = ink_capacity
 	_update_ink_display()
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
@@ -97,11 +115,13 @@ func start(new_stencil: StencilData) -> void:
 func _process(delta: float) -> void:
 	if not _running:
 		return
+	_apply_skin_offset()
 	_update_needle(delta)
 	_paint(delta)
 	_update_ink_display()
 	canvas.flush()
 	_hud.show_progress(canvas)
+	_hud.show_tasks(_modifiers)
 	if canvas.is_complete():
 		_finish()
 
@@ -114,10 +134,36 @@ func _unhandled_input(event: InputEvent) -> void:
 			and Time.get_ticks_msec() - _done_msec > 1000:
 		get_viewport().set_input_as_handled()
 		_waiting_for_close = false
-		finished.emit()
+		finished.emit(_result)
 
 
-## Mouse position -> needle position. Spirit tasks (step 3) will add their offsets here.
+## Where the needle touches, in viewport pixels.
+func needle_position() -> Vector2:
+	return _machine.needle
+
+
+func _add_modifiers(tasks: Array[ModifierData]) -> void:
+	var counts: Dictionary[ModifierData, int] = {}
+	for task in tasks:
+		counts[task] = counts.get(task, 0) + 1
+	for task in counts:
+		var modifier: TattooModifier = task.scene.instantiate()
+		modifier.session = self
+		modifier.data = task
+		modifier.intensity = counts[task]
+		_modifiers.append(modifier)
+		_modifier_layer.add_child(modifier)
+	_hud.setup_tasks(_modifiers)
+
+
+func _apply_skin_offset() -> void:
+	var offset: Vector2 = Vector2.ZERO
+	for modifier in _modifiers:
+		offset += modifier.skin_offset()
+	_body.position = offset
+
+
+## Mouse position -> needle position: magnet pull and smoothing, then task offsets.
 func _update_needle(delta: float) -> void:
 	var desired: Vector2 = _machine.pointer
 	var pointer_cell: Vector2 = _to_cell(_machine.pointer)
@@ -126,7 +172,11 @@ func _update_needle(delta: float) -> void:
 		var distance: float = pointer_cell.distance_to(target) / magnet_radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
-	_machine.needle = _machine.needle.lerp(desired, 1.0 - exp(-needle_follow * delta))
+	_steady_needle = _steady_needle.lerp(desired, 1.0 - exp(-needle_follow * delta))
+	var offset: Vector2 = Vector2.ZERO
+	for modifier in _modifiers:
+		offset += modifier.needle_offset()
+	_machine.needle = _steady_needle + offset
 
 
 func _paint(delta: float) -> void:
@@ -213,7 +263,15 @@ func _finish() -> void:
 	_set_highlight(0.0)
 	for material in _materials:
 		_flash(material)
-	_hud.show_done()
+
+	_result = SessionResult.new()
+	for modifier in _modifiers:
+		modifier.stop()
+		_result.tasks.append(modifier.data)
+		_result.intensities.append(modifier.intensity)
+		_result.passed.append(modifier.is_passed())
+	_body.position = Vector2.ZERO
+	_hud.show_done(_result)
 	_done_msec = Time.get_ticks_msec()
 	_waiting_for_close = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

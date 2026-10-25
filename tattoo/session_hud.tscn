@@ -48,6 +48,15 @@ grow_horizontal = 0
 mouse_filter = 2
 theme_override_constants/separation = 8
 
+[node name="Tasks" type="VBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 24.0
+offset_top = 80.0
+offset_right = 300.0
+offset_bottom = 300.0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
 [node name="Flash" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 5
@@ -134,6 +143,11 @@ alignment = 1
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "Татуировка готова"
+horizontal_alignment = 1
+
+[node name="Summary" type="Label" parent="Done/Box"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
 
 [node name="Continue" type="Label" parent="Done/Box"]

@@ -5,6 +5,7 @@ const DONE_COLOR: Color = Color(0.55, 0.95, 0.55)
 
 var _part_names: PackedStringArray = PackedStringArray()
 var _part_labels: Array[Label] = []
+var _task_labels: Array[Label] = []
 var _flash_tween: Tween
 
 @onready var _progress: ProgressBar = $Progress
@@ -12,16 +13,15 @@ var _flash_tween: Tween
 @onready var _flash: Label = $Flash
 @onready var _hint: Label = $Hint
 @onready var _done_panel: PanelContainer = $Done
+@onready var _summary: Label = $Done/Box/Summary
+@onready var _tasks: VBoxContainer = $Tasks
 @onready var _ink_warning: Label = $InkWarning
 
 
 func setup(part_names: PackedStringArray) -> void:
 	_part_names = part_names
 	for part_name in part_names:
-		var label: Label = Label.new()
-		label.add_theme_font_size_override("font_size", 22)
-		label.add_theme_constant_override("outline_size", 6)
-		label.add_theme_color_override("font_outline_color", Color.BLACK)
+		var label: Label = _make_label(22)
 		_parts.add_child(label)
 		_part_labels.append(label)
 	_flash.modulate.a = 0.0
@@ -37,6 +37,20 @@ func show_progress(canvas: InkCanvas) -> void:
 			label.modulate = DONE_COLOR
 		else:
 			label.text = "%s — %d%%" % [_part_names[i], floori(canvas.part_progress(i) * 100.0)]
+
+
+## One line per spirit task, in the task's colour.
+func setup_tasks(modifiers: Array[TattooModifier]) -> void:
+	for modifier in modifiers:
+		var label: Label = _make_label(20)
+		label.modulate = modifier.data.color.lerp(Color.WHITE, 0.35)
+		_tasks.add_child(label)
+		_task_labels.append(label)
+
+
+func show_tasks(modifiers: Array[TattooModifier]) -> void:
+	for i in _task_labels.size():
+		_task_labels[i].text = modifiers[i].status_text()
 
 
 func flash_part(index: int) -> void:
@@ -55,9 +69,29 @@ func set_ink_empty(empty: bool) -> void:
 	_ink_warning.visible = empty
 
 
-func show_done() -> void:
+func show_done(result: SessionResult) -> void:
 	_hint.visible = false
 	_ink_warning.visible = false
+	_tasks.visible = false
+	var lines: PackedStringArray = PackedStringArray()
+	for i in result.tasks.size():
+		var task_name: String = result.tasks[i].display_name
+		if result.intensities[i] > 1:
+			task_name += " ×%d" % result.intensities[i]
+		lines.append("%s — %s" % [task_name, "выполнено" if result.passed[i] else "провалено"])
+	if result.tasks.is_empty():
+		lines.append("Дух ничего не требовал")
+	elif result.is_perfect():
+		lines.append("\nДух доволен")
+	_summary.text = "\n".join(lines)
 	_done_panel.visible = true
 	_done_panel.modulate.a = 0.0
 	create_tween().tween_property(_done_panel, "modulate:a", 1.0, 0.4).set_delay(0.6)
+
+
+func _make_label(font_size: int) -> Label:
+	var label: Label = Label.new()
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_constant_override("outline_size", 6)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	return label
