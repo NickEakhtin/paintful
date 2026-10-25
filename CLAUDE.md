@@ -17,16 +17,27 @@
 # Code conventions
 - Static typing everywhere: `var speed: float = 5.0`, `func f(x: int) -> void`.
 - Files and folders in snake_case. Add `class_name` (PascalCase) only when the class is used as a type elsewhere.
-- Feature folders: a scene and its script sit side by side (`main/`, `world/sandbox/`, later `player/`, `tattoo/`...).
+- Feature folders: a scene and its script sit side by side (`main/`, `player/`, `items/`, `world/sandbox/`...).
 - Systems talk through the `Events` signal bus, not through absolute node paths into other scenes.
 - Autoloads (`autoload/`):
-  - `Events` — global signal bus; add signals when a feature needs them.
+  - `Events` — global signal bus; add signals when a feature needs them (mark each `@warning_ignore("unused_signal")`). Now: `interaction_prompt_changed(text)`, `objective_changed(text)`.
   - `GameState` — playthrough progress (`day`, `client_index`).
   - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after).
 - Input actions: `move_forward/back/left/right` (WASD), `interact` (E), `use` (LMB), `pause` (Esc). Keys are physical, so they work on any keyboard layout.
+- Physics layers: 1 `world`, 2 `player`, 3 `interactable` (bit value 4).
 - Commit the `.uid` files Godot creates next to scripts.
-- Scenes: `main/main.tscn` is the start screen; `world/sandbox/sandbox.tscn` is a test ground (E shows the next "Day N" card).
-- To test a flow headless, put a temporary scene in `_test/` that drives it with `Input.parse_input_event`, run it with `--headless --path . res://_test/<scene>.tscn`, then delete `_test/`.
+
+# Building blocks
+- `player/player.tscn` (`Player`, group `player`): walking, mouse look, one held item (`held_item`, `hold()`, `take_item()`).
+  Block input with `lock_controls(&"reason")` / `unlock_controls(&"reason")`; it stays locked while any reason remains. HUD is inside the player scene.
+- `Interactable` (`interaction/interactable.gd`, an Area3D on layer 3 with a CollisionShape3D child): use as is and connect `interacted(player)`, or extend and override `get_prompt()`, `can_interact()`, `interact()`.
+  The player's ray (`player/interactor.gd`, 2 m) shows `"E — <prompt>"` when interaction is possible, the bare prompt when it isn't, nothing for an empty prompt.
+- `items/item.tscn` (`Item`): set `item_id`, `display_name`, `mesh`, `color`. Put it under an `ItemSlot` in the editor to start there. No dropping on the floor.
+- `items/item_slot.tscn` (`ItemSlot`): `accepts` filters by `item_id` (empty = any); signals `item_placed(item)`, `item_removed(item)`.
+- Stairs: visual steps without collision plus an invisible ramp `StaticBody3D` — `CharacterBody3D` doesn't climb steps.
+- Scenes: `main/main.tscn` is the start screen; `world/sandbox/sandbox.tscn` is a test ground (shelf with items, table with slots, stairs, day sign).
+- To test a flow headless, put a temporary scene in `_test/` (git-ignored) that drives it with `Input.action_press` / `Input.parse_input_event`, run it with `--headless --path . res://_test/<scene>.tscn`, then delete it.
+  A test that changes the current scene must run from a node added to the root, or it is freed with the old scene.
 
 # Game concept
 First-person game. The player is a tattoo artist with esoteric leanings: believes in spirits, does occult tattoos.
