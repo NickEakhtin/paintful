@@ -1,13 +1,14 @@
 # Project
 3D indie game, Godot 4.7, GDScript only.
 
-- Godot project root: `tattoo/` (has `project.godot`). Git repo root is the folder above it.
+- The repo root is the Godot project root (`project.godot` is here).
 - Development roadmap: `docs/ROADMAP.md`. Each big step gets its own detailed plan before work starts.
+- `docs/` has a `.gdignore`, so Godot doesn't scan it.
 
 # Rules
 - Godot 4 API only (await, CharacterBody3D, @export). Never Godot 3 syntax.
 - Prefer editing .tscn/.gd files directly; keep scenes small and composable.
-- Run the game to check for errors (from the Godot project root):
+- Run the game to check for errors (from the repo root):
   /Applications/Godot.app/Contents/MacOS/Godot --path . 2>&1
   Quick headless check that exits by itself:
   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit-after 120 2>&1
