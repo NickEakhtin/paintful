@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://modifiers/spiders/spiders.gd" id="1_script"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/crunch.wav" id="2_crunch"]
+
+[node name="Spiders" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Crunch" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_crunch")
+volume_db = -4.0

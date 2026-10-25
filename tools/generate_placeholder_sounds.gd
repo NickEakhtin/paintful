@@ -11,6 +11,8 @@ func _init() -> void:
 	_save("ding.wav", _ding())
 	_save("machine_buzz.wav", _buzz())
 	_save("dip.wav", _dip())
+	_save("crunch.wav", _crunch())
+	_save("tick.wav", _tick())
 	quit()
 
 
@@ -33,6 +35,27 @@ func _dip() -> PackedFloat32Array:
 		var t: float = float(i) / RATE
 		phase += TAU * lerpf(280.0, 720.0, t / 0.18) / RATE
 		samples.append(sin(phase) * exp(-t * 18.0) * minf(1.0, t * 400.0) * 0.6)
+	return samples
+
+
+## Squashed spider: a short burst of rough noise with a low thump under it.
+func _crunch() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	for i in int(RATE * 0.14):
+		var t: float = float(i) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.35) # crude low-pass
+		var thump: float = sin(TAU * 90.0 * t) * exp(-t * 40.0)
+		samples.append((smoothed * 0.8 + thump * 0.6) * exp(-t * 28.0))
+	return samples
+
+
+## Roulette reel click.
+func _tick() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	for i in int(RATE * 0.03):
+		var t: float = float(i) / RATE
+		samples.append((sin(TAU * 2200.0 * t) * 0.5 + randf_range(-0.3, 0.3)) * exp(-t * 180.0))
 	return samples
 
 

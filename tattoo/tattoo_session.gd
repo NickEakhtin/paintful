@@ -142,6 +142,11 @@ func needle_position() -> Vector2:
 	return _machine.needle
 
 
+## Where the mouse is, in viewport pixels.
+func pointer_position() -> Vector2:
+	return _machine.pointer
+
+
 func _add_modifiers(tasks: Array[ModifierData]) -> void:
 	var counts: Dictionary[ModifierData, int] = {}
 	for task in tasks:
