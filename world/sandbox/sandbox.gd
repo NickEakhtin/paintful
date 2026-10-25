@@ -28,8 +28,8 @@ func _on_tattoo_chair_interacted(_by: Player) -> void:
 	await Transition.fade_out()
 	var session: TattooSession = SESSION_SCENE.instantiate()
 	add_child(session)
-	session.start(TEST_STENCIL)
 	await Transition.fade_in()
+	session.roll_and_start(TEST_STENCIL)
 
 	var result: SessionResult = await session.finished
 	await Transition.fade_out()

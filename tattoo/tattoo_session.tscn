@@ -6,6 +6,10 @@
 [ext_resource type="PackedScene" path="res://tattoo/session_hud.tscn" id="4_hud"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/ding.wav" id="5_ding"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/dip.wav" id="6_dip"]
+[ext_resource type="Script" path="res://modifiers/modifier_data.gd" id="7_modifier_data"]
+[ext_resource type="Resource" path="res://data/modifiers/fear.tres" id="8_fear"]
+[ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="9_spiders"]
+[ext_resource type="Resource" path="res://data/modifiers/pain.tres" id="10_pain"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -32,6 +36,7 @@ corner_detail = 16
 layer = 10
 script = ExtResource("1_script")
 stencil = ExtResource("2_stencil")
+task_pool = Array[ExtResource("7_modifier_data")]([ExtResource("8_fear"), ExtResource("9_spiders"), ExtResource("10_pain")])
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15

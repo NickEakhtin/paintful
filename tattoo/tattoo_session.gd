@@ -10,11 +10,14 @@ extends CanvasLayer
 signal finished(result: SessionResult)
 
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
+const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 
 @export var stencil: StencilData
 
 @export_group("Spirit tasks")
-## Tasks for a session started by running this scene on its own, e.g. to tune one task.
+## What the roulette can land on.
+@export var task_pool: Array[ModifierData] = []
+## When set, running this scene on its own skips the roulette and uses these, e.g. to tune one task.
 @export var fixed_tasks: Array[ModifierData] = []
 
 @export_group("Tuning")
@@ -76,7 +79,19 @@ func _ready() -> void:
 func _start_if_main_scene() -> void:
 	if get_tree().current_scene == self and stencil != null and canvas == null:
 		finished.connect(func(_done: SessionResult) -> void: get_tree().reload_current_scene())
-		start(stencil, fixed_tasks)
+		if fixed_tasks.is_empty():
+			roll_and_start(stencil)
+		else:
+			start(stencil, fixed_tasks)
+
+
+## Lets the spirit spin the roulette over the bare skin, then starts with what came up.
+func roll_and_start(new_stencil: StencilData) -> void:
+	var roulette: Roulette = ROULETTE_SCENE.instantiate()
+	add_child(roulette)
+	var tasks: Array[ModifierData] = await roulette.spin(task_pool)
+	roulette.queue_free()
+	start(new_stencil, tasks)
 
 
 ## `tasks` may repeat a task: each repeat raises its intensity.
