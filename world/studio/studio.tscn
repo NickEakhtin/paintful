@@ -1,0 +1,205 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://world/props/door.tscn" id="door"]
+[ext_resource type="PackedScene" path="res://world/props/open_sign.tscn" id="sign"]
+[ext_resource type="PackedScene" path="res://world/props/tattoo_chair.tscn" id="chair"]
+[ext_resource type="PackedScene" path="res://items/item_slot.tscn" id="slot"]
+[ext_resource type="PackedScene" path="res://items/item.tscn" id="item"]
+
+[sub_resource type="StandardMaterial3D" id="wall"]
+albedo_color = Color(0.62, 0.66, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="floor"]
+albedo_color = Color(0.36, 0.26, 0.19, 1)
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.45, 0.31, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="dark_wood"]
+albedo_color = Color(0.22, 0.15, 0.11, 1)
+
+[sub_resource type="StandardMaterial3D" id="pavement"]
+albedo_color = Color(0.4, 0.4, 0.42, 1)
+
+[sub_resource type="StandardMaterial3D" id="street"]
+shading_mode = 0
+albedo_color = Color(0.75, 0.85, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="lamp_glow"]
+shading_mode = 0
+albedo_color = Color(1, 0.9, 0.7, 1)
+
+[sub_resource type="PlaneMesh" id="floor_mesh"]
+size = Vector2(7.98, 5.98)
+
+[sub_resource type="QuadMesh" id="street_mesh"]
+size = Vector2(16, 7)
+
+[sub_resource type="SphereMesh" id="lamp_mesh"]
+radius = 0.12
+height = 0.24
+
+[sub_resource type="CylinderMesh" id="needle_mesh"]
+top_radius = 0.03
+bottom_radius = 0.03
+height = 0.2
+
+[sub_resource type="BoxMesh" id="ink_mesh"]
+size = Vector3(0.08, 0.12, 0.08)
+
+[sub_resource type="BoxMesh" id="gloves_mesh"]
+size = Vector3(0.18, 0.03, 0.12)
+
+[node name="Studio" type="Node3D"]
+
+[node name="Shell" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="Outer" type="CSGBox3D" parent="Shell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+size = Vector3(8.4, 3.2, 6.4)
+material = SubResource("wall")
+
+[node name="Inner" type="CSGBox3D" parent="Shell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+operation = 2
+size = Vector3(8, 2.8, 6)
+material = SubResource("wall")
+
+[node name="EntranceHole" type="CSGBox3D" parent="Shell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.05, 3.1)
+operation = 2
+size = Vector3(1.0, 2.1, 0.6)
+material = SubResource("wall")
+
+[node name="BackDoorHole" type="CSGBox3D" parent="Shell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 1.05, -3.1)
+operation = 2
+size = Vector3(1.0, 2.1, 0.6)
+material = SubResource("wall")
+
+[node name="WindowHole" type="CSGBox3D" parent="Shell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 1.6, 3.1)
+operation = 2
+size = Vector3(2.0, 1.2, 0.6)
+material = SubResource("wall")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.002, 0)
+mesh = SubResource("floor_mesh")
+surface_material_override/0 = SubResource("floor")
+
+[node name="EntranceDoor" parent="." instance=ExtResource("door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 3.1)
+locked = true
+open_angle = -100.0
+
+[node name="BackDoor" parent="." instance=ExtResource("door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 0, -3.1)
+
+[node name="OpenSign" parent="." instance=ExtResource("sign")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.35, 1.55, 2.97)
+
+[node name="ReceptionDesk" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.525, 1.0)
+use_collision = true
+size = Vector3(2.0, 1.05, 0.5)
+material = SubResource("wood")
+
+[node name="Bench" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.225, 2.65)
+use_collision = true
+size = Vector3(1.4, 0.45, 0.4)
+material = SubResource("dark_wood")
+
+[node name="TattooChair" parent="." instance=ExtResource("chair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0, -1.4)
+
+[node name="Workstation" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0, -2.4)
+
+[node name="Top" type="CSGBox3D" parent="Workstation"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.425, 0)
+use_collision = true
+size = Vector3(1.4, 0.85, 0.6)
+material = SubResource("dark_wood")
+
+[node name="Slot1" parent="Workstation" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.45, 0.85, 0)
+
+[node name="Slot2" parent="Workstation" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+
+[node name="Slot3" parent="Workstation" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 0.85, 0)
+
+[node name="SupplyShelf" type="Node3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 3.65, 0, 0.9)
+
+[node name="Body" type="CSGBox3D" parent="SupplyShelf"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+use_collision = true
+size = Vector3(1.6, 1.0, 0.45)
+material = SubResource("wood")
+
+[node name="Slot1" parent="SupplyShelf" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 1.0, 0)
+
+[node name="Needle" parent="SupplyShelf/Slot1" instance=ExtResource("item")]
+item_id = &"needle"
+display_name = "Игла"
+mesh = SubResource("needle_mesh")
+color = Color(0.85, 0.1, 0.1, 1)
+
+[node name="Slot2" parent="SupplyShelf" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+
+[node name="Ink" parent="SupplyShelf/Slot2" instance=ExtResource("item")]
+item_id = &"ink"
+display_name = "Краска"
+mesh = SubResource("ink_mesh")
+color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="Slot3" parent="SupplyShelf" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.0, 0)
+
+[node name="Gloves" parent="SupplyShelf/Slot3" instance=ExtResource("item")]
+item_id = &"gloves"
+display_name = "Перчатки"
+mesh = SubResource("gloves_mesh")
+color = Color(0.2, 0.4, 0.9, 1)
+
+[node name="Lamps" type="Node3D" parent="."]
+
+[node name="Lamp1" type="OmniLight3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0, 2.55, 1.0)
+light_color = Color(1, 0.85, 0.65, 1)
+light_energy = 1.2
+shadow_enabled = true
+omni_range = 7.0
+
+[node name="Bulb" type="MeshInstance3D" parent="Lamps/Lamp1"]
+mesh = SubResource("lamp_mesh")
+surface_material_override/0 = SubResource("lamp_glow")
+
+[node name="Lamp2" type="OmniLight3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 2.55, -1.3)
+light_color = Color(1, 0.85, 0.65, 1)
+light_energy = 1.2
+shadow_enabled = true
+omni_range = 7.0
+
+[node name="Bulb" type="MeshInstance3D" parent="Lamps/Lamp2"]
+mesh = SubResource("lamp_mesh")
+surface_material_override/0 = SubResource("lamp_glow")
+
+[node name="StreetFloor" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 5.7)
+use_collision = true
+size = Vector3(10, 0.2, 5)
+material = SubResource("pavement")
+
+[node name="Street" type="MeshInstance3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 2.5, 8.2)
+mesh = SubResource("street_mesh")
+surface_material_override/0 = SubResource("street")
