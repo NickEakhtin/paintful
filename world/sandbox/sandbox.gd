@@ -5,7 +5,11 @@ extends Node3D
 
 
 func _ready() -> void:
-	Events.objective_changed.emit("Подойди к табличке")
+	Events.objective_changed.emit("Положи иглу на стол")
+
+
+func _on_needle_placed(_item: Item) -> void:
+	Events.objective_changed.emit("Игла на месте")
 
 
 func _on_day_sign_interacted(_by: Player) -> void:

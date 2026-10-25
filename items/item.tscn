@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/item.gd" id="1_script"]
+
+[node name="Item" type="Area3D"]
+script = ExtResource("1_script")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]

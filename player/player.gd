@@ -12,9 +12,11 @@ const PITCH_LIMIT: float = 1.48 # ~85 degrees
 ## Radians per pixel of mouse movement.
 @export var mouse_sensitivity: float = 0.0025
 
+var held_item: Item = null
 var _locks: Dictionary[StringName, bool] = {}
 
 @onready var _head: Node3D = $Head
+@onready var _hold_point: Node3D = $Head/HoldPoint
 
 
 func _ready() -> void:
@@ -66,3 +68,15 @@ func unlock_controls(reason: StringName) -> void:
 
 func is_locked() -> bool:
 	return not _locks.is_empty()
+
+
+func hold(item: Item) -> void:
+	held_item = item
+	item.attach_to(_hold_point, true)
+
+
+## Gives up the held item; the caller decides where it goes.
+func take_item() -> Item:
+	var item: Item = held_item
+	held_item = null
+	return item

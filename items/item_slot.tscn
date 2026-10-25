@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/item_slot.gd" id="1_script"]
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.3, 0.1, 0.3)
+
+[sub_resource type="PlaneMesh" id="marker_mesh"]
+size = Vector2(0.28, 0.28)
+
+[sub_resource type="StandardMaterial3D" id="marker_material"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.25)
+
+[node name="ItemSlot" type="Area3D"]
+script = ExtResource("1_script")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+shape = SubResource("shape")
+
+[node name="Marker" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.003, 0)
+mesh = SubResource("marker_mesh")
+surface_material_override/0 = SubResource("marker_material")
