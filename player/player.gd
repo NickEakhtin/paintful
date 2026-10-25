@@ -10,7 +10,7 @@ const PITCH_LIMIT: float = 1.48 # ~85 degrees
 @export var speed: float = 3.0
 @export var acceleration: float = 20.0
 ## Radians per pixel of mouse movement.
-@export var mouse_sensitivity: float = 0.0025
+@export var mouse_sensitivity: float = 0.001875
 
 var held_item: Item = null
 var _locks: Dictionary[StringName, bool] = {}
