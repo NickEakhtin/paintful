@@ -1,7 +1,7 @@
 extends Control
 ## Start screen placeholder. Becomes the main menu in step 9.
 
-const FIRST_SCENE: String = "res://world/sandbox/sandbox.tscn"
+const FIRST_SCENE: String = "res://world/level/level.tscn"
 
 
 func _unhandled_input(event: InputEvent) -> void:

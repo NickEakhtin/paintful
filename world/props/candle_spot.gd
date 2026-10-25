@@ -14,6 +14,7 @@ var _time: float = 0.0
 
 func _ready() -> void:
 	super()
+	add_to_group(&"candle_spot")
 	item_placed.connect(func(_item: Item) -> void: _update_flame())
 	item_removed.connect(func(_item: Item) -> void: _update_flame())
 	_time = randf() * 10.0
