@@ -1,0 +1,91 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tattoo/tattoo_session.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/stencils/sigil/sigil.tres" id="2_stencil"]
+[ext_resource type="PackedScene" path="res://tattoo/tattoo_machine.tscn" id="3_machine"]
+[ext_resource type="PackedScene" path="res://tattoo/session_hud.tscn" id="4_hud"]
+
+[sub_resource type="StyleBoxFlat" id="skin_style"]
+bg_color = Color(0.86, 0.66, 0.54, 1)
+corner_radius_top_left = 280
+corner_radius_top_right = 280
+corner_radius_bottom_right = 280
+corner_radius_bottom_left = 280
+
+[node name="TattooSession" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_script")
+stencil = ExtResource("2_stencil")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.1, 0.07, 0.1, 1)
+
+[node name="Skin" type="Panel" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -340.0
+offset_right = 380.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("skin_style")
+
+[node name="Canvas" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -290.0
+offset_top = -290.0
+offset_right = 290.0
+offset_bottom = 290.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Stencil" type="Control" parent="Canvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Highlight" type="TextureRect" parent="Canvas"]
+modulate = Color(1, 0.9, 0.3, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+
+[node name="Ink" type="TextureRect" parent="Canvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+
+[node name="HUD" parent="." instance=ExtResource("4_hud")]
+
+[node name="Machine" parent="." instance=ExtResource("3_machine")]
