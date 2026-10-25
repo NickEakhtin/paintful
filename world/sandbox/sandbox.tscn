@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://world/sandbox/sandbox.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://interaction/interactable.gd" id="3_interactable"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 
@@ -22,6 +23,12 @@ albedo_color = Color(0.85, 0.45, 0.2, 1)
 
 [sub_resource type="BoxShape3D" id="stairs_ramp_shape"]
 size = Vector3(2, 0.1, 1.803)
+
+[sub_resource type="BoxShape3D" id="sign_shape"]
+size = Vector3(1.2, 0.7, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="sign_material"]
+albedo_color = Color(0.55, 0.15, 0.6, 1)
 
 [node name="Sandbox" type="Node3D"]
 script = ExtResource("1_script")
@@ -98,3 +105,20 @@ shape = SubResource("stairs_ramp_shape")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="DaySign" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, -4)
+
+[node name="Board" type="CSGBox3D" parent="DaySign"]
+use_collision = true
+size = Vector3(1, 0.6, 0.05)
+material = SubResource("sign_material")
+
+[node name="Interactable" type="Area3D" parent="DaySign"]
+script = ExtResource("3_interactable")
+prompt = "Следующий день"
+
+[node name="Shape" type="CollisionShape3D" parent="DaySign/Interactable"]
+shape = SubResource("sign_shape")
+
+[connection signal="interacted" from="DaySign/Interactable" to="." method="_on_day_sign_interacted"]

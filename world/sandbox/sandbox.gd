@@ -1,14 +1,16 @@
 extends Node3D
 ## Test ground for trying out features.
-## Debug: `interact` starts a new day and shows its title card.
+
+@onready var _player: Player = $Player
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("interact") and not Transition.is_busy:
-		_show_next_day()
+func _ready() -> void:
+	Events.objective_changed.emit("Подойди к табличке")
 
 
-func _show_next_day() -> void:
+func _on_day_sign_interacted(_by: Player) -> void:
+	_player.lock_controls(&"title")
 	GameState.start_new_day()
 	await Transition.show_title("День %d" % GameState.day)
 	await Transition.fade_in()
+	_player.unlock_controls(&"title")
