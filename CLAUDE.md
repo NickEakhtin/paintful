@@ -35,7 +35,16 @@
 - `items/item.tscn` (`Item`): set `item_id`, `display_name`, `mesh`, `color`. Put it under an `ItemSlot` in the editor to start there. No dropping on the floor.
 - `items/item_slot.tscn` (`ItemSlot`): `accepts` filters by `item_id` (empty = any); signals `item_placed(item)`, `item_removed(item)`.
 - Stairs: visual steps without collision plus an invisible ramp `StaticBody3D` — `CharacterBody3D` doesn't climb steps.
-- Scenes: `main/main.tscn` is the start screen; `world/sandbox/sandbox.tscn` is a test ground (shelf with items, table with slots, stairs, day sign, tattoo chair).
+- Scenes: `main/main.tscn` is the start screen and leads to the level; `world/sandbox/sandbox.tscn` is a test ground (shelf with items, table with slots, stairs, day sign, tattoo chair).
+
+## Level (`world/`)
+- `world/level/level.tscn` is the game: `Studio` + `Basement` scenes (authored in level coordinates), `Lighting` (`DayNight`), `Points`, `Player`.
+  `level.gd` runs the start of the day loop: black "День N" card → player wakes by the altar in the basement → objective "go up and open the studio" → `Events.studio_opened`. The chair still runs a test session until clients exist.
+- Layout: studio floor y=0, x −4..4, z −3..3; entrance + OPEN sign on the front wall (z=3), street outside; back door (x=3, z=−3) → stairwell down to the basement (floor y=−3, z −12..−7). Walls are one `CSGCombiner3D` per scene (outer boxes minus inner boxes and holes).
+- Props (`world/props/`): `Door` (hinged `AnimatableBody3D` with `sync_to_physics = false` so collision follows the hinge; `locked` blocks only the player, code can `open()`), `OpenSign` (emits `studio_opened`/`studio_closed`; closing only when `can_close`), `tattoo_chair.tscn`, `CandleSpot` (candle-only `ItemSlot`, group `candle_spot`, glows when `lit`).
+- `DayNight.set_night()`: sun, studio lamps, street colour, candles (lit only at night, only where a candle stands). F2 toggles it for now.
+- NPC markers in `Points`: `Street`, `Entrance`, `ReceptionWait`, `ChairSeat`, `Exit`, `BasementStairsTop`, `AltarSpot`.
+- `Transition.keep_black()` from a scene's `_ready` keeps `change_scene()` from fading in, so the scene can run its own intro.
 
 ## Tattoo session (`tattoo/`)
 - Feel goal: as pleasant as cleaning in **PowerWash Simulator**. No timer, no grade, no ink penalties; difficulty comes from spirit tasks.
