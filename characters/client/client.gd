@@ -8,7 +8,7 @@ extends CharacterBody3D
 ## Fires when the player presses `interact` on a client that allows talking.
 signal talk_requested(client: Client)
 
-enum State { IDLE, WALKING, SEATED, HYPNOTIZED, FOLLOWING }
+enum State { IDLE, WALKING, SEATED, HYPNOTIZED, FOLLOWING, KNEELING, DEAD }
 
 @export var walk_speed: float = 1.4
 @export var turn_speed: float = 8.0
@@ -103,8 +103,27 @@ func follow(target: Node3D) -> void:
 	state = State.FOLLOWING
 
 
+## Placeholder kneeling: squashed in place.
+func kneel() -> void:
+	state = State.KNEELING
+	velocity = Vector3.ZERO
+	_visual.scale = Vector3(1.0, 0.6, 1.0)
+
+
+## The ritual: the head is gone (it goes to the wall), the body lies on the floor.
+func behead() -> void:
+	state = State.DEAD
+	velocity = Vector3.ZERO
+	allow_talk(false)
+	_shape.disabled = true
+	_head_mesh.visible = false
+	_visual.scale = Vector3.ONE
+	_visual.rotation.x = -PI / 2.0 # fall backwards
+	_visual.position.y = 0.26 # body radius, so it lies on the floor
+
+
 func _physics_process(delta: float) -> void:
-	if state == State.SEATED:
+	if state in [State.SEATED, State.KNEELING, State.DEAD]:
 		return
 	if not is_on_floor():
 		velocity += get_gravity() * delta

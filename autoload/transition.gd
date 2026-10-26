@@ -11,6 +11,7 @@ var _changing_scene: bool = false
 var _keep_black: bool = false
 
 @onready var _overlay: ColorRect = $Overlay
+@onready var _flash: ColorRect = $Flash
 @onready var _title: Label = $Title
 
 
@@ -57,6 +58,13 @@ func show_title(text: String, hold: float = 2.0, duration: float = DEFAULT_FADE)
 	await _tween_alpha(_title, 1.0, duration)
 	await get_tree().create_timer(hold).timeout
 	await _tween_alpha(_title, 0.0, duration)
+
+
+## A full-screen colour that hits at once and fades out (the ritual cut). Doesn't block.
+func flash(color: Color, duration: float = 0.7) -> void:
+	_flash.color = color
+	_flash.modulate.a = 1.0
+	create_tween().tween_property(_flash, "modulate:a", 0.0, duration).set_ease(Tween.EASE_IN)
 
 
 func _tween_alpha(item: CanvasItem, alpha: float, duration: float) -> void:

@@ -1,5 +1,6 @@
 extends SceneTree
 ## Synthesizes placeholder sounds until real ones arrive (roadmap step 10).
+## Only writes files that don't exist yet; delete one to make it again.
 ## Run: Godot --headless --path . --script res://tools/generate_placeholder_sounds.gd
 
 const RATE: int = 44100
@@ -14,6 +15,7 @@ func _init() -> void:
 	_save("crunch.wav", _crunch())
 	_save("tick.wav", _tick())
 	_save("whisper.wav", _whisper())
+	_save("chop.wav", _chop())
 	quit()
 
 
@@ -73,6 +75,19 @@ func _whisper() -> PackedFloat32Array:
 	return samples
 
 
+## The ritual cut: a sharp wet hit and a heavy low thud.
+func _chop() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	for i in int(RATE * 0.6):
+		var t: float = float(i) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.5)
+		var hit: float = smoothed * exp(-t * 35.0)
+		var thud: float = sin(TAU * lerpf(70.0, 40.0, minf(t * 3.0, 1.0)) * t) * exp(-t * 6.0)
+		samples.append(clampf(hit * 0.9 + thud * 0.8, -1.0, 1.0))
+	return samples
+
+
 ## Machine hum, 0.5 s holding a whole number of periods so it loops without a click.
 func _buzz() -> PackedFloat32Array:
 	var samples: PackedFloat32Array = PackedFloat32Array()
@@ -86,6 +101,8 @@ func _buzz() -> PackedFloat32Array:
 
 
 func _save(file_name: String, samples: PackedFloat32Array) -> void:
+	if FileAccess.file_exists(OUT_DIR + file_name):
+		return
 	var data: PackedByteArray = PackedByteArray()
 	data.resize(samples.size() * 2)
 	for i in samples.size():

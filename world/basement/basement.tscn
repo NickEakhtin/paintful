@@ -3,6 +3,8 @@
 [ext_resource type="PackedScene" path="res://items/item_slot.tscn" id="slot"]
 [ext_resource type="PackedScene" path="res://items/item.tscn" id="item"]
 [ext_resource type="PackedScene" path="res://world/props/candle_spot.tscn" id="candle_spot"]
+[ext_resource type="PackedScene" path="res://world/props/head_mount.tscn" id="head_mount"]
+[ext_resource type="Script" path="res://interaction/interactable.gd" id="interactable"]
 [ext_resource type="Texture2D" path="res://data/stencils/sigil/outer_ring.png" id="ring_tex"]
 [ext_resource type="Texture2D" path="res://data/stencils/sigil/star.png" id="star_tex"]
 
@@ -49,6 +51,9 @@ height = 0.16
 
 [sub_resource type="BoxMesh" id="knife_mesh"]
 size = Vector3(0.04, 0.02, 0.28)
+
+[sub_resource type="BoxShape3D" id="altar_shape"]
+size = Vector3(1.7, 0.9, 0.3)
 
 [node name="Basement" type="Node3D"]
 
@@ -278,3 +283,28 @@ display_name = "Свеча"
 mesh = SubResource("candle_mesh")
 color = Color(0.92, 0.88, 0.78, 1)
 
+[node name="AltarInteract" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -2.55, -11.08)
+script = ExtResource("interactable")
+prompt = "Начать ритуал"
+
+[node name="Shape" type="CollisionShape3D" parent="AltarInteract"]
+shape = SubResource("altar_shape")
+
+[node name="HeadWall" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -1.35, -12.17)
+
+[node name="Mount1" parent="HeadWall" instance=ExtResource("head_mount")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, 0, 0)
+
+[node name="Mount2" parent="HeadWall" instance=ExtResource("head_mount")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0, 0)
+
+[node name="Mount3" parent="HeadWall" instance=ExtResource("head_mount")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, 0)
+
+[node name="Mount4" parent="HeadWall" instance=ExtResource("head_mount")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0, 0)
+
+[node name="Mount5" parent="HeadWall" instance=ExtResource("head_mount")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0, 0)
