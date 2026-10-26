@@ -71,8 +71,6 @@ var _at_table: bool = false
 var _turning: bool = false
 ## After the swing back, LMB must be let go once before it inks again.
 var _wait_for_release: bool = false
-## Where the player last inked; the swing back puts the machine there again.
-var _skin_pointer: Vector2 = Vector2.ZERO
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
@@ -139,7 +137,6 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_machine.visible = true
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
-	_skin_pointer = skin.get_global_rect().get_center()
 	_show_turn_hints()
 	_ink_left = ink_capacity
 	_update_ink_display()
@@ -258,8 +255,6 @@ func _paint(delta: float) -> void:
 		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
 	var inking: bool = pressing and not over_cap
 	_machine.working = inking
-	if inking and not _at_table:
-		_skin_pointer = _machine.pointer
 	if inking and _ink_left > 0.0:
 		var laid: float
 		if _was_inking:
@@ -304,8 +299,7 @@ func _check_turn() -> void:
 
 
 ## A quick swing with a horizontal smear, only when the player moves to a screen edge.
-## Coming back, the machine lands where it last was on the skin, so the player never has to
-## look for their spot.
+## The machine never moves by itself: it stays under the mouse the whole time.
 func _turn(to_table: bool) -> void:
 	if _turning:
 		return
@@ -322,7 +316,6 @@ func _turn(to_table: bool) -> void:
 	_blur.visible = false
 	_at_table = to_table
 	if not to_table:
-		_put_pointer(_skin_pointer)
 		_wait_for_release = Input.is_action_pressed("use")
 	_show_turn_hints()
 	_turning = false
@@ -337,13 +330,6 @@ func _show_turn_hints() -> void:
 ## Peaks halfway through the swing.
 func _set_blur(progress: float) -> void:
 	(_blur.material as ShaderMaterial).set_shader_parameter("strength", sin(progress * PI))
-
-
-func _put_pointer(viewport_position: Vector2) -> void:
-	_machine.pointer = viewport_position
-	_machine.needle = viewport_position
-	_steady_needle = viewport_position
-	Input.warp_mouse(get_viewport().get_final_transform() * viewport_position)
 
 
 func _to_cell(screen_position: Vector2) -> Vector2:
