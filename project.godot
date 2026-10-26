@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 Events="*res://autoload/events.gd"
 GameState="*res://autoload/game_state.gd"
 Transition="*res://autoload/transition.tscn"
+Dialogue="*res://autoload/dialogue.tscn"
 
 [display]
 

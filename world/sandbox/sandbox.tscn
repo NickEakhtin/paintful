@@ -52,6 +52,12 @@ size = Vector3(0.9, 1.3, 0.9)
 [sub_resource type="StandardMaterial3D" id="chair_material"]
 albedo_color = Color(0.12, 0.12, 0.14, 1)
 
+[sub_resource type="StandardMaterial3D" id="client_material"]
+albedo_color = Color(0.35, 0.55, 0.75, 1)
+
+[sub_resource type="BoxShape3D" id="client_shape"]
+size = Vector3(0.8, 1.8, 0.8)
+
 [node name="Sandbox" type="Node3D"]
 script = ExtResource("1_script")
 
@@ -221,6 +227,33 @@ prompt = "Начать сеанс"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
 shape = SubResource("chair_shape")
 
+[node name="TestClient" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 3.5)
+
+[node name="Body" type="CSGCylinder3D" parent="TestClient"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+use_collision = true
+radius = 0.28
+height = 1.5
+material = SubResource("client_material")
+
+[node name="HeadMesh" type="CSGSphere3D" parent="TestClient"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
+radius = 0.2
+material = SubResource("client_material")
+
+[node name="Head" type="Marker3D" parent="TestClient"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
+
+[node name="Interactable" type="Area3D" parent="TestClient"]
+script = ExtResource("3_interactable")
+prompt = "Поговорить"
+
+[node name="Shape" type="CollisionShape3D" parent="TestClient/Interactable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("client_shape")
+
 [connection signal="interacted" from="DaySign/Interactable" to="." method="_on_day_sign_interacted"]
 [connection signal="item_placed" from="Table/NeedleSlot" to="." method="_on_needle_placed"]
 [connection signal="interacted" from="TattooChair/Interactable" to="." method="_on_tattoo_chair_interacted"]
+[connection signal="interacted" from="TestClient/Interactable" to="." method="_on_test_client_interacted"]

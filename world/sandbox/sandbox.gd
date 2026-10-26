@@ -3,6 +3,7 @@ extends Node3D
 
 const SESSION_SCENE: PackedScene = preload("res://tattoo/tattoo_session.tscn")
 const TEST_STENCIL: StencilData = preload("res://data/stencils/sigil/sigil.tres")
+const TEST_CLIENT_DIALOGUE: DialogueData = preload("res://data/dialogues/test_client.tres")
 
 @onready var _player: Player = $Player
 
@@ -38,3 +39,7 @@ func _on_tattoo_chair_interacted(_by: Player) -> void:
 	await Transition.fade_in()
 	_player.unlock_controls(&"tattoo")
 	Events.objective_changed.emit("Сеанс завершён — дух доволен" if result.is_perfect() else "Сеанс завершён — дух недоволен")
+
+
+func _on_test_client_interacted(_by: Player) -> void:
+	await Dialogue.play(TEST_CLIENT_DIALOGUE, $TestClient/Head, "Антон")

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="DialogueData" format=3]
+
+[ext_resource type="Script" path="res://dialogue/dialogue_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://dialogue/dialogue_line.gd" id="2_line"]
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("2_line")
+speaker = 2
+text = "Здравствуйте! Я {client}, записывался на сегодня."
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("2_line")
+speaker = 1
+text = "Проходите. Что будем бить?"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("2_line")
+speaker = 2
+text = "Что-нибудь… со смыслом. Говорят, вы в этом разбираетесь."
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("2_line")
+speaker = 1
+text = "Разбираюсь. Подождите минуту, подготовлю место."
+
+[resource]
+script = ExtResource("1_data")
+lines = Array[ExtResource("2_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4")])

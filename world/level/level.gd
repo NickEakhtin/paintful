@@ -1,10 +1,12 @@
 extends Node3D
 ## The game level: studio upstairs, basement below. Runs the start of the day loop:
-## "Day N" card → morning by the altar (the spirit speaks here from step 5) → go up and open the studio.
+## "Day N" card → the spirit speaks by the altar → go up and open the studio.
 ## Clients (steps 6–7) take over once the studio is open.
 
 const SESSION_SCENE: PackedScene = preload("res://tattoo/tattoo_session.tscn")
 const TEST_STENCIL: StencilData = preload("res://data/stencils/sigil/sigil.tres")
+const SPIRIT_FIRST_DAY: DialogueData = preload("res://data/dialogues/spirit_day1.tres")
+const SPIRIT_MORNING: DialogueData = preload("res://data/dialogues/spirit_morning.tres")
 
 @onready var _player: Player = $Player
 @onready var _day_night: DayNight = $Lighting
@@ -28,6 +30,7 @@ func _start_day() -> void:
 	_player.lock_controls(&"day_start")
 	await Transition.show_title("День %d" % GameState.day)
 	await Transition.fade_in()
+	await Dialogue.play(SPIRIT_FIRST_DAY if GameState.day == 1 else SPIRIT_MORNING)
 	_player.unlock_controls(&"day_start")
 	Events.objective_changed.emit("Поднимись в студию и открой её")
 

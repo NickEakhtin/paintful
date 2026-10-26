@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://autoload/dialogue.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://dialogue/spirit_panel.tscn" id="2_spirit"]
+[ext_resource type="PackedScene" path="res://dialogue/player_caption.tscn" id="3_caption"]
+[ext_resource type="PackedScene" path="res://dialogue/speech_bubble.tscn" id="4_bubble"]
+[ext_resource type="Shader" path="res://dialogue/vignette.gdshader" id="5_vignette"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/tick.wav" id="6_tick"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/whisper.wav" id="7_whisper"]
+
+[sub_resource type="ShaderMaterial" id="vignette_material"]
+shader = ExtResource("5_vignette")
+shader_parameter/strength = 0.0
+shader_parameter/tint = Color(0.08, 0, 0.12, 1)
+
+[node name="Dialogue" type="CanvasLayer"]
+process_mode = 3
+layer = 50
+script = ExtResource("1_script")
+
+[node name="Vignette" type="ColorRect" parent="."]
+material = SubResource("vignette_material")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SpeechBubble" parent="." instance=ExtResource("4_bubble")]
+
+[node name="PlayerCaption" parent="." instance=ExtResource("3_caption")]
+
+[node name="SpiritPanel" parent="." instance=ExtResource("2_spirit")]
+
+[node name="Tick" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_tick")
+volume_db = -14.0
+
+[node name="Whisper" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("7_whisper")
+volume_db = -10.0

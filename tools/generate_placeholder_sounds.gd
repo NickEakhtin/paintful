@@ -13,6 +13,7 @@ func _init() -> void:
 	_save("dip.wav", _dip())
 	_save("crunch.wav", _crunch())
 	_save("tick.wav", _tick())
+	_save("whisper.wav", _whisper())
 	quit()
 
 
@@ -56,6 +57,19 @@ func _tick() -> PackedFloat32Array:
 	for i in int(RATE * 0.03):
 		var t: float = float(i) / RATE
 		samples.append((sin(TAU * 2200.0 * t) * 0.5 + randf_range(-0.3, 0.3)) * exp(-t * 180.0))
+	return samples
+
+
+## Spirit's whisper: breathy noise swelling and fading twice. 2 s, loops.
+func _whisper() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var count: int = RATE * 2
+	for i in count:
+		var t: float = float(i) / count
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.18) # soft hiss
+		var swell: float = 0.5 - 0.5 * cos(t * TAU * 2.0)
+		samples.append(smoothed * swell * 0.5)
 	return samples
 
 
