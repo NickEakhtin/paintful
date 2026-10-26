@@ -23,6 +23,7 @@
   - `Events` — global signal bus; add signals when a feature needs them (mark each `@warning_ignore("unused_signal")`). Now: `interaction_prompt_changed(text)`, `objective_changed(text)`.
   - `GameState` — playthrough progress (`day`, `client_index`).
   - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after).
+  - `Dialogue` — comic-style dialogues, see below.
 - Input actions: `move_forward/back/left/right` (WASD), `interact` (E), `use` (LMB), `highlight` (RMB), `pause` (Esc). Keys are physical, so they work on any keyboard layout.
 - Physics layers: 1 `world`, 2 `player`, 3 `interactable` (bit value 4).
 - Commit the `.uid` files Godot creates next to scripts.
@@ -45,6 +46,13 @@
 - `DayNight.set_night()`: sun, studio lamps, street colour, candles (lit only at night, only where a candle stands). F2 toggles it for now.
 - NPC markers in `Points`: `Street`, `Entrance`, `ReceptionWait`, `ChairSeat`, `Exit`, `BasementStairsTop`, `AltarSpot`.
 - `Transition.keep_black()` from a scene's `_ready` keeps `change_scene()` from fading in, so the scene can run its own intro.
+
+## Dialogues (`dialogue/`, autoload `Dialogue`)
+- `await Dialogue.play(dialogue, client_head, client_name)` — locks the player, plays every line, unlocks. LMB/E: first press finishes typing, next press advances.
+- `DialogueData` = list of `DialogueLine` (`speaker` SPIRIT / PLAYER / CLIENT, `text` with BBCode and `{client}`), stored as `.tres` in `data/dialogues/`. New dialogue = new `.tres`.
+- Views (`DialogueView`): spirit → dark shaking panel at the top + violet vignette + whisper; player → caption at the bottom ("Я"); client → `SpeechBubble` that tracks `client_head` (a Node3D above the head) and sticks to the screen edge when it's off screen.
+- Day loop: the level plays `spirit_day1.tres` on day 1, `spirit_morning.tres` later, right after the "День N" card. `test_client.tres` is used by the sandbox's test client.
+- All texts are Russian; the spirit has no name ("Дух").
 
 ## Tattoo session (`tattoo/`)
 - Feel goal: as pleasant as cleaning in **PowerWash Simulator**. No timer, no grade, no ink penalties; difficulty comes from spirit tasks.
