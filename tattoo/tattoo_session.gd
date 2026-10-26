@@ -69,6 +69,8 @@ var _steady_needle: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
 var _at_table: bool = false
 var _turning: bool = false
+## After the swing back, LMB must be let go once before it inks again.
+var _wait_for_release: bool = false
 ## Last mouse position over the skin; the swing back puts the machine there again.
 var _skin_pointer: Vector2 = Vector2.ZERO
 
@@ -83,6 +85,7 @@ var _skin_pointer: Vector2 = Vector2.ZERO
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
 @onready var _ink_cap: Control = $View/InkCap
 @onready var _to_table_hint: Label = $View/ToTable
+@onready var _to_client_hint: Label = $View/ToClient
 @onready var _blur: ColorRect = $MotionBlur
 
 
@@ -137,6 +140,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
 	_skin_pointer = skin.get_global_rect().get_center()
+	_show_turn_hints()
 	_ink_left = ink_capacity
 	_update_ink_display()
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
@@ -244,6 +248,9 @@ func _paint(delta: float) -> void:
 		_was_inking = false
 		return
 	var pressing: bool = Input.is_action_pressed("use")
+	if _wait_for_release:
+		_wait_for_release = pressing
+		pressing = false
 	var cell: Vector2 = _to_cell(_machine.needle)
 	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
 	_set_dipping(pressing and over_cap)
@@ -304,6 +311,8 @@ func _turn(to_table: bool) -> void:
 		return
 	_turning = true
 	_set_dipping(false)
+	_to_table_hint.visible = false
+	_to_client_hint.visible = false
 	_blur.visible = true
 	var tween: Tween = create_tween().set_parallel()
 	tween.tween_property(_view, "position:x", -table_offset if to_table else 0.0, turn_time) \
@@ -314,7 +323,15 @@ func _turn(to_table: bool) -> void:
 	_at_table = to_table
 	if not to_table:
 		_put_pointer(_skin_pointer)
+		_wait_for_release = Input.is_action_pressed("use")
+	_show_turn_hints()
 	_turning = false
+
+
+## Each view shows only the way to the other one.
+func _show_turn_hints() -> void:
+	_to_table_hint.visible = not _at_table
+	_to_client_hint.visible = _at_table
 
 
 ## Peaks halfway through the swing.
