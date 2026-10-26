@@ -71,7 +71,7 @@ var _at_table: bool = false
 var _turning: bool = false
 ## After the swing back, LMB must be let go once before it inks again.
 var _wait_for_release: bool = false
-## Last mouse position over the skin; the swing back puts the machine there again.
+## Where the player last inked; the swing back puts the machine there again.
 var _skin_pointer: Vector2 = Vector2.ZERO
 
 @onready var _view: Control = $View
@@ -258,6 +258,8 @@ func _paint(delta: float) -> void:
 		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
 	var inking: bool = pressing and not over_cap
 	_machine.working = inking
+	if inking and not _at_table:
+		_skin_pointer = _machine.pointer
 	if inking and _ink_left > 0.0:
 		var laid: float
 		if _was_inking:
@@ -295,8 +297,6 @@ func _check_turn() -> void:
 		return
 	var pointer: Vector2 = _machine.pointer
 	if not _at_table:
-		if skin.get_global_rect().has_point(pointer):
-			_skin_pointer = pointer
 		if pointer.x >= get_viewport().get_visible_rect().size.x - turn_edge:
 			_turn(true)
 	elif pointer.x <= turn_edge:
