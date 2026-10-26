@@ -16,9 +16,11 @@ tonemap_mode = 2
 resource_name = "needle_on_top"
 render_priority = 1
 no_depth_test = true
-albedo_color = Color(0.92, 0.92, 0.95, 1)
-metallic = 0.35
-roughness = 0.3
+albedo_color = Color(0.55, 0.2, 0.75, 1)
+roughness = 0.4
+emission_enabled = true
+emission = Color(0.55, 0.2, 0.75, 1)
+emission_energy_multiplier = 0.6
 
 [sub_resource type="ViewportTexture" id="model_texture"]
 resource_local_to_scene = true
