@@ -130,7 +130,8 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 
 
 func _process(delta: float) -> void:
-	if not _running:
+	# Nothing happens while the screen fades in or out around the session.
+	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
 	_update_needle(delta)
@@ -144,6 +145,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Transition.is_busy:
+		return
 	if _running and debug_skip_enabled and event is InputEventKey and event.pressed \
 			and not event.echo and event.physical_keycode == KEY_F3:
 		get_viewport().set_input_as_handled()

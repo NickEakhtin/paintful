@@ -4,7 +4,8 @@ extends Node
 ## "Day N" → the spirit by the altar → open the studio → for each client: talk → the spirit's
 ## roulette → prepare the table → call them to the chair → tattoo → (1st, 2nd) the spirit's
 ## verdict, goodbye, tidy up while the next one walks in / (3rd) the spirit claims them →
-## close the studio → night. The basement ritual continues in step 8.
+## close the studio → night: candles and knife in the basement → lead the chosen one down →
+## the ritual: their head goes on the wall → "Day N+1" (the level reloads).
 
 const CLIENT_SCENE: PackedScene = preload("res://characters/client/client.tscn")
 const SESSION_SCENE: PackedScene = preload("res://tattoo/tattoo_session.tscn")
@@ -16,13 +17,24 @@ const SPIRIT_PLEASED: DialogueData = preload("res://data/dialogues/spirit_please
 const SPIRIT_DISPLEASED: DialogueData = preload("res://data/dialogues/spirit_displeased.tres")
 const SPIRIT_CHOSEN: DialogueData = preload("res://data/dialogues/spirit_chosen.tres")
 const PLAYER_READY: DialogueData = preload("res://data/dialogues/player_ready.tres")
+const SPIRIT_RITUAL: DialogueData = preload("res://data/dialogues/spirit_ritual.tres")
+const SPIRIT_AFTER_KILL: DialogueData = preload("res://data/dialogues/spirit_after_kill.tres")
+
+## Names for the random clients of day 2 onwards.
+const RANDOM_NAMES: PackedStringArray = ["Андрей", "Вика", "Денис", "Ольга", "Тимур", "Лиза", "Семён", "Катя"]
 
 ## What a session may need on the table, and how the objective names it ("принеси …").
 const PREP_ITEMS: Dictionary[StringName, String] = {&"needle": "иглу", &"ink": "краску", &"gloves": "перчатки"}
 ## How many of PREP_ITEMS each session needs.
 const PREP_COUNT: int = 2
 
+## Day 1 clients. From day 2 on, the day makes up as many random ones.
 @export var clients: Array[ClientData] = []
+@export_group("Random clients")
+@export var random_stencils: Array[StencilData] = []
+@export var random_greeting: DialogueData
+@export var random_farewell: DialogueData
+@export_group("")
 @export var task_pool: Array[ModifierData] = []
 @export var player: Player
 @export var day_night: DayNight
@@ -31,6 +43,14 @@ const PREP_COUNT: int = 2
 @export var open_sign: OpenSign
 @export var workstation: Workstation
 @export var seat_point: Marker3D
+@export var back_door: Door
+## Candle spots of the ritual circle.
+@export var ritual_circle: Node3D
+@export var altar_slot: ItemSlot
+@export var altar: Interactable
+@export var altar_glow: OmniLight3D
+@export var head_wall: Node3D
+@export var chop_sound: AudioStreamPlayer
 
 ## Clients passing through the entrance right now; the door stays open while any are.
 var _door_users: int = 0
@@ -40,6 +60,10 @@ var _session: TattooSession = null
 
 func _ready() -> void:
 	Transition.keep_black()
+	if GameState.day > 1:
+		clients = _random_clients(clients.size())
+	_set_altar_ready(false)
+	_hang_trophies()
 	_run_day()
 
 
@@ -80,6 +104,13 @@ func _run_day() -> void:
 	Events.objective_changed.emit("Закрой студию")
 	await Events.studio_closed
 	await _nightfall()
+
+	var chosen: Client = next
+	await _prepare_ritual()
+	await _lead_down(chosen)
+	await _ritual(chosen)
+	GameState.start_new_day()
+	Transition.change_scene(get_tree().current_scene.scene_file_path)
 
 
 func _morning() -> void:
@@ -198,6 +229,98 @@ func _spirit_claims(client: Client) -> void:
 	client.face(player.global_position)
 	client.hypnotize()
 	await Dialogue.play(SPIRIT_CHOSEN, client.head, client.data.display_name)
+
+
+## Candles into every spot of the circle, the knife onto the altar.
+func _prepare_ritual() -> void:
+	var spots: Array[Node] = ritual_circle.get_children().filter(func(n: Node) -> bool: return n is CandleSpot)
+	while true:
+		var placed: int = spots.filter(func(s: CandleSpot) -> bool: return s.item != null).size()
+		var knife_ready: bool = altar_slot.item != null
+		if placed == spots.size() and knife_ready:
+			break
+		var text: String = "Подготовь ритуал: свечи в круг %d/%d" % [placed, spots.size()]
+		if not knife_ready:
+			text += ", нож на алтарь"
+		Events.objective_changed.emit(text)
+		await get_tree().create_timer(0.2).timeout
+
+
+## The chosen one follows the player down the stairs.
+func _lead_down(client: Client) -> void:
+	Events.objective_changed.emit("Ритуал готов. Приведи клиента")
+	client.allow_talk(true, "Повести за собой")
+	await client.talk_requested
+	client.allow_talk(false)
+	back_door.open()
+	client.follow(player)
+	Events.objective_changed.emit("Отведи его в подвал, к алтарю")
+	while client.global_position.y > -2.5:
+		await get_tree().process_frame
+
+
+func _ritual(client: Client) -> void:
+	Events.objective_changed.emit("Начни ритуал у алтаря")
+	_set_altar_ready(true)
+	await altar.interacted
+	_set_altar_ready(false)
+	Events.objective_changed.emit("")
+	create_tween().tween_property(altar_glow, "light_energy", 2.5, 1.5)
+	await client.walk_to(_point("RitualCenter"))
+	client.face(altar_slot.global_position)
+	client.kneel()
+	await Dialogue.play(SPIRIT_RITUAL)
+
+	Events.objective_changed.emit("Принеси жертву")
+	client.allow_talk(true, "Отрезать голову")
+	await client.talk_requested
+	player.lock_controls(&"ritual")
+	Transition.flash(Color(0.75, 0.0, 0.0))
+	chop_sound.play()
+	client.behead()
+	var mount: HeadMount = _free_mount()
+	if mount != null:
+		mount.hang(client.data)
+	GameState.trophies.append(client.data)
+	await get_tree().create_timer(1.2).timeout
+	player.unlock_controls(&"ritual")
+	await Dialogue.play(SPIRIT_AFTER_KILL)
+	create_tween().tween_property(altar_glow, "light_energy", 0.6, 1.0)
+
+
+func _set_altar_ready(ready_now: bool) -> void:
+	altar.collision_layer = Interactable.LAYER if ready_now else 0
+
+
+func _hang_trophies() -> void:
+	for data in GameState.trophies:
+		var mount: HeadMount = _free_mount()
+		if mount == null:
+			break
+		mount.hang(data)
+
+
+func _free_mount() -> HeadMount:
+	for mount in head_wall.get_children():
+		if mount is HeadMount and mount.is_free():
+			return mount
+	return null
+
+
+func _random_clients(count: int) -> Array[ClientData]:
+	var names: Array = Array(RANDOM_NAMES)
+	names.shuffle()
+	var result: Array[ClientData] = []
+	for i in count:
+		var data: ClientData = ClientData.new()
+		data.display_name = names[i]
+		data.color = Color.from_hsv(randf(), 0.45, 0.75)
+		data.height = randf_range(1.6, 1.9)
+		data.stencil = random_stencils.pick_random()
+		data.greeting = random_greeting
+		data.farewell = random_farewell
+		result.append(data)
+	return result
 
 
 func _nightfall() -> void:

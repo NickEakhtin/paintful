@@ -9,6 +9,13 @@
 [ext_resource type="Resource" path="res://data/modifiers/fear.tres" id="12_fear"]
 [ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="13_spiders"]
 [ext_resource type="Resource" path="res://data/modifiers/pain.tres" id="14_pain"]
+[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="15_stencil_data"]
+[ext_resource type="Resource" path="res://data/stencils/sigil/sigil.tres" id="16_sigil"]
+[ext_resource type="Resource" path="res://data/stencils/eye/eye.tres" id="17_eye"]
+[ext_resource type="Resource" path="res://data/stencils/moon/moon.tres" id="18_moon"]
+[ext_resource type="Resource" path="res://data/dialogues/random_hello.tres" id="19_hello"]
+[ext_resource type="Resource" path="res://data/dialogues/random_bye.tres" id="20_bye"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/chop.wav" id="21_chop"]
 [ext_resource type="Script" path="res://world/lighting/day_night.gd" id="2_day_night"]
 [ext_resource type="PackedScene" path="res://world/studio/studio.tscn" id="3_studio"]
 [ext_resource type="PackedScene" path="res://world/basement/basement.tscn" id="4_basement"]
@@ -65,6 +72,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, -1.4)
 [node name="BenchWait" type="Marker3D" parent="Points"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 2.05)
 
+[node name="RitualCenter" type="Marker3D" parent="Points"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3, -9.4)
+
 [node name="Exit" type="Marker3D" parent="Points"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 5.5)
 
@@ -77,7 +87,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -10.8)
 [node name="Player" parent="." instance=ExtResource("5_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -9.8)
 
-[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point")]
+[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "back_door", "ritual_circle", "altar_slot", "altar", "altar_glow", "head_wall", "chop_sound")]
 script = ExtResource("1_day_flow")
 clients = Array[ExtResource("10_client_data")]([ExtResource("7_anton"), ExtResource("8_marina"), ExtResource("9_gleb")])
 task_pool = Array[ExtResource("11_modifier_data")]([ExtResource("12_fear"), ExtResource("13_spiders"), ExtResource("14_pain")])
@@ -88,3 +98,17 @@ entrance = NodePath("../Studio/EntranceDoor")
 open_sign = NodePath("../Studio/OpenSign")
 workstation = NodePath("../Studio/Workstation")
 seat_point = NodePath("../Studio/TattooChair/SeatPoint")
+random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_sigil"), ExtResource("17_eye"), ExtResource("18_moon")])
+random_greeting = ExtResource("19_hello")
+random_farewell = ExtResource("20_bye")
+back_door = NodePath("../Studio/BackDoor")
+ritual_circle = NodePath("../Basement/Circle")
+altar_slot = NodePath("../Basement/AltarSlot")
+altar = NodePath("../Basement/AltarInteract")
+altar_glow = NodePath("../Basement/AltarGlow")
+head_wall = NodePath("../Basement/HeadWall")
+chop_sound = NodePath("Chop")
+
+[node name="Chop" type="AudioStreamPlayer" parent="DayFlow"]
+stream = ExtResource("21_chop")
+volume_db = -2.0
