@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ClientData" format=3]
+
+[ext_resource type="Script" path="res://characters/client/client_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/stencils/moon/moon.tres" id="2_stencil"]
+[ext_resource type="Resource" path="res://data/dialogues/gleb_hello.tres" id="3_hello"]
+[ext_resource type="Resource" path="res://data/dialogues/gleb_bye.tres" id="4_bye"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Глеб"
+color = Color(0.45, 0.62, 0.35, 1)
+height = 1.85
+stencil = ExtResource("2_stencil")
+greeting = ExtResource("3_hello")
+farewell = ExtResource("4_bye")

@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="StencilData" format=3]
+
+[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" path="res://data/stencils/eye/outline.png" id="tex_outline"]
+[ext_resource type="Texture2D" path="res://data/stencils/eye/iris.png" id="tex_iris"]
+[ext_resource type="Texture2D" path="res://data/stencils/eye/pupil.png" id="tex_pupil"]
+[ext_resource type="Texture2D" path="res://data/stencils/eye/lashes.png" id="tex_lashes"]
+
+[sub_resource type="Resource" id="part_outline"]
+script = ExtResource("2_part")
+display_name = "Контур"
+texture = ExtResource("tex_outline")
+
+[sub_resource type="Resource" id="part_iris"]
+script = ExtResource("2_part")
+display_name = "Радужка"
+texture = ExtResource("tex_iris")
+
+[sub_resource type="Resource" id="part_pupil"]
+script = ExtResource("2_part")
+display_name = "Зрачок"
+texture = ExtResource("tex_pupil")
+
+[sub_resource type="Resource" id="part_lashes"]
+script = ExtResource("2_part")
+display_name = "Ресницы"
+texture = ExtResource("tex_lashes")
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Око"
+parts = Array[ExtResource("2_part")]([SubResource("part_outline"), SubResource("part_iris"), SubResource("part_pupil"), SubResource("part_lashes")])

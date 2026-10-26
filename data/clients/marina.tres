@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ClientData" format=3]
+
+[ext_resource type="Script" path="res://characters/client/client_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/stencils/eye/eye.tres" id="2_stencil"]
+[ext_resource type="Resource" path="res://data/dialogues/marina_hello.tres" id="3_hello"]
+[ext_resource type="Resource" path="res://data/dialogues/marina_bye.tres" id="4_bye"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Марина"
+color = Color(0.78, 0.42, 0.55, 1)
+height = 1.65
+stencil = ExtResource("2_stencil")
+greeting = ExtResource("3_hello")
+farewell = ExtResource("4_bye")

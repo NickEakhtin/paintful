@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="StencilData" format=3]
+
+[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" path="res://data/stencils/moon/crescent.png" id="tex_crescent"]
+[ext_resource type="Texture2D" path="res://data/stencils/moon/stars.png" id="tex_stars"]
+[ext_resource type="Texture2D" path="res://data/stencils/moon/dot_ring.png" id="tex_dot_ring"]
+
+[sub_resource type="Resource" id="part_crescent"]
+script = ExtResource("2_part")
+display_name = "Полумесяц"
+texture = ExtResource("tex_crescent")
+
+[sub_resource type="Resource" id="part_stars"]
+script = ExtResource("2_part")
+display_name = "Звёзды"
+texture = ExtResource("tex_stars")
+
+[sub_resource type="Resource" id="part_dot_ring"]
+script = ExtResource("2_part")
+display_name = "Кольцо точек"
+texture = ExtResource("tex_dot_ring")
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Полумесяц"
+parts = Array[ExtResource("2_part")]([SubResource("part_crescent"), SubResource("part_stars"), SubResource("part_dot_ring")])
