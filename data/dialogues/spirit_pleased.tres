@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DialogueData" format=3]
+
+[ext_resource type="Script" path="res://dialogue/dialogue_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://dialogue/dialogue_line.gd" id="2_line"]
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("2_line")
+speaker = 0
+text = "Хорошо. Но этот мне не подходит. Отпусти его."
+
+[resource]
+script = ExtResource("1_data")
+lines = Array[ExtResource("2_line")]([SubResource("line_1")])

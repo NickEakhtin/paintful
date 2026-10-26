@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" path="res://world/props/tattoo_chair.tscn" id="chair"]
 [ext_resource type="PackedScene" path="res://items/item_slot.tscn" id="slot"]
 [ext_resource type="PackedScene" path="res://items/item.tscn" id="item"]
+[ext_resource type="Script" path="res://world/props/workstation.gd" id="workstation"]
+[ext_resource type="Script" path="res://interaction/interactable.gd" id="interactable"]
 
 [sub_resource type="StandardMaterial3D" id="wall"]
 albedo_color = Color(0.62, 0.66, 0.6, 1)
@@ -49,6 +51,9 @@ size = Vector3(0.08, 0.12, 0.08)
 
 [sub_resource type="BoxMesh" id="gloves_mesh"]
 size = Vector3(0.18, 0.03, 0.12)
+
+[sub_resource type="BoxShape3D" id="cleanup_shape"]
+size = Vector3(1.5, 0.45, 0.75)
 
 [node name="Studio" type="Node3D"]
 
@@ -118,6 +123,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0, -1.4)
 
 [node name="Workstation" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, -2.4)
+script = ExtResource("workstation")
 
 [node name="Top" type="CSGBox3D" parent="Workstation"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.425, 0)
@@ -133,6 +139,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
 
 [node name="Slot3" parent="Workstation" instance=ExtResource("slot")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 0.85, 0)
+
+[node name="Cleanup" type="Area3D" parent="Workstation"]
+script = ExtResource("interactable")
+prompt = "Убрать рабочее место"
+
+[node name="Shape" type="CollisionShape3D" parent="Workstation/Cleanup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+shape = SubResource("cleanup_shape")
 
 [node name="SupplyShelf" type="Node3D" parent="."]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 3.65, 0, 0.9)

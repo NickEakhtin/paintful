@@ -16,6 +16,7 @@ var item: Item = null
 func _ready() -> void:
 	for child in get_children():
 		if child is Item:
+			child.home = self
 			_store(child)
 			break
 
@@ -37,6 +38,12 @@ func interact(player: Player) -> void:
 	_store(placed)
 	item_placed.emit(placed)
 	super(player)
+
+
+## Puts `new_item` here from code (e.g. tidying up), as if the player had placed it.
+func place(new_item: Item) -> void:
+	_store(new_item)
+	item_placed.emit(new_item)
 
 
 func accepts_item(candidate: Item) -> bool:

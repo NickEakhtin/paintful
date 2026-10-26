@@ -11,6 +11,8 @@ extends Interactable
 
 ## Slot the item lies in, null while carried.
 var slot: ItemSlot = null
+## Slot it started in; tidying up puts it back there.
+var home: ItemSlot = null
 
 @onready var _mesh_instance: MeshInstance3D = $Mesh
 @onready var _shape: CollisionShape3D = $Shape

@@ -79,9 +79,12 @@ func face(point: Vector3) -> void:
 	rotation.y = atan2(-to.x, -to.z)
 
 
-func allow_talk(allowed: bool) -> void:
-	# Out of the ray's way when talking isn't possible, so the chair behind can be used.
+## Shows `prompt` when the player looks at the client; a disabled prompt is a hint without "E".
+## Not allowed: out of the ray's way entirely.
+func allow_talk(allowed: bool, prompt: String = "Поговорить", enabled: bool = true) -> void:
 	_interactable.collision_layer = Interactable.LAYER if allowed else 0
+	_interactable.prompt = prompt
+	_interactable.enabled = enabled
 
 
 func set_eyes_glowing(glowing: bool) -> void:

@@ -1,6 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://world/level/level.gd" id="1_script"]
+[ext_resource type="Script" path="res://world/level/day_flow.gd" id="1_day_flow"]
+[ext_resource type="Resource" path="res://data/clients/anton.tres" id="7_anton"]
+[ext_resource type="Resource" path="res://data/clients/marina.tres" id="8_marina"]
+[ext_resource type="Resource" path="res://data/clients/gleb.tres" id="9_gleb"]
+[ext_resource type="Script" path="res://characters/client/client_data.gd" id="10_client_data"]
+[ext_resource type="Script" path="res://modifiers/modifier_data.gd" id="11_modifier_data"]
+[ext_resource type="Resource" path="res://data/modifiers/fear.tres" id="12_fear"]
+[ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="13_spiders"]
+[ext_resource type="Resource" path="res://data/modifiers/pain.tres" id="14_pain"]
 [ext_resource type="Script" path="res://world/lighting/day_night.gd" id="2_day_night"]
 [ext_resource type="PackedScene" path="res://world/studio/studio.tscn" id="3_studio"]
 [ext_resource type="PackedScene" path="res://world/basement/basement.tscn" id="4_basement"]
@@ -17,7 +25,6 @@ tonemap_mode = 2
 ssao_enabled = true
 
 [node name="Level" type="Node3D"]
-script = ExtResource("1_script")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("environment")
@@ -55,6 +62,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0, 1.75)
 [node name="ChairSeat" type="Marker3D" parent="Points"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, -1.4)
 
+[node name="BenchWait" type="Marker3D" parent="Points"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 2.05)
+
 [node name="Exit" type="Marker3D" parent="Points"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 5.5)
 
@@ -67,4 +77,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -10.8)
 [node name="Player" parent="." instance=ExtResource("5_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -9.8)
 
-[connection signal="interacted" from="Studio/TattooChair/Interactable" to="." method="_on_tattoo_chair_interacted"]
+[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point")]
+script = ExtResource("1_day_flow")
+clients = Array[ExtResource("10_client_data")]([ExtResource("7_anton"), ExtResource("8_marina"), ExtResource("9_gleb")])
+task_pool = Array[ExtResource("11_modifier_data")]([ExtResource("12_fear"), ExtResource("13_spiders"), ExtResource("14_pain")])
+player = NodePath("../Player")
+day_night = NodePath("../Lighting")
+points = NodePath("../Points")
+entrance = NodePath("../Studio/EntranceDoor")
+open_sign = NodePath("../Studio/OpenSign")
+workstation = NodePath("../Studio/Workstation")
+seat_point = NodePath("../Studio/TattooChair/SeatPoint")
