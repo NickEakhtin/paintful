@@ -40,11 +40,17 @@
 
 ## Level (`world/`)
 - `world/level/level.tscn` is the game: `Studio` + `Basement` scenes (authored in level coordinates), `Lighting` (`DayNight`), `Points`, `Player`.
-  `level.gd` runs the start of the day loop: black "День N" card → player wakes by the altar in the basement → objective "go up and open the studio" → `Events.studio_opened`. The chair still runs a test session until clients exist.
+  `level.gd` runs the day loop so far: black "День N" card → spirit talks by the altar → objective "go up and open the studio" → `Events.studio_opened` → clients from `CLIENTS` come in one by one: wait at reception → E to talk (greeting) → sit in the chair → chair starts a session with their stencil → perfect result lights their eyes → farewell → they walk out while the next one walks in. Roulette timing, prep, cleanup, hypnosis and night are step 7+.
 - Layout: studio floor y=0, x −4..4, z −3..3; entrance + OPEN sign on the front wall (z=3), street outside; back door (x=3, z=−3) → stairwell down to the basement (floor y=−3, z −12..−7). Walls are one `CSGCombiner3D` per scene (outer boxes minus inner boxes and holes).
 - Props (`world/props/`): `Door` (hinged `AnimatableBody3D` with `sync_to_physics = false` so collision follows the hinge; `locked` blocks only the player, code can `open()`), `OpenSign` (emits `studio_opened`/`studio_closed`; closing only when `can_close`), `tattoo_chair.tscn`, `CandleSpot` (candle-only `ItemSlot`, group `candle_spot`, glows when `lit`).
 - `DayNight.set_night()`: sun, studio lamps, street colour, candles (lit only at night, only where a candle stands). F2 toggles it for now.
-- NPC markers in `Points`: `Street`, `Entrance`, `ReceptionWait`, `ChairSeat`, `Exit`, `BasementStairsTop`, `AltarSpot`.
+- NPC markers in `Points`: `Street`, `Entrance`, `ReceptionWait`, `ChairSeat` (beside the chair; sitting snaps to the chair's `SeatPoint`), `Exit`, `BasementStairsTop`, `AltarSpot`.
+- Navigation: `Navigation` (NavigationRegion3D) uses the pre-baked `world/level/level_navmesh.tres`. After changing level geometry re-run `Godot --headless --path . --script res://tools/bake_level_navigation.gd`. Doors are excluded from the bake, so code must open the entrance for clients (`level.gd` counts clients in the doorway).
+
+## Clients (`characters/client/`)
+- `ClientData` (`data/clients/*.tres`): name, placeholder colour/height, `stencil`, `greeting`, `farewell` dialogues. Demo: Антон (sigil), Марина (eye), Глеб (moon).
+- `Client` (CharacterBody3D on layer 4 `npc`; player collides with npc, clients don't collide with the player): `await walk_to(point)` on the navmesh, `sit(seat)`, `stand_up(point)`, `face(point)`, `allow_talk(bool)` → `talk_requested`, `set_eyes_glowing()`, `hypnotize()`, `follow(target)` (for step 8). Look lives under `Visual` (capsule now, 2D sprite later); `head` (`Visual/Head`) is the dialogue bubble anchor.
+- Never give two sibling nodes the same name in a `.tscn` — Godot silently drops one (this happened with the chair's `Seat`).
 - `Transition.keep_black()` from a scene's `_ready` keeps `change_scene()` from fading in, so the scene can run its own intro.
 
 ## Dialogues (`dialogue/`, autoload `Dialogue`)

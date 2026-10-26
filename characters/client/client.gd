@@ -21,7 +21,7 @@ var state: State = State.IDLE
 var _follow_target: Node3D
 var _walk_done: bool = false
 
-@onready var head: Marker3D = $Head
+@onready var head: Marker3D = $Visual/Head
 @onready var _visual: Node3D = $Visual
 @onready var _body_mesh: MeshInstance3D = $Visual/Body
 @onready var _head_mesh: MeshInstance3D = $Visual/HeadMesh
@@ -64,7 +64,7 @@ func sit(seat: Node3D) -> void:
 	velocity = Vector3.ZERO
 	_shape.disabled = true
 	global_transform = seat.global_transform
-	_visual.scale = Vector3(1.0, 0.72, 1.0)
+	_visual.scale = Vector3(1.0, 0.5, 1.0) # placeholder "sitting": squashed onto the seat
 
 
 func stand_up(floor_point: Vector3) -> void:

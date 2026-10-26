@@ -63,7 +63,7 @@ light_color = Color(1, 0.3, 0.1, 1)
 light_energy = 0.6
 omni_range = 0.8
 
-[node name="Head" type="Marker3D" parent="."]
+[node name="Head" type="Marker3D" parent="Visual"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
 
 [node name="Agent" type="NavigationAgent3D" parent="."]
