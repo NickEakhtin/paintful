@@ -21,8 +21,8 @@
 - Systems talk through the `Events` signal bus, not through absolute node paths into other scenes.
 - Autoloads (`autoload/`):
   - `Events` — global signal bus; add signals when a feature needs them (mark each `@warning_ignore("unused_signal")`). Now: `interaction_prompt_changed(text)`, `objective_changed(text)`.
-  - `GameState` — playthrough progress (`day`, `client_index`).
-  - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after).
+  - `GameState` — playthrough progress that survives level reloads (`day`, `client_index`, `trophies`).
+  - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after), `flash(color)` (instant colour that fades, non-blocking).
   - `Dialogue` — comic-style dialogues, see below.
 - Input actions: `move_forward/back/left/right` (WASD), `interact` (E), `use` (LMB), `highlight` (RMB), `pause` (Esc). Keys are physical, so they work on any keyboard layout.
 - Physics layers: 1 `world`, 2 `player`, 3 `interactable` (bit value 4).
@@ -41,17 +41,20 @@
 ## Level (`world/`)
 - `world/level/level.tscn` is the game: `Studio` + `Basement` scenes (authored in level coordinates), `Lighting` (`DayNight`), `Points`, `Player`, `DayFlow`.
 - `DayFlow` (`world/level/day_flow.gd`) is the day loop as one top-to-bottom script with `await`s — keep it that way, it should read like the loop above:
-  "День N" → spirit by the altar → open the studio → per client: arrive → E to talk (greeting) → spirit line + roulette (in the studio) → client waits on the bench, objective lists 2 random items to bring to the `Workstation` → E on client "Позвать в кресло" → they sit, the session starts with the rolled tasks → clients 1–2: spirit verdict (pleased if `is_perfect()`), farewell, they leave while the next walks in, the player must tidy the table → client 3: the spirit claims them (eyes glow, hypnotized, stays) → sign can close → night → "go down to the basement" (step 8 continues).
-  Exports: `clients`, `task_pool`, and the scene nodes it drives. Debug key: F2 day/night.
+  "День N" → spirit by the altar → open the studio → per client: arrive → E to talk (greeting) → spirit line + roulette (in the studio) → client waits on the bench, objective lists 2 random items to bring to the `Workstation` → E on client "Позвать в кресло" → they sit, the session starts with the rolled tasks → clients 1–2: spirit verdict (pleased if `is_perfect()`), farewell, they leave while the next walks in, the player must tidy the table → client 3: the spirit claims them (eyes glow, hypnotized, stays) → sign can close → night →
+  ritual prep (5 candles into the circle's `CandleSpot`s, knife into `AltarSlot`) → E on the chosen one "Повести за собой" → they `follow()` the player down → E on the altar "Начать ритуал" → they kneel at `RitualCenter`, spirit speaks → E on them "Отрезать голову" (one action: red `Transition.flash`, chop sound, `behead()`, head hangs on the next free `HeadMount`) → spirit speaks → `GameState.start_new_day()` → `Transition.change_scene` reloads the level → "День N+1".
+  Day 1 uses the exported `clients` (Антон, Марина, Глеб); from day 2 the day makes up random clients (names in `RANDOM_NAMES`, random colour/height, one of `random_stencils`, `random_greeting`/`random_farewell`).
+  The level reloads every day, so anything that must survive goes into `GameState` (`day`, `trophies` → heads re-hung on the wall at load).
+  Exports: `clients`, `task_pool`, the random-client pool and the scene nodes it drives. Debug key: F2 day/night.
 - Layout: studio floor y=0, x −4..4, z −3..3; entrance + OPEN sign on the front wall (z=3), street outside; back door (x=3, z=−3) → stairwell down to the basement (floor y=−3, z −12..−7). Walls are one `CSGCombiner3D` per scene (outer boxes minus inner boxes and holes).
-- Props (`world/props/`): `Door` (hinged `AnimatableBody3D` with `sync_to_physics = false` so collision follows the hinge; `locked` blocks only the player, code can `open()`), `OpenSign` (emits `studio_opened`/`studio_closed`; closing only when `can_close`), `tattoo_chair.tscn` (just geometry + `SeatPoint`), `Workstation` (table slots; `set_required(ids)`, `missing()`, `has_required()`, `cleanup_needed` → "Убрать рабочее место" puts items back to their `Item.home` slots, `cleaned_up`), `CandleSpot` (candle-only `ItemSlot`, group `candle_spot`, glows when `lit`).
+- Props (`world/props/`): `Door` (hinged `AnimatableBody3D` with `sync_to_physics = false` so collision follows the hinge; `locked` blocks only the player, code can `open()`), `OpenSign` (emits `studio_opened`/`studio_closed`; closing only when `can_close`), `tattoo_chair.tscn` (just geometry + `SeatPoint`), `Workstation` (table slots; `set_required(ids)`, `missing()`, `has_required()`, `cleanup_needed` → "Убрать рабочее место" puts items back to their `Item.home` slots, `cleaned_up`), `CandleSpot` (candle-only `ItemSlot`, group `candle_spot`, glows when `lit`), `HeadMount` (plaque on the basement `HeadWall`; `hang(client_data)`), basement `AltarInteract` (enabled by `DayFlow` only when the ritual can start).
 - `DayNight.set_night()`: sun, studio lamps, street colour, candles (lit only at night, only where a candle stands).
 - NPC markers in `Points`: `Street`, `Entrance`, `ReceptionWait`, `BenchWait`, `ChairSeat` (beside the chair; sitting snaps to the chair's `SeatPoint`), `Exit`, `BasementStairsTop`, `AltarSpot`.
 - Navigation: `Navigation` (NavigationRegion3D) uses the pre-baked `world/level/level_navmesh.tres`. After changing level geometry re-run `Godot --headless --path . --script res://tools/bake_level_navigation.gd`. Doors are excluded from the bake, so code must open the entrance for clients (`DayFlow` counts clients in the doorway).
 
 ## Clients (`characters/client/`)
 - `ClientData` (`data/clients/*.tres`): name, placeholder colour/height, `stencil`, `greeting`, `farewell` dialogues. Demo: Антон (sigil), Марина (eye), Глеб (moon).
-- `Client` (CharacterBody3D on layer 4 `npc`; player collides with npc, clients don't collide with the player): `await walk_to(point)` on the navmesh, `sit(seat)`, `stand_up(point)`, `face(point)`, `allow_talk(allowed, prompt, enabled)` → `talk_requested`, `set_eyes_glowing()`, `hypnotize()`, `follow(target)` (for step 8). Look lives under `Visual` (capsule now, 2D sprite later); `head` (`Visual/Head`) is the dialogue bubble anchor.
+- `Client` (CharacterBody3D on layer 4 `npc`; player collides with npc, clients don't collide with the player): `await walk_to(point)` on the navmesh, `sit(seat)`, `stand_up(point)`, `face(point)`, `allow_talk(allowed, prompt, enabled)` → `talk_requested`, `set_eyes_glowing()`, `hypnotize()`, `follow(target)`, `kneel()`, `behead()`. Look lives under `Visual` (capsule now, 2D sprite later); `head` (`Visual/Head`) is the dialogue bubble anchor.
 - Never give two sibling nodes the same name in a `.tscn` — Godot silently drops one (this happened with the chair's `Seat`).
 - `Transition.keep_black()` from a scene's `_ready` keeps `change_scene()` from fading in, so the scene can run its own intro.
 
@@ -73,7 +76,8 @@
 - Needle: `TattooMachine` only reports the mouse (`pointer`) and draws itself at `needle`. `TattooSession._update_needle()` is the one place that turns pointer into needle (magnet pull toward unfilled stencil, then smoothing) — spirit tasks (step 3) add their offsets there.
 - Ink supply: the machine holds `ink_capacity` (filled-cell units; `stamp()`/`stroke()` return ink laid down). When dry it still buzzes but lays nothing; the gauge beside the machine turns orange when low and red when empty, the ink cap (bottom left) pulses, the HUD says to dip. Holding LMB over the cap refills in `refill_time`.
 - Feedback: per-part white flash + ding rising a whole tone per completed part, HUD flash label, machine hum and ink spray while inking, RMB "ping" lights up what's left and fades.
-- Placeholder sounds in `placeholders/sounds/`, synthesized by `tools/generate_placeholder_sounds.gd` (the hum loops via its `.import` setting).
+- Placeholder sounds in `placeholders/sounds/`, synthesized by `tools/generate_placeholder_sounds.gd` (writes only missing files; the hum and whisper loop via their `.import` setting).
+- The session ignores input and stops painting while `Transition.is_busy`, so nothing (F3 included) fires before the caller awaits `finished`.
 
 ## Spirit tasks (`modifiers/`) and roulette (`ui/roulette/`)
 - A task = `ModifierData` (`data/modifiers/*.tres`: name, spirit line, colour, scene) + a scene whose root extends `TattooModifier`.
