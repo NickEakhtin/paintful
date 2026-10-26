@@ -46,16 +46,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	match event.physical_keycode:
-		KEY_F2: # debug: flip day and night
-			day_night.set_night(not day_night.is_night)
-		KEY_F3: # debug: finish the current tattoo at once
-			if is_instance_valid(_session) and _session.canvas != null:
-				var canvas: InkCanvas = _session.canvas
-				for part in canvas.part_count():
-					for cell in canvas._part_cells[part]:
-						@warning_ignore("integer_division")
-						canvas.stamp(Vector2(cell % InkCanvas.SIZE + 0.5, cell / InkCanvas.SIZE + 0.5), 0.5, 1.0)
+	if event.physical_keycode == KEY_F2: # debug: flip day and night
+		day_night.set_night(not day_night.is_night)
 
 
 func _run_day() -> void:

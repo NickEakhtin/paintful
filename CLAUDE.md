@@ -42,7 +42,7 @@
 - `world/level/level.tscn` is the game: `Studio` + `Basement` scenes (authored in level coordinates), `Lighting` (`DayNight`), `Points`, `Player`, `DayFlow`.
 - `DayFlow` (`world/level/day_flow.gd`) is the day loop as one top-to-bottom script with `await`s — keep it that way, it should read like the loop above:
   "День N" → spirit by the altar → open the studio → per client: arrive → E to talk (greeting) → spirit line + roulette (in the studio) → client waits on the bench, objective lists 2 random items to bring to the `Workstation` → E on client "Позвать в кресло" → they sit, the session starts with the rolled tasks → clients 1–2: spirit verdict (pleased if `is_perfect()`), farewell, they leave while the next walks in, the player must tidy the table → client 3: the spirit claims them (eyes glow, hypnotized, stays) → sign can close → night → "go down to the basement" (step 8 continues).
-  Exports: `clients`, `task_pool`, and the scene nodes it drives. Debug keys: F2 day/night, F3 finish the current tattoo.
+  Exports: `clients`, `task_pool`, and the scene nodes it drives. Debug key: F2 day/night.
 - Layout: studio floor y=0, x −4..4, z −3..3; entrance + OPEN sign on the front wall (z=3), street outside; back door (x=3, z=−3) → stairwell down to the basement (floor y=−3, z −12..−7). Walls are one `CSGCombiner3D` per scene (outer boxes minus inner boxes and holes).
 - Props (`world/props/`): `Door` (hinged `AnimatableBody3D` with `sync_to_physics = false` so collision follows the hinge; `locked` blocks only the player, code can `open()`), `OpenSign` (emits `studio_opened`/`studio_closed`; closing only when `can_close`), `tattoo_chair.tscn` (just geometry + `SeatPoint`), `Workstation` (table slots; `set_required(ids)`, `missing()`, `has_required()`, `cleanup_needed` → "Убрать рабочее место" puts items back to their `Item.home` slots, `cleaned_up`), `CandleSpot` (candle-only `ItemSlot`, group `candle_spot`, glows when `lit`).
 - `DayNight.set_night()`: sun, studio lamps, street colour, candles (lit only at night, only where a candle stands).
@@ -65,6 +65,7 @@
 ## Tattoo session (`tattoo/`)
 - Feel goal: as pleasant as cleaning in **PowerWash Simulator**. No timer, no grade, no ink penalties; difficulty comes from spirit tasks.
 - A 2D screen over the game, not a 3D close-up. `TattooSession` (CanvasLayer 10): add it, then `roll_and_start(stencil)` (roulette first) or `start(stencil, tasks)`; `await session.finished` → `SessionResult` (`tasks`, `intensities`, `passed`, `is_perfect()`). The caller frees it and restores the mouse mode (see `world/sandbox/sandbox.gd`).
+  Testing shortcut: F3 in a session fills the stencil and ends it at once (`skip()`; off with `debug_skip_enabled`); the HUD hint mentions it.
   Running `tattoo/tattoo_session.tscn` on its own rolls the roulette and restarts when done — use it for tuning (exports under "Tuning"; set `fixed_tasks` to skip the roulette).
 - Skin and stencil sit in `Body` (a full-rect Control) that tasks can push; tasks live in `Body/Modifiers`, so they move with the skin and draw on it. `InkCap` and HUD stay put.
 - `InkCanvas`: pure logic on a 256×256 coverage grid. Ink only lands on stencil cells and builds up over time under the needle; a part auto-completes at 97% (`part_completed`). `find_unfilled_near()` feeds the magnet.

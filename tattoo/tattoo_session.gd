@@ -13,6 +13,8 @@ const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 
 @export var stencil: StencilData
+## Testing shortcut: F3 finishes the tattoo and closes the session at once. Turn off for release.
+@export var debug_skip_enabled: bool = true
 
 @export_group("Spirit tasks")
 ## What the roulette can land on.
@@ -142,7 +144,11 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _running and event.is_action_pressed("highlight"):
+	if _running and debug_skip_enabled and event is InputEventKey and event.pressed \
+			and not event.echo and event.physical_keycode == KEY_F3:
+		get_viewport().set_input_as_handled()
+		skip()
+	elif _running and event.is_action_pressed("highlight"):
 		_ping_highlight()
 	# The delay keeps the end of the last stroke from closing the panel at once.
 	elif _waiting_for_close and event.is_action_pressed("use") \
@@ -150,6 +156,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_waiting_for_close = false
 		finished.emit(_result)
+
+
+## Fills the whole stencil and ends the session right away, without the "done" panel.
+## Spirit tasks are judged as they stand at that moment.
+func skip() -> void:
+	if not _running:
+		return
+	for part in canvas.part_count():
+		for cell in canvas._part_cells[part]:
+			@warning_ignore("integer_division")
+			canvas.stamp(Vector2(cell % InkCanvas.SIZE + 0.5, cell / InkCanvas.SIZE + 0.5), 0.5, 1.0)
+	canvas.flush()
+	_finish()
+	_waiting_for_close = false
+	finished.emit(_result)
 
 
 ## Where the needle touches, in viewport pixels.
