@@ -83,7 +83,7 @@ var _skin_pointer: Vector2 = Vector2.ZERO
 @onready var _hud: Control = $HUD
 @onready var _ding: AudioStreamPlayer = $Ding
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
-@onready var _ink_cap: Control = $View/InkCap
+@onready var _ink_cap: InkCap = $View/InkCap
 @onready var _to_table_hint: Label = $View/ToTable
 @onready var _to_client_hint: Label = $View/ToClient
 @onready var _blur: ColorRect = $MotionBlur
@@ -256,8 +256,6 @@ func _paint(delta: float) -> void:
 	_set_dipping(pressing and over_cap)
 	if _dipping:
 		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
-		if _ink_left >= ink_capacity:
-			_turn(false) # full: straight back to the tattoo
 	var inking: bool = pressing and not over_cap
 	_machine.working = inking
 	if inking and _ink_left > 0.0:
@@ -275,6 +273,7 @@ func _set_dipping(dipping: bool) -> void:
 	if dipping and not _dipping and _ink_left < ink_capacity:
 		_dip_sound.play()
 	_dipping = dipping
+	_ink_cap.set_dipping(dipping)
 
 
 func _update_ink_display() -> void:
@@ -304,8 +303,9 @@ func _check_turn() -> void:
 		_turn(false)
 
 
-## A quick swing with a horizontal smear. Coming back, the machine lands where it last was on
-## the skin, so the player never has to look for their spot.
+## A quick swing with a horizontal smear, only when the player moves to a screen edge.
+## Coming back, the machine lands where it last was on the skin, so the player never has to
+## look for their spot.
 func _turn(to_table: bool) -> void:
 	if _turning:
 		return

@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="9_spiders"]
 [ext_resource type="Resource" path="res://data/modifiers/pain.tres" id="10_pain"]
 [ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
+[ext_resource type="PackedScene" path="res://tattoo/ink_cap.tscn" id="12_ink_cap"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -19,19 +20,6 @@ corner_radius_top_right = 280
 corner_radius_bottom_right = 280
 corner_radius_bottom_left = 280
 corner_detail = 32
-
-[sub_resource type="StyleBoxFlat" id="cap_style"]
-bg_color = Color(0.06, 0.05, 0.08, 1)
-border_width_left = 6
-border_width_top = 6
-border_width_right = 6
-border_width_bottom = 6
-border_color = Color(0.85, 0.85, 0.9, 1)
-corner_radius_top_left = 40
-corner_radius_top_right = 40
-corner_radius_bottom_right = 40
-corner_radius_bottom_left = 40
-corner_detail = 16
 
 [sub_resource type="StyleBoxFlat" id="table_style"]
 bg_color = Color(0.32, 0.22, 0.15, 1)
@@ -135,39 +123,19 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("table_style")
 
-[node name="InkCap" type="Panel" parent="View"]
+[node name="InkCap" parent="View" instance=ExtResource("12_ink_cap")]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = 845.0
-offset_top = -70.0
-offset_right = 955.0
-offset_bottom = 40.0
+offset_left = 825.0
+offset_top = -100.0
+offset_right = 975.0
+offset_bottom = 50.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("cap_style")
-
-[node name="Label" type="Label" parent="View/InkCap"]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -80.0
-offset_top = 8.0
-offset_right = 80.0
-offset_bottom = 34.0
-grow_horizontal = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 18
-text = "Чернила"
-horizontal_alignment = 1
 
 [node name="ToTable" type="Label" parent="View"]
 modulate = Color(1, 1, 1, 0.7)
