@@ -10,6 +10,7 @@
 [ext_resource type="Resource" path="res://data/modifiers/fear.tres" id="8_fear"]
 [ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="9_spiders"]
 [ext_resource type="Resource" path="res://data/modifiers/pain.tres" id="10_pain"]
+[ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -32,6 +33,17 @@ corner_radius_bottom_right = 40
 corner_radius_bottom_left = 40
 corner_detail = 16
 
+[sub_resource type="StyleBoxFlat" id="table_style"]
+bg_color = Color(0.32, 0.22, 0.15, 1)
+border_width_top = 10
+border_color = Color(0.42, 0.3, 0.2, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
+[sub_resource type="ShaderMaterial" id="blur_material"]
+shader = ExtResource("11_blur")
+shader_parameter/strength = 0.0
+
 [node name="TattooSession" type="CanvasLayer"]
 layer = 10
 script = ExtResource("1_script")
@@ -47,7 +59,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.1, 0.07, 0.1, 1)
 
-[node name="Body" type="Control" parent="."]
+[node name="View" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -56,7 +68,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Skin" type="Panel" parent="Body"]
+[node name="Body" type="Control" parent="View"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Skin" type="Panel" parent="View/Body"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -72,7 +93,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("skin_style")
 
-[node name="Canvas" type="Control" parent="Body"]
+[node name="Canvas" type="Control" parent="View/Body"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -87,7 +108,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Stencil" type="Control" parent="Body/Canvas"]
+[node name="Stencil" type="Control" parent="View/Body/Canvas"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -96,37 +117,103 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Modifiers" type="Node2D" parent="Body"]
+[node name="Modifiers" type="Node2D" parent="View/Body"]
 
-[node name="InkCap" type="Panel" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 120.0
-offset_top = -170.0
-offset_right = 200.0
-offset_bottom = -90.0
-grow_vertical = 0
+[node name="SideTable" type="Panel" parent="View"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 640.0
+offset_top = 40.0
+offset_right = 1160.0
+offset_bottom = 420.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("table_style")
+
+[node name="InkCap" type="Panel" parent="View"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 845.0
+offset_top = -70.0
+offset_right = 955.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("cap_style")
 
-[node name="Label" type="Label" parent="InkCap"]
+[node name="Label" type="Label" parent="View/InkCap"]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -60.0
-offset_top = 6.0
-offset_right = 60.0
-offset_bottom = 30.0
+offset_left = -80.0
+offset_top = 8.0
+offset_right = 80.0
+offset_bottom = 34.0
 grow_horizontal = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 18
 text = "Чернила"
 horizontal_alignment = 1
+
+[node name="ToTable" type="Label" parent="View"]
+modulate = Color(1, 1, 1, 0.7)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = -16.0
+offset_right = -12.0
+offset_bottom = 16.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "Краска »"
+horizontal_alignment = 2
+
+[node name="ToClient" type="Label" parent="View"]
+modulate = Color(1, 1, 1, 0.7)
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 912.0
+offset_top = -16.0
+offset_right = 1040.0
+offset_bottom = 16.0
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "« Клиент"
+
+[node name="MotionBlur" type="ColorRect" parent="."]
+visible = false
+material = SubResource("blur_material")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 

@@ -92,7 +92,7 @@ grow_vertical = 0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 20
-text = "ЛКМ — бить · ПКМ — показать недобитое · ЛКМ над колпачком — набрать чернила · F3 — пропустить (тест)"
+text = "ЛКМ — бить · ПКМ — показать недобитое · мышь к правому краю — к краске · F3 — пропустить (тест)"
 horizontal_alignment = 1
 
 [node name="InkWarning" type="Label" parent="."]
@@ -113,7 +113,7 @@ theme_override_colors/font_color = Color(1, 0.45, 0.35, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 28
-text = "Чернила кончились — обмакни иглу в колпачок"
+text = "Чернила кончились — поверни к краске (мышь к правому краю)"
 horizontal_alignment = 1
 
 [node name="Done" type="PanelContainer" parent="."]

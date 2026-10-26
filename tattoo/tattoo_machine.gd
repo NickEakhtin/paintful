@@ -1,7 +1,11 @@
 class_name TattooMachine
 extends Node2D
-## Tattoo machine drawn in place of the mouse cursor. The needle tip is at the node origin.
+## Tattoo machine shown in place of the mouse cursor. The needle tip is at the node origin.
 ## It only reports the mouse (`pointer`); the session decides where the needle goes (`needle`).
+## The look is the 3D model rendered by the `Model` SubViewport onto `Sprite`.
+
+## Needle tip in the model's mesh coordinates (the leftmost point of IGLA_RL).
+const NEEDLE_TIP: Vector3 = Vector3(-5.1824, 1.4684, 0.0325)
 
 ## Visual buzz while working, in pixels. Doesn't move where the ink goes.
 @export var buzz: float = 1.5
@@ -21,11 +25,17 @@ var low_ink: bool = false
 
 @onready var _spray: CPUParticles2D = $Spray
 @onready var _hum: AudioStreamPlayer = $Hum
+@onready var _sprite: Sprite2D = $Sprite
+@onready var _camera: Camera3D = $Model/Camera3D
+@onready var _model: Node3D = $Model/TattooMachineModel
 
 
 func _ready() -> void:
 	pointer = get_viewport().get_mouse_position()
 	needle = pointer
+	# Line the rendered needle tip up with this node's origin.
+	var tip: Vector2 = _camera.unproject_position(_model.to_global(NEEDLE_TIP))
+	_sprite.offset = -tip
 
 
 func _input(event: InputEvent) -> void:
@@ -48,17 +58,12 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	# Placeholder art: needle, grip and coil body, leaning right like a pen.
-	draw_line(Vector2.ZERO, Vector2(10, -28), Color(0.8, 0.8, 0.85), 2.0)
-	draw_line(Vector2(10, -28), Vector2(26, -74), Color(0.22, 0.22, 0.27), 10.0)
-	draw_circle(Vector2(36, -98), 17.0, Color(0.55, 0.12, 0.15))
-	draw_circle(Vector2.ZERO, 2.0, Color(0.95, 0.25, 0.25))
 	_draw_gauge()
 
 
-## Vertical ink gauge to the right of the body.
+## Vertical ink gauge up and to the left of the needle, clear of the machine body.
 func _draw_gauge() -> void:
-	var frame: Rect2 = Rect2(Vector2(58, -126), Vector2(8, 56))
+	var frame: Rect2 = Rect2(Vector2(-34, -150), Vector2(8, 56))
 	draw_rect(frame.grow(2.0), Color(0, 0, 0, 0.7))
 	var fill_height: float = frame.size.y * ink_level
 	var color: Color = Color(0.35, 0.55, 1.0)

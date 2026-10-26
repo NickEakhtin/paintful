@@ -42,10 +42,16 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export var refill_time: float = 0.6
 ## Share of the tank below which the gauge warns.
 @export_range(0.0, 1.0) var low_ink: float = 0.25
+## The ink cap stands on a side table off screen to the right; the view swings this far to see it.
+@export var table_offset: float = 900.0
+## Seconds for the swing either way.
+@export var turn_time: float = 0.22
+## Moving the machine this close to the screen edge swings the view, in pixels.
+@export var turn_edge: float = 40.0
 
 var canvas: InkCanvas
 ## The skin panel; tasks may tint it.
-@onready var skin: Panel = $Body/Skin
+@onready var skin: Panel = $View/Body/Skin
 
 var _ink_left: float = 0.0
 var _dipping: bool = false
@@ -61,16 +67,23 @@ var _modifiers: Array[TattooModifier] = []
 ## Needle after magnet and smoothing, before task offsets.
 var _steady_needle: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
+var _at_table: bool = false
+var _turning: bool = false
+## Last mouse position over the skin; the swing back puts the machine there again.
+var _skin_pointer: Vector2 = Vector2.ZERO
 
-@onready var _body: Control = $Body
-@onready var _canvas_rect: Control = $Body/Canvas
-@onready var _stencil_layer: Control = $Body/Canvas/Stencil
-@onready var _modifier_layer: Node2D = $Body/Modifiers
+@onready var _view: Control = $View
+@onready var _body: Control = $View/Body
+@onready var _canvas_rect: Control = $View/Body/Canvas
+@onready var _stencil_layer: Control = $View/Body/Canvas/Stencil
+@onready var _modifier_layer: Node2D = $View/Body/Modifiers
 @onready var _machine: TattooMachine = $Machine
 @onready var _hud: Control = $HUD
 @onready var _ding: AudioStreamPlayer = $Ding
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
-@onready var _ink_cap: Control = $InkCap
+@onready var _ink_cap: Control = $View/InkCap
+@onready var _to_table_hint: Label = $View/ToTable
+@onready var _blur: ColorRect = $MotionBlur
 
 
 func _ready() -> void:
@@ -123,6 +136,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_machine.visible = true
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
+	_skin_pointer = skin.get_global_rect().get_center()
 	_ink_left = ink_capacity
 	_update_ink_display()
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
@@ -134,6 +148,7 @@ func _process(delta: float) -> void:
 	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
+	_check_turn()
 	_update_needle(delta)
 	_paint(delta)
 	_update_ink_display()
@@ -224,12 +239,18 @@ func _update_needle(delta: float) -> void:
 
 
 func _paint(delta: float) -> void:
+	if _turning:
+		_machine.working = false
+		_was_inking = false
+		return
 	var pressing: bool = Input.is_action_pressed("use")
 	var cell: Vector2 = _to_cell(_machine.needle)
 	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
 	_set_dipping(pressing and over_cap)
 	if _dipping:
 		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
+		if _ink_left >= ink_capacity:
+			_turn(false) # full: straight back to the tattoo
 	var inking: bool = pressing and not over_cap
 	_machine.working = inking
 	if inking and _ink_left > 0.0:
@@ -259,6 +280,53 @@ func _update_ink_display() -> void:
 	if level <= 0.0:
 		pulse = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 120.0)
 	_ink_cap.modulate = Color.WHITE.lerp(Color(1.0, 0.75, 0.3), pulse)
+	_to_table_hint.modulate = Color(1, 1, 1, 0.7).lerp(Color(1.0, 0.75, 0.3), pulse)
+
+
+## The machine at the right screen edge swings the view to the side table, at the left edge back.
+func _check_turn() -> void:
+	if _turning:
+		return
+	var pointer: Vector2 = _machine.pointer
+	if not _at_table:
+		if skin.get_global_rect().has_point(pointer):
+			_skin_pointer = pointer
+		if pointer.x >= get_viewport().get_visible_rect().size.x - turn_edge:
+			_turn(true)
+	elif pointer.x <= turn_edge:
+		_turn(false)
+
+
+## A quick swing with a horizontal smear. Coming back, the machine lands where it last was on
+## the skin, so the player never has to look for their spot.
+func _turn(to_table: bool) -> void:
+	if _turning:
+		return
+	_turning = true
+	_set_dipping(false)
+	_blur.visible = true
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(_view, "position:x", -table_offset if to_table else 0.0, turn_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_method(_set_blur, 0.0, 1.0, turn_time)
+	await tween.finished
+	_blur.visible = false
+	_at_table = to_table
+	if not to_table:
+		_put_pointer(_skin_pointer)
+	_turning = false
+
+
+## Peaks halfway through the swing.
+func _set_blur(progress: float) -> void:
+	(_blur.material as ShaderMaterial).set_shader_parameter("strength", sin(progress * PI))
+
+
+func _put_pointer(viewport_position: Vector2) -> void:
+	_machine.pointer = viewport_position
+	_machine.needle = viewport_position
+	_steady_needle = viewport_position
+	Input.warp_mouse(get_viewport().get_final_transform() * viewport_position)
 
 
 func _to_cell(screen_position: Vector2) -> Vector2:
