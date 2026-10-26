@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://world/studio/studio.tscn" id="3_studio"]
 [ext_resource type="PackedScene" path="res://world/basement/basement.tscn" id="4_basement"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="5_player"]
+[ext_resource type="NavigationMesh" path="res://world/level/level_navmesh.tres" id="6_navmesh"]
 
 [sub_resource type="Environment" id="environment"]
 background_mode = 1
@@ -36,6 +37,9 @@ transform = Transform3D(1, 0, 0, 0, 0.8, 0.6, 0, -0.6, 0.8, 0, 6, 8)
 light_color = Color(1, 0.95, 0.85, 1)
 light_energy = 1.4
 shadow_enabled = true
+
+[node name="Navigation" type="NavigationRegion3D" parent="."]
+navigation_mesh = ExtResource("6_navmesh")
 
 [node name="Points" type="Node3D" parent="."]
 
