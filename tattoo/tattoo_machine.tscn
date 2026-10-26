@@ -12,6 +12,14 @@ ambient_light_color = Color(0.75, 0.72, 0.8, 1)
 ambient_light_energy = 0.6
 tonemap_mode = 2
 
+[sub_resource type="StandardMaterial3D" id="needle_on_top"]
+resource_name = "needle_on_top"
+render_priority = 1
+no_depth_test = true
+albedo_color = Color(0.92, 0.92, 0.95, 1)
+metallic = 0.35
+roughness = 0.3
+
 [sub_resource type="ViewportTexture" id="model_texture"]
 resource_local_to_scene = true
 viewport_path = NodePath("Model")
@@ -38,6 +46,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
 fov = 40.0
 
 [node name="TattooMachineModel" parent="Model" instance=ExtResource("3_model")]
+surface_material_override/4 = SubResource("needle_on_top")
 
 [node name="Sprite" type="Sprite2D" parent="."]
 top_level = true

@@ -17,7 +17,7 @@ const NEEDLE_TIP: Vector3 = Vector3(-5.1824, 1.4684, 0.0325)
 
 @export_group("Hold")
 ## Angle to the skin at the left edge of the screen, in degrees (90 = straight up).
-@export_range(0.0, 90.0) var angle_at_left: float = 90.0
+@export_range(0.0, 90.0) var angle_at_left: float = 60.0
 ## Angle to the skin at the right edge of the screen, in degrees.
 @export_range(0.0, 90.0) var angle_at_right: float = 30.0
 ## Which way the top of the machine points over the skin (x right, y up on screen).
