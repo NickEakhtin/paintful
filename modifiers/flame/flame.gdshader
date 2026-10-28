@@ -43,13 +43,14 @@ void fragment() {
 		float core = (1.0 - smoothstep(0.0, 0.65, d)) * clamp(1.0 - y * 1.3, 0.0, 1.0);
 		vec3 edge = mix(dying_color.rgb, edge_color.rgb, heat);
 		vec3 color = mix(edge, core_color.rgb, core * mix(0.3, 1.0, heat));
-		// A soft glow around it.
-		float glow = exp(-length(vec2(p.x, p.y - 0.3 * size) / size) * 3.5) * 0.35;
+		// A soft glow around it, faded out before the rect edges so they don't show.
+		float edges = (1.0 - smoothstep(0.6, 1.0, abs(p.x))) * smoothstep(0.0, 0.15, UV.y) * smoothstep(1.0, 0.9, UV.y);
+		float glow = exp(-length(vec2(p.x, p.y - 0.3 * size) / size) * 3.5) * 0.35 * edges;
 		flame = vec4(color, max(shape, glow * (1.0 - shape)));
 	}
 
 	// The coal at the base: dull red, flaring orange as it's about to catch.
-	float coal_shape = 1.0 - smoothstep(0.05, 0.16, length(vec2(p.x, p.y * 1.6)));
+	float coal_shape = 1.0 - smoothstep(0.12, 0.3, length(vec2(p.x, p.y * 1.6)));
 	float pulse = 0.85 + 0.15 * noise(vec2(t * 0.7, 3.1));
 	vec3 coal_color = mix(dying_color.rgb * 0.6, edge_color.rgb, coal);
 	float coal_alpha = coal_shape * coal * pulse * step(0.001, coal);
