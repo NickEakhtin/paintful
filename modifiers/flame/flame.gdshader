@@ -6,7 +6,10 @@ uniform float size : hint_range(0.0, 1.0) = 1.0;
 // 1 = healthy yellow-white core, 0 = dying, deep red.
 uniform float heat : hint_range(0.0, 1.0) = 1.0;
 uniform float coal : hint_range(0.0, 1.0) = 0.0;
-uniform float flicker_speed = 5.0;
+// 0 = calm air, 1 = about to blow out: the flame sways and tears harder.
+uniform float gust : hint_range(0.0, 1.0) = 0.0;
+// Flicker time; the script advances it faster in a gust, so changing speed never jumps.
+uniform float phase = 0.0;
 uniform vec4 core_color : source_color = vec4(1.0, 0.95, 0.65, 1.0);
 uniform vec4 edge_color : source_color = vec4(1.0, 0.4, 0.06, 1.0);
 uniform vec4 dying_color : source_color = vec4(0.75, 0.08, 0.04, 1.0);
@@ -28,18 +31,18 @@ float noise(vec2 p) {
 void fragment() {
 	// x -1..1 across the rect, y 0 at the base and 1 at the top of the rect.
 	vec2 p = vec2((UV.x - 0.5) * 2.0, (BASE - UV.y) / BASE);
-	float t = TIME * flicker_speed;
+	float t = phase;
 
 	vec4 flame = vec4(0.0);
 	if (size > 0.01) {
 		float y = p.y / size;
-		float sway = (noise(vec2(p.y * 3.0 - t, 1.7)) - 0.5) * 0.45 * clamp(y, 0.0, 1.0);
+		float sway = (noise(vec2(p.y * 3.0 - t, 1.7)) - 0.5) * mix(0.45, 1.1, gust) * clamp(y, 0.0, 1.0);
 		float x = (p.x + sway * size) / size;
 		// Teardrop: a round bulb near the base narrowing to a tip.
 		float width = 0.5 * pow(clamp(1.0 - y, 0.0, 1.0), 0.75) * smoothstep(-0.25, 0.25, y);
 		float d = abs(x) / max(width, 0.001);
 		float lick = noise(vec2(x * 4.0, y * 5.0 - t * 1.6));
-		float shape = (1.0 - smoothstep(0.7, 1.0, d)) * (1.0 - smoothstep(0.6, 1.0, y + (lick - 0.5) * 0.4));
+		float shape = (1.0 - smoothstep(0.7, 1.0, d)) * (1.0 - smoothstep(0.6, 1.0, y + (lick - 0.5) * mix(0.4, 0.9, gust)));
 		float core = (1.0 - smoothstep(0.0, 0.65, d)) * clamp(1.0 - y * 1.3, 0.0, 1.0);
 		vec3 edge = mix(dying_color.rgb, edge_color.rgb, heat);
 		vec3 color = mix(edge, core_color.rgb, core * mix(0.3, 1.0, heat));
