@@ -16,6 +16,8 @@ func _init() -> void:
 	_save("tick.wav", _tick())
 	_save("whisper.wav", _whisper())
 	_save("chop.wav", _chop())
+	_save("hiss.wav", _hiss())
+	_save("ignite.wav", _ignite())
 	quit()
 
 
@@ -85,6 +87,31 @@ func _chop() -> PackedFloat32Array:
 		var hit: float = smoothed * exp(-t * 35.0)
 		var thud: float = sin(TAU * lerpf(70.0, 40.0, minf(t * 3.0, 1.0)) * t) * exp(-t * 6.0)
 		samples.append(clampf(hit * 0.9 + thud * 0.8, -1.0, 1.0))
+	return samples
+
+
+## A flame going out: a bright burst of hiss dying away.
+func _hiss() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var previous: float = 0.0
+	for i in int(RATE * 0.7):
+		var t: float = float(i) / RATE
+		var noise: float = randf_range(-1.0, 1.0)
+		var bright: float = noise - previous # crude high-pass
+		previous = noise
+		samples.append(bright * exp(-t * 6.0) * minf(1.0, t * 300.0) * 0.35)
+	return samples
+
+
+## A flame catching: a soft low whoosh swelling up and fading.
+func _ignite() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var count: int = int(RATE * 0.5)
+	for i in count:
+		var t: float = float(i) / count
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), lerpf(0.05, 0.3, t))
+		samples.append(smoothed * sin(t * PI) * 0.9)
 	return samples
 
 

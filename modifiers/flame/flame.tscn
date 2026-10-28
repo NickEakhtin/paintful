@@ -1,0 +1,80 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://modifiers/flame/flame.gd" id="1_script"]
+[ext_resource type="Shader" path="res://modifiers/flame/flame.gdshader" id="2_shader"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/hiss.wav" id="3_hiss"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/ignite.wav" id="4_ignite"]
+
+[sub_resource type="ShaderMaterial" id="flame_material"]
+shader = ExtResource("2_shader")
+
+[sub_resource type="Gradient" id="puff_gradient"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="puff_texture"]
+gradient = SubResource("puff_gradient")
+width = 32
+height = 32
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="Gradient" id="smoke_fade"]
+colors = PackedColorArray(0.35, 0.33, 0.36, 0.7, 0.5, 0.48, 0.52, 0)
+
+[sub_resource type="Gradient" id="spark_fade"]
+colors = PackedColorArray(1, 0.8, 0.3, 1, 1, 0.3, 0.05, 0)
+
+[node name="Flame" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Fire" type="Node2D" parent="."]
+top_level = true
+z_index = 10
+
+[node name="Body" type="ColorRect" parent="Fire"]
+material = SubResource("flame_material")
+offset_left = -40.0
+offset_top = -123.0
+offset_right = 40.0
+offset_bottom = 17.0
+mouse_filter = 2
+
+[node name="Sparks" type="CPUParticles2D" parent="Fire"]
+position = Vector2(0, -20)
+emitting = false
+amount = 10
+lifetime = 0.45
+direction = Vector2(0, -1)
+spread = 55.0
+gravity = Vector2(0, -60)
+initial_velocity_min = 60.0
+initial_velocity_max = 130.0
+scale_amount_min = 1.5
+scale_amount_max = 2.5
+color_ramp = SubResource("spark_fade")
+
+[node name="Smoke" type="CPUParticles2D" parent="Fire"]
+position = Vector2(0, -10)
+emitting = false
+amount = 14
+lifetime = 1.0
+one_shot = true
+explosiveness = 0.8
+texture = SubResource("puff_texture")
+direction = Vector2(0, -1)
+spread = 35.0
+gravity = Vector2(0, -40)
+initial_velocity_min = 30.0
+initial_velocity_max = 70.0
+scale_amount_min = 0.4
+scale_amount_max = 0.9
+color_ramp = SubResource("smoke_fade")
+
+[node name="Hiss" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_hiss")
+volume_db = -4.0
+
+[node name="Ignite" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4_ignite")
+volume_db = -8.0

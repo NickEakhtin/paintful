@@ -20,6 +20,11 @@ func skin_offset() -> Vector2:
 	return Vector2.ZERO
 
 
+## Whether the needle may lay ink right now; the machine stays silent while any task says no.
+func can_ink() -> bool:
+	return true
+
+
 ## One line for the session HUD; empty hides it.
 func status_text() -> String:
 	return title()

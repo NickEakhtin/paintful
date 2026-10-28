@@ -10,6 +10,8 @@ extends Node2D
 
 ## Needle tip in the model's mesh coordinates (the leftmost point of IGLA_RL).
 const NEEDLE_TIP: Vector3 = Vector3(-5.1824, 1.4684, 0.0325)
+## The far end of the machine body (its rightmost point), where a flame can burn.
+const TOP: Vector3 = Vector3(2.5117, 1.0952, 0.0206)
 
 ## Visual buzz while working, in pixels. Doesn't move where the ink goes.
 @export var buzz: float = 1.5
@@ -53,6 +55,10 @@ var ink_level: float = 1.0:
 			ink_level = value
 			queue_redraw()
 var low_ink: bool = false
+## How fast the needle really moves, in pixels per second. Zero right after a teleport.
+var velocity: Vector2:
+	get:
+		return _velocity
 
 var _target: Vector2 = Vector2.ZERO
 var _position: Vector2 = Vector2.ZERO
@@ -111,6 +117,11 @@ func _simulate(delta: float) -> void:
 
 func _spring(offset: Vector2, velocity: Vector2, frequency: float, damping: float) -> Vector2:
 	return offset * frequency * frequency - velocity * 2.0 * damping * frequency
+
+
+## Where the top end of the machine (`TOP`) is on screen, in viewport pixels.
+func top_position() -> Vector2:
+	return _camera.unproject_position(_model.global_transform * TOP)
 
 
 ## Puts the model so its needle tip touches the skin plane right under `screen_point`.

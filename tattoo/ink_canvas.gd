@@ -115,6 +115,14 @@ func is_complete() -> bool:
 	return not _part_done.has(0)
 
 
+## Takes all ink off a part, done or not.
+func clear_part(index: int) -> void:
+	for cell in _part_cells[index]:
+		_set_ink(cell, 0.0)
+	_part_filled[index] = 0
+	_part_done[index] = 0
+
+
 func _add_ink(cell: int, amount: float) -> float:
 	var before: float = _ink[cell]
 	if before >= 1.0:

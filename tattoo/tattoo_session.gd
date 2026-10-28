@@ -202,6 +202,24 @@ func pointer_position() -> Vector2:
 	return _machine.pointer
 
 
+## How fast the needle really moves, in viewport pixels per second.
+func needle_velocity() -> Vector2:
+	return _machine.velocity
+
+
+## Where the top end of the machine is, in viewport pixels.
+func machine_top_position() -> Vector2:
+	return _machine.top_position()
+
+
+## Takes the ink off every part that isn't done yet; done parts stay. They flash in `color`.
+func wipe_unfinished(color: Color) -> void:
+	for part in canvas.part_count():
+		if not canvas.is_part_done(part):
+			canvas.clear_part(part)
+			_flash(_materials[part], color)
+
+
 func _add_modifiers(tasks: Array[ModifierData]) -> void:
 	var counts: Dictionary[ModifierData, int] = {}
 	for task in tasks:
@@ -253,7 +271,7 @@ func _paint(delta: float) -> void:
 	_set_dipping(pressing and over_cap)
 	if _dipping:
 		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
-	var inking: bool = pressing and not over_cap
+	var inking: bool = pressing and not over_cap and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
 	if inking and _ink_left > 0.0:
 		var laid: float
@@ -366,7 +384,8 @@ func _on_part_completed(index: int) -> void:
 	_completed_parts += 1
 
 
-func _flash(material: ShaderMaterial) -> void:
+func _flash(material: ShaderMaterial, color: Color = Color.WHITE) -> void:
+	material.set_shader_parameter("flash_color", color)
 	var tween: Tween = create_tween()
 	tween.tween_method(func(v: float) -> void: material.set_shader_parameter("flash", v), 0.8, 0.0, 0.6)
 
