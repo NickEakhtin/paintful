@@ -12,6 +12,9 @@
   /Applications/Godot.app/Contents/MacOS/Godot --path . 2>&1
   Quick headless check that exits by itself:
   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit-after 120 2>&1
+- Windows build (preset in `export_presets.cfg`, templates in `~/Library/Application Support/Godot/export_templates/4.7.2.stable/`, Windows x86_64 only):
+  /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Windows Desktop" build/windows/tattoo.exe 2>&1
+  One `.exe` with the pack embedded; `build/` is git-ignored.
 - Commit after each working step.
 
 # Code conventions
