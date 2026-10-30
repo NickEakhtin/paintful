@@ -35,6 +35,7 @@ const PREP_COUNT: int = 2
 @export var random_greeting: DialogueData
 @export var random_farewell: DialogueData
 @export_group("")
+## Tasks the roulette picks from. Empty = the `task_pool` set on tattoo_session.tscn.
 @export var task_pool: Array[ModifierData] = []
 @export var player: Player
 @export var day_night: DayNight
@@ -157,11 +158,22 @@ func _spirit_roulette() -> Array[ModifierData]:
 	player.lock_controls(&"roulette")
 	var roulette: Roulette = ROULETTE_SCENE.instantiate()
 	add_child(roulette)
-	var tasks: Array[ModifierData] = await roulette.spin(task_pool)
+	var pool: Array[ModifierData] = task_pool if not task_pool.is_empty() else _session_task_pool()
+	var tasks: Array[ModifierData] = await roulette.spin(pool)
 	roulette.queue_free()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	player.unlock_controls(&"roulette")
 	return tasks
+
+
+## The pool set on the session scene's root, read without instantiating it.
+func _session_task_pool() -> Array[ModifierData]:
+	var pool: Array[ModifierData] = []
+	var state: SceneState = SESSION_SCENE.get_state()
+	for i: int in state.get_node_property_count(0):
+		if state.get_node_property_name(0, i) == &"task_pool":
+			pool.assign(state.get_node_property_value(0, i))
+	return pool
 
 
 ## The client waits on the bench while the player brings the needed items to the table.

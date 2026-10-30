@@ -5,9 +5,6 @@
 [ext_resource type="Resource" path="res://data/clients/marina.tres" id="8_marina"]
 [ext_resource type="Resource" path="res://data/clients/gleb.tres" id="9_gleb"]
 [ext_resource type="Script" path="res://characters/client/client_data.gd" id="10_client_data"]
-[ext_resource type="Script" path="res://modifiers/modifier_data.gd" id="11_modifier_data"]
-[ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="13_spiders"]
-[ext_resource type="Resource" path="res://data/modifiers/flame.tres" id="14_flame"]
 [ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="15_stencil_data"]
 [ext_resource type="Resource" path="res://data/stencils/sigil/sigil.tres" id="16_sigil"]
 [ext_resource type="Resource" path="res://data/stencils/eye/eye.tres" id="17_eye"]
@@ -89,7 +86,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -9.8)
 [node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "back_door", "ritual_circle", "altar_slot", "altar", "altar_glow", "head_wall", "chop_sound")]
 script = ExtResource("1_day_flow")
 clients = Array[ExtResource("10_client_data")]([ExtResource("7_anton"), ExtResource("8_marina"), ExtResource("9_gleb")])
-task_pool = Array[ExtResource("11_modifier_data")]([ExtResource("13_spiders"), ExtResource("14_flame")])
 player = NodePath("../Player")
 day_night = NodePath("../Lighting")
 points = NodePath("../Points")
