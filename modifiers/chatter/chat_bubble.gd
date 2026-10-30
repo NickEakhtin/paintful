@@ -4,6 +4,8 @@ extends Control
 ## The origin is the bubble centre; the panel centres itself around it whatever the text's size.
 ## Pops in, types its text, sways a little, and pops away on `pop()`.
 
+const GLOW: StyleBoxFlat = preload("res://modifiers/chatter/bubble_glow.tres")
+
 ## Which quarter of the stencil it covers: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right.
 var corner: int = 0
 ## The tail points up (toward the client's face) instead of down.
@@ -11,6 +13,12 @@ var tail_up: bool = false
 ## Letters per second.
 var type_speed: float = 40.0
 var popped: bool = false
+## The left hand is on it: a wave now would pop it, so it glows.
+var targeted: bool = false:
+	set(value):
+		if targeted != value:
+			targeted = value
+			queue_redraw()
 
 var _typed: float = 0.0
 var _time: float = randf() * TAU
@@ -35,8 +43,10 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	# The tail sits behind the panel, so only its outer part shows.
 	var half: Vector2 = _panel.size * 0.5
+	if targeted:
+		draw_style_box(GLOW, Rect2(-half, _panel.size).grow(7.0))
+	# The tail sits behind the panel, so only its outer part shows.
 	var side: float = -1.0 if tail_up else 1.0
 	var base_x: float = -half.x * 0.35 if corner % 2 == 0 else half.x * 0.35
 	var base_y: float = side * (half.y - 6.0)

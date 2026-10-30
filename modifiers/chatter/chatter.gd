@@ -51,6 +51,8 @@ var _bag: PackedStringArray = PackedStringArray()
 
 
 func _ready() -> void:
+	# Draw under the other tasks, so spiders stay in sight on top of the bubbles.
+	get_parent().move_child.call_deferred(self, 0)
 	_spawn_timer = first_delay
 	var screen: Vector2 = get_viewport_rect().size
 	hand = HAND_SCENE.instantiate()
@@ -63,6 +65,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	for bubble in live_bubbles():
+		bubble.targeted = _under_palm(bubble)
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0:
 		return
@@ -102,7 +106,7 @@ func _on_waved() -> void:
 	var palm: Vector2 = hand.palm()
 	var hit: bool = false
 	for bubble in live_bubbles():
-		if bubble.hit_rect().grow(hit_margin).has_point(palm):
+		if _under_palm(bubble):
 			bubble.pop()
 			dismissed_count += 1
 			hit = true
@@ -113,6 +117,11 @@ func _on_waved() -> void:
 	_uh_huh.pitch_scale = randf_range(0.92, 1.08)
 	_uh_huh.play()
 	_reply(palm)
+
+
+## Whether a wave right now would pop `bubble`.
+func _under_palm(bubble: ChatBubble) -> bool:
+	return hand != null and bubble.hit_rect().grow(hit_margin).has_point(hand.palm())
 
 
 ## The artist's "Угу" by the fingertips: it floats up a little and fades.
