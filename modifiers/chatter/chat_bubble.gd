@@ -5,6 +5,7 @@ extends Control
 ## Pops in, types its text, sways a little, and pops away on `pop()`.
 
 const GLOW: StyleBoxFlat = preload("res://modifiers/chatter/bubble_glow.tres")
+const ALARM: StyleBoxFlat = preload("res://modifiers/chatter/bubble_alarm.tres")
 
 ## Which quarter of the stencil it covers: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right.
 var corner: int = 0
@@ -18,6 +19,12 @@ var targeted: bool = false:
 	set(value):
 		if targeted != value:
 			targeted = value
+			queue_redraw()
+## The skin under it is red: a red rim, so the redness isn't hidden.
+var alarmed: bool = false:
+	set(value):
+		if alarmed != value:
+			alarmed = value
 			queue_redraw()
 
 var _typed: float = 0.0
@@ -44,6 +51,8 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var half: Vector2 = _panel.size * 0.5
+	if alarmed:
+		draw_style_box(ALARM, Rect2(-half, _panel.size).grow(11.0))
 	if targeted:
 		draw_style_box(GLOW, Rect2(-half, _panel.size).grow(7.0))
 	# The tail sits behind the panel, so only its outer part shows.

@@ -65,8 +65,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	var red_spot: Vector2 = session.red_spot()
 	for bubble in live_bubbles():
 		bubble.targeted = _under_palm(bubble)
+		bubble.alarmed = red_spot.is_finite() and bubble.hit_rect().grow(session.heat_radius).has_point(red_spot)
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0:
 		return

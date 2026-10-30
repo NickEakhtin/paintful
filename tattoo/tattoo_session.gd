@@ -266,6 +266,13 @@ func stencil_rect() -> Rect2:
 	return _canvas_rect.get_rect()
 
 
+## Where the skin is red right now (the hottest spot), in viewport pixels; Vector2.INF while nothing is.
+func red_spot() -> Vector2:
+	if _heat == null or _heat.peak() < warn_heat:
+		return Vector2.INF
+	return skin.get_global_rect().position + _heat.peak_position()
+
+
 ## Whether the view is swinging to the side table or back right now.
 func is_turning() -> bool:
 	return _turning
