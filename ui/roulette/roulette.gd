@@ -30,7 +30,7 @@ func spin(pool: Array[ModifierData]) -> Array[ModifierData]:
 	_continue.visible = false
 	var outcome: Array[ModifierData] = [] # null = nothing
 	for i in _reels.size():
-		outcome.append(_pick(pool))
+		outcome.append(_pick(_allowed(pool, outcome)))
 
 	# Every reel flicks through symbols, slowing down before it stops; reels stop left to right.
 	var elapsed: float = 0.0
@@ -76,6 +76,15 @@ func _pick(pool: Array[ModifierData]) -> ModifierData:
 	if roll < pool.size():
 		return pool[int(roll)]
 	return null
+
+
+## The pool minus tasks that already landed `max_count` times.
+func _allowed(pool: Array[ModifierData], landed: Array[ModifierData]) -> Array[ModifierData]:
+	var allowed: Array[ModifierData] = []
+	for task in pool:
+		if landed.count(task) < task.max_count:
+			allowed.append(task)
+	return allowed
 
 
 func _show(reel: int, task: ModifierData) -> void:

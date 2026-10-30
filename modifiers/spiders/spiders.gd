@@ -3,7 +3,7 @@ extends TattooModifier
 ## A spider that runs off the skin escapes and the client flinches.
 
 ## Seconds between spiders at intensity 1; repeats divide it.
-@export var spawn_interval: float = 3.0
+@export var spawn_interval: float = 5.0
 ## Pixels per second.
 @export var speed: float = 90.0
 ## How far from the needle tip a click still squashes, in pixels.
@@ -16,7 +16,7 @@ extends TattooModifier
 var squashed_count: int = 0
 var escaped_count: int = 0
 
-var _spawn_timer: float = 1.5
+var _spawn_timer: float = 2.5
 var _flinch_time: float = 0.0
 var _time: float = 0.0
 var _noise: FastNoiseLite = FastNoiseLite.new()

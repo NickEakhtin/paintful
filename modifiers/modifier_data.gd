@@ -8,4 +8,6 @@ extends Resource
 ## What the spirit says when this task comes up.
 @export_multiline var spirit_line: String = ""
 @export var color: Color = Color.WHITE
+## How many roulette reels may land on this task; 1 = it never repeats.
+@export_range(1, 3) var max_count: int = 3
 @export var scene: PackedScene
