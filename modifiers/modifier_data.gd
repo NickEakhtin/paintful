@@ -10,4 +10,6 @@ extends Resource
 @export var color: Color = Color.WHITE
 ## How many roulette reels may land on this task; 1 = it never repeats.
 @export_range(1, 3) var max_count: int = 3
+## `id`s of tasks that never come up in the same session as this one (either side may list the other).
+@export var excludes: Array[StringName] = []
 @export var scene: PackedScene

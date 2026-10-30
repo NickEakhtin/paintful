@@ -78,13 +78,17 @@ func _pick(pool: Array[ModifierData]) -> ModifierData:
 	return null
 
 
-## The pool minus tasks that already landed `max_count` times.
+## The pool minus tasks that already landed `max_count` times or don't go with one that landed.
 func _allowed(pool: Array[ModifierData], landed: Array[ModifierData]) -> Array[ModifierData]:
 	var allowed: Array[ModifierData] = []
 	for task in pool:
-		if landed.count(task) < task.max_count:
+		if landed.count(task) < task.max_count and not landed.any(_excluded.bind(task)):
 			allowed.append(task)
 	return allowed
+
+
+func _excluded(landed: ModifierData, task: ModifierData) -> bool:
+	return landed != null and (landed.excludes.has(task.id) or task.excludes.has(landed.id))
 
 
 func _show(reel: int, task: ModifierData) -> void:
@@ -107,6 +111,8 @@ func _spirit_words(tasks: Array[ModifierData]) -> String:
 		if said.has(task):
 			continue
 		said.append(task)
+		if task.spirit_line.is_empty():
+			continue
 		var line: String = task.spirit_line
 		if tasks.count(task) > 1:
 			line += " Сильнее." if tasks.count(task) == 2 else " Ещё сильнее."
