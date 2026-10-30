@@ -38,23 +38,20 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export_group("Ink supply")
 ## Ink the machine holds, in filled-cell units (the sigil is about 18 700 cells).
 @export var ink_capacity: float = 3000.0
-## Seconds to fill an empty machine while holding LMB over the ink cap.
-@export var refill_time: float = 0.6
+## Clicks on the ink cap that fill an empty machine; each one adds an equal share.
+@export_range(1, 10) var refill_clicks: int = 3
 ## Share of the tank below which the gauge warns.
 @export_range(0.0, 1.0) var low_ink: float = 0.25
-## The ink cap stands on a side table off screen to the right; the view swings this far to see it.
+## The ink cap stands on a side table off screen to the right; Q swings the view this far to see it.
 @export var table_offset: float = 900.0
 ## Seconds for the swing either way.
 @export var turn_time: float = 0.22
-## Moving the machine this close to the screen edge swings the view, in pixels.
-@export var turn_edge: float = 40.0
 
 var canvas: InkCanvas
 ## The skin panel; tasks may tint it.
 @onready var skin: Panel = $View/Body/Skin
 
 var _ink_left: float = 0.0
-var _dipping: bool = false
 var _running: bool = false
 var _waiting_for_close: bool = false
 var _done_msec: int = 0
@@ -149,7 +146,6 @@ func _process(delta: float) -> void:
 	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
-	_check_turn()
 	_update_needle(delta)
 	_paint(delta)
 	_update_ink_display()
@@ -169,6 +165,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		skip()
 	elif _running and event.is_action_pressed("highlight"):
 		_ping_highlight()
+	elif _running and event.is_action_pressed("turn_to_ink"):
+		_turn(not _at_table)
 	# The delay keeps the end of the last stroke from closing the panel at once.
 	elif _waiting_for_close and event.is_action_pressed("use") \
 			and Time.get_ticks_msec() - _done_msec > 1000:
@@ -263,14 +261,15 @@ func _paint(delta: float) -> void:
 		_was_inking = false
 		return
 	var pressing: bool = Input.is_action_pressed("use")
+	var clicked: bool = Input.is_action_just_pressed("use")
 	if _wait_for_release:
 		_wait_for_release = pressing
 		pressing = false
+		clicked = false
 	var cell: Vector2 = _to_cell(_machine.needle)
 	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
-	_set_dipping(pressing and over_cap)
-	if _dipping:
-		_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_time * delta)
+	if clicked and over_cap:
+		_dip()
 	var inking: bool = pressing and not over_cap and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
 	if inking and _ink_left > 0.0:
@@ -284,11 +283,13 @@ func _paint(delta: float) -> void:
 	_was_inking = inking
 
 
-func _set_dipping(dipping: bool) -> void:
-	if dipping and not _dipping and _ink_left < ink_capacity:
-		_dip_sound.play()
-	_dipping = dipping
-	_ink_cap.set_dipping(dipping)
+## One click in the ink cap: the ink wobbles and the machine takes a share of a full tank.
+func _dip() -> void:
+	_ink_cap.dip()
+	if _ink_left >= ink_capacity:
+		return
+	_dip_sound.play()
+	_ink_left = minf(ink_capacity, _ink_left + ink_capacity / refill_clicks)
 
 
 func _update_ink_display() -> void:
@@ -304,25 +305,12 @@ func _update_ink_display() -> void:
 	_to_table_hint.modulate = Color(1, 1, 1, 0.7).lerp(Color(1.0, 0.75, 0.3), pulse)
 
 
-## The machine at the right screen edge swings the view to the side table, at the left edge back.
-func _check_turn() -> void:
-	if _turning:
-		return
-	var pointer: Vector2 = _machine.pointer
-	if not _at_table:
-		if pointer.x >= get_viewport().get_visible_rect().size.x - turn_edge:
-			_turn(true)
-	elif pointer.x <= turn_edge:
-		_turn(false)
-
-
-## A quick swing with a horizontal smear, only when the player moves to a screen edge.
+## A quick swing with a horizontal smear to the side table or back, on Q.
 ## The machine never moves by itself: it stays under the mouse the whole time.
 func _turn(to_table: bool) -> void:
 	if _turning:
 		return
 	_turning = true
-	_set_dipping(false)
 	_to_table_hint.visible = false
 	_to_client_hint.visible = false
 	_blur.visible = true

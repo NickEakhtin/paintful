@@ -144,7 +144,7 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -130.0
+offset_left = -200.0
 offset_top = -16.0
 offset_right = -12.0
 offset_bottom = 16.0
@@ -153,7 +153,7 @@ grow_vertical = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
-text = "Краска »"
+text = "Q — краска »"
 horizontal_alignment = 2
 
 [node name="ToClient" type="Label" parent="View"]
@@ -164,13 +164,13 @@ anchor_top = 0.5
 anchor_bottom = 0.5
 offset_left = 912.0
 offset_top = -16.0
-offset_right = 1040.0
+offset_right = 1112.0
 offset_bottom = 16.0
 grow_vertical = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
-text = "« Клиент"
+text = "« Q — клиент"
 
 [node name="MotionBlur" type="ColorRect" parent="."]
 visible = false
