@@ -48,6 +48,11 @@ func _draw() -> void:
 	draw_line(tail[1], tip, Color.BLACK, 3.0, true)
 
 
+## The bubble's panel on screen, in canvas pixels (the same space as the left hand).
+func hit_rect() -> Rect2:
+	return _panel.get_global_rect()
+
+
 ## Shows up with a little bounce and starts typing `text`.
 func pop_in(text: String) -> void:
 	_text.text = "[center]%s[/center]" % text

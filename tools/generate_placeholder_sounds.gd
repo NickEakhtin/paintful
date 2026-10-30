@@ -21,6 +21,9 @@ func _init() -> void:
 	_save("perch.wav", _perch())
 	_save("flutter.wav", _flutter())
 	_save("mumble.wav", _mumble())
+	_save("swish.wav", _swish())
+	_save("pop.wav", _pop())
+	_save("uh_huh.wav", _uh_huh())
 	quit()
 
 
@@ -157,6 +160,46 @@ func _mumble() -> PackedFloat32Array:
 			var envelope: float = minf(1.0, t * 12.0) * pow(1.0 - t, 1.5)
 			samples.append(voice * envelope * 0.3)
 		for i in int(RATE * 0.015): # a short gap between syllables
+			samples.append(0.0)
+	return samples
+
+
+## A hand waving through the air: soft noise growing brighter, swelling and dying away.
+func _swish() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var count: int = int(RATE * 0.22)
+	for i in count:
+		var t: float = float(i) / count
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), lerpf(0.06, 0.45, t))
+		samples.append(smoothed * pow(sin(t * PI), 1.5) * 0.8)
+	return samples
+
+
+## A speech bubble popping: a tiny click on a quick downward blip.
+func _pop() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var phase: float = 0.0
+	for i in int(RATE * 0.09):
+		var t: float = float(i) / RATE
+		phase += TAU * lerpf(520.0, 160.0, minf(t / 0.06, 1.0)) / RATE
+		var click: float = randf_range(-1.0, 1.0) * exp(-t * 400.0) * 0.3
+		samples.append((sin(phase) * exp(-t * 35.0) * 0.6 + click) * minf(1.0, t * 1500.0))
+	return samples
+
+
+## The artist's closed-mouth "mm-hm": a low hum that falls, a breath, then one that rises.
+func _uh_huh() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var phase: float = 0.0
+	for part in [[0.14, 165.0, 140.0], [0.2, 130.0, 180.0]]:
+		var count: int = int(RATE * part[0])
+		for i in count:
+			var t: float = float(i) / count
+			phase += TAU * lerpf(part[1], part[2], t) / RATE
+			var hum: float = sin(phase) + 0.3 * sin(2.0 * phase) + 0.1 * sin(3.0 * phase)
+			samples.append(hum * minf(1.0, t * 10.0) * minf(1.0, (1.0 - t) * 6.0) * 0.35)
+		for i in int(RATE * 0.05):
 			samples.append(0.0)
 	return samples
 

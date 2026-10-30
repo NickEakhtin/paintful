@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[sub_resource type="StyleBoxFlat" id="reply_style"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.98, 0.93, 0.78, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0, 0, 0, 1)
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_offset = Vector2(3, 3)
+
+[node name="Reply" type="Label"]
+top_level = true
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("reply_style")
+text = "Угу."

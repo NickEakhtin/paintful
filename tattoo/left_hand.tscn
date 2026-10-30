@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://tattoo/left_hand.gd" id="1_script"]
 [ext_resource type="Script" path="res://tattoo/left_hand_visual.gd" id="2_visual"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/swish.wav" id="3_swish"]
 
 [node name="LeftHand" type="Node2D"]
 top_level = true
@@ -9,3 +10,7 @@ script = ExtResource("1_script")
 
 [node name="Visual" type="Node2D" parent="."]
 script = ExtResource("2_visual")
+
+[node name="Swish" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_swish")
+volume_db = -10.0

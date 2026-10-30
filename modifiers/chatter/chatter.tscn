@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://modifiers/chatter/chatter.gd" id="1_script"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/mumble.wav" id="2_mumble"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/pop.wav" id="3_pop"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/uh_huh.wav" id="4_uh_huh"]
 
 [node name="Chatter" type="Node2D"]
 script = ExtResource("1_script")
@@ -12,3 +14,11 @@ phrases = PackedStringArray("А это больно?", "А если я пере�
 [node name="Mumble" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("2_mumble")
 volume_db = -8.0
+
+[node name="Pop" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_pop")
+volume_db = -6.0
+
+[node name="UhHuh" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4_uh_huh")
+volume_db = -4.0

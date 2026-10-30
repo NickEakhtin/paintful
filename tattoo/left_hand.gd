@@ -27,6 +27,7 @@ var _wave_angle: float = 0.0
 var _wave: Tween
 
 @onready var _visual: Node2D = $Visual
+@onready var _swish: AudioStreamPlayer = $Swish
 
 
 func _process(delta: float) -> void:
@@ -61,6 +62,8 @@ func palm() -> Vector2:
 ## A quick wave; `waved` fires at once, so a hit feels instant. A new wave may cut the old one short.
 func wave() -> void:
 	waved.emit()
+	_swish.pitch_scale = randf_range(0.9, 1.15)
+	_swish.play()
 	if _wave != null:
 		_wave.kill()
 	_wave = create_tween()

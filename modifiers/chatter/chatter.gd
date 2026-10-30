@@ -5,6 +5,7 @@ extends TattooModifier
 
 const BUBBLE_SCENE: PackedScene = preload("res://modifiers/chatter/chat_bubble.tscn")
 const HAND_SCENE: PackedScene = preload("res://tattoo/left_hand.tscn")
+const REPLY_SCENE: PackedScene = preload("res://modifiers/chatter/reply.tscn")
 
 @export_group("Timing")
 ## Seconds before the first bubble, so the player can settle in.
@@ -20,6 +21,8 @@ const HAND_SCENE: PackedScene = preload("res://tattoo/left_hand.tscn")
 @export var jitter: float = 20.0
 ## Letters per second.
 @export var type_speed: float = 40.0
+## A wave still hits when the palm is this far outside a bubble, in pixels.
+@export var hit_margin: float = 30.0
 
 @export_group("Hand")
 @export var hand_speed: float = 900.0
@@ -32,14 +35,19 @@ const HAND_SCENE: PackedScene = preload("res://tattoo/left_hand.tscn")
 @export_group("Text")
 ## What the client asks, one bubble each; none repeats until all were used.
 @export_multiline var phrases: PackedStringArray = []
+## What the artist mumbles back when waving a bubble away, picked at random.
+@export var replies: PackedStringArray = PackedStringArray(["Угу."])
 
 var hand: LeftHand
+var dismissed_count: int = 0
 
 var _spawn_timer: float = 0.0
 var _bag: PackedStringArray = PackedStringArray()
 
 @onready var _bubble_layer: Node2D = $Bubbles
 @onready var _mumble: AudioStreamPlayer = $Mumble
+@onready var _pop_sound: AudioStreamPlayer = $Pop
+@onready var _uh_huh: AudioStreamPlayer = $UhHuh
 
 
 func _ready() -> void:
@@ -50,6 +58,7 @@ func _ready() -> void:
 	hand.acceleration = hand_acceleration
 	add_child(hand)
 	hand.bounds = Rect2(Vector2.ZERO, screen).grow(-hand_margin)
+	hand.waved.connect(_on_waved)
 	hand.slide_in(Vector2(-200.0, screen.y + 200.0), Vector2(0.0, screen.y) + hand_rest)
 
 
@@ -86,6 +95,39 @@ func live_bubbles() -> Array[ChatBubble]:
 		if child is ChatBubble and not child.popped:
 			bubbles.append(child)
 	return bubbles
+
+
+## Pops every bubble under the palm; a wave at nothing does nothing.
+func _on_waved() -> void:
+	var palm: Vector2 = hand.palm()
+	var hit: bool = false
+	for bubble in live_bubbles():
+		if bubble.hit_rect().grow(hit_margin).has_point(palm):
+			bubble.pop()
+			dismissed_count += 1
+			hit = true
+	if not hit:
+		return
+	_pop_sound.pitch_scale = randf_range(0.9, 1.15)
+	_pop_sound.play()
+	_uh_huh.pitch_scale = randf_range(0.92, 1.08)
+	_uh_huh.play()
+	_reply(palm)
+
+
+## The artist's "Угу" by the fingertips: it floats up a little and fades.
+func _reply(palm: Vector2) -> void:
+	var reply: Label = REPLY_SCENE.instantiate()
+	reply.text = replies[randi() % replies.size()] if not replies.is_empty() else "Угу."
+	add_child(reply)
+	var screen: Rect2 = get_viewport_rect()
+	reply.position = (palm + Vector2(40.0, -150.0)).clamp(screen.position, screen.end - reply.size)
+	var tween: Tween = reply.create_tween()
+	tween.tween_interval(0.35)
+	tween.set_parallel()
+	tween.tween_property(reply, "position:y", reply.position.y - 30.0, 0.5)
+	tween.tween_property(reply, "modulate:a", 0.0, 0.5)
+	tween.chain().tween_callback(reply.queue_free)
 
 
 func _free_corners() -> Array[int]:
