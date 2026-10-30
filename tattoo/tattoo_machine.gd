@@ -27,7 +27,7 @@ const TOP: Vector3 = Vector3(2.5117, 1.0952, 0.0206)
 
 @export_group("Weight")
 ## How quickly the needle catches up with the hand, in radians per second. Lower feels heavier.
-@export var follow_frequency: float = 20.0
+@export var follow_frequency: float = 33.0
 ## 1 settles without overshoot; below 1 the needle overshoots a little before settling.
 @export var follow_damping: float = 0.75
 ## A jump longer than this (in pixels) is a teleport: no spring.

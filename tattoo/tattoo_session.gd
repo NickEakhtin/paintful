@@ -33,7 +33,7 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 ## Share of the way to the target the needle moves when right next to it.
 @export_range(0.0, 1.0) var magnet_strength: float = 0.85
 ## How fast the needle catches up with where it should be; higher is snappier.
-@export var needle_follow: float = 25.0
+@export var needle_follow: float = 42.0
 
 @export_group("Ink supply")
 ## Ink the machine holds, in filled-cell units (the sigil is about 18 700 cells).
