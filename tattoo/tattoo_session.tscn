@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://modifiers/modifier_data.gd" id="7_modifier_data"]
 [ext_resource type="Resource" path="res://data/modifiers/spiders.tres" id="9_spiders"]
 [ext_resource type="Resource" path="res://data/modifiers/flame.tres" id="13_flame"]
+[ext_resource type="Resource" path="res://data/modifiers/moths.tres" id="14_moths"]
 [ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
 [ext_resource type="PackedScene" path="res://tattoo/ink_cap.tscn" id="12_ink_cap"]
 
@@ -35,7 +36,7 @@ shader_parameter/strength = 0.0
 layer = 10
 script = ExtResource("1_script")
 stencil = ExtResource("2_stencil")
-task_pool = Array[ExtResource("7_modifier_data")]([ExtResource("9_spiders"), ExtResource("13_flame")])
+task_pool = Array[ExtResource("7_modifier_data")]([ExtResource("9_spiders"), ExtResource("13_flame"), ExtResource("14_moths")])
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15

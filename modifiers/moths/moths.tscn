@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://modifiers/moths/moths.gd" id="1_script"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/tick.wav" id="2_perch"]
+
+[node name="Moths" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Swarm" type="Node2D" parent="."]
+top_level = true
+z_index = 10
+
+[node name="Perch" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_perch")
+volume_db = -14.0
