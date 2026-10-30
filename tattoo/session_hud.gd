@@ -38,6 +38,7 @@ func show_progress(canvas: InkCanvas) -> void:
 			label.modulate = DONE_COLOR
 		else:
 			label.text = "%s — %d%%" % [_part_names[i], floori(canvas.part_progress(i) * 100.0)]
+			label.modulate = Color.WHITE
 
 
 ## One line per spirit task, in the task's colour.

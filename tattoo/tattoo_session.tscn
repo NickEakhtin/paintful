@@ -16,6 +16,12 @@
 [ext_resource type="Shader" path="res://tattoo/skin_redness.gdshader" id="16_redness"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/wince.wav" id="17_wince"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/heartbeat.wav" id="18_heartbeat"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/cry.wav" id="19_cry"]
+[ext_resource type="Script" path="res://dialogue/dialogue_data.gd" id="20_dialogue_data"]
+[ext_resource type="Resource" path="res://data/dialogues/spirit_overheat_1.tres" id="21_overheat_1"]
+[ext_resource type="Resource" path="res://data/dialogues/spirit_overheat_2.tres" id="22_overheat_2"]
+[ext_resource type="Resource" path="res://data/dialogues/spirit_overheat_3.tres" id="23_overheat_3"]
+[ext_resource type="Resource" path="res://data/dialogues/spirit_overheat_4.tres" id="24_overheat_4"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -44,6 +50,7 @@ layer = 10
 script = ExtResource("1_script")
 stencil = ExtResource("2_stencil")
 task_pool = Array[ExtResource("7_modifier_data")]([ExtResource("9_spiders"), ExtResource("13_flame"), ExtResource("14_moths"), ExtResource("15_chatter")])
+overheat_lines = Array[ExtResource("20_dialogue_data")]([ExtResource("21_overheat_1"), ExtResource("22_overheat_2"), ExtResource("23_overheat_3"), ExtResource("24_overheat_4")])
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -224,3 +231,7 @@ volume_db = -4.0
 
 [node name="Heartbeat" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("18_heartbeat")
+
+[node name="Cry" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("19_cry")
+volume_db = -2.0

@@ -66,6 +66,8 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export_range(0.0, 1.0) var fail_heat: float = 1.0
 ## How far the skin jumps when the client flinches at the redness, in pixels.
 @export var flinch_distance: float = 6.0
+## What the spirit snaps when the skin gives out: one at random, no repeats until all are used.
+@export var overheat_lines: Array[DialogueData] = []
 ## Seconds a spot must be left alone before it starts to cool.
 @export var cool_delay: float = 0.5
 ## Heat lost per second once a spot cools.
@@ -100,6 +102,10 @@ var _last_heat_point: Vector2 = Vector2.ZERO
 var _skin_stage: int = 0
 ## The client's flinch: pushes the skin and settles back.
 var _flinch: Vector2 = Vector2.ZERO
+## What the roulette gave, kept to start the tasks again after the skin gives out.
+var _tasks: Array[ModifierData] = []
+var _overheat_bag: Array[DialogueData] = []
+var _last_overheat_line: DialogueData = null
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
@@ -113,6 +119,7 @@ var _flinch: Vector2 = Vector2.ZERO
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
 @onready var _wince: AudioStreamPlayer = $Wince
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
+@onready var _cry: AudioStreamPlayer = $Cry
 @onready var _ink_cap: InkCap = $View/InkCap
 @onready var _to_table_hint: Label = $View/ToTable
 @onready var _to_client_hint: Label = $View/ToClient
@@ -165,7 +172,9 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_hud.setup(part_names)
 	_setup_skin_heat()
 	_hud.show_progress(canvas)
+	_tasks = tasks
 	_add_modifiers(tasks)
+	_hud.setup_tasks(_modifiers)
 
 	_machine.visible = true
 	_machine.needle = _machine.pointer
@@ -187,6 +196,9 @@ func _process(delta: float) -> void:
 	_heat.cool(delta, cool_delay, cool_rate)
 	_heat.flush()
 	_update_redness(delta)
+	if skin_heat_enabled and _heat.peak() >= fail_heat:
+		_overheat()
+		return
 	_update_ink_display()
 	canvas.flush()
 	_hud.show_progress(canvas)
@@ -278,7 +290,6 @@ func _add_modifiers(tasks: Array[ModifierData]) -> void:
 		modifier.intensity = counts[task]
 		_modifiers.append(modifier)
 		_modifier_layer.add_child(modifier)
-	_hud.setup_tasks(_modifiers)
 
 
 func _apply_skin_offset() -> void:
@@ -394,6 +405,71 @@ func _update_redness(delta: float) -> void:
 		var beat: float = _heartbeat.get_playback_position()
 		pulse = exp(-beat * 9.0) + 0.7 * exp(-maxf(0.0, beat - 0.18) * 9.0) * float(beat >= 0.18)
 	(_redness.material as ShaderMaterial).set_shader_parameter("pulse", minf(1.0, pulse))
+
+
+## The skin gave out: the client cries out, the spirit snaps from the machine
+## and the session starts over with the same stencil and tasks.
+func _overheat() -> void:
+	_running = false
+	_machine.working = false
+	_was_inking = false
+	_calm_skin()
+	for modifier in _modifiers:
+		modifier.stop()
+	_cry.play()
+	Transition.flash(Color(0.75, 0.0, 0.05, 0.5), 0.6)
+	_body.position += Vector2.from_angle(randf() * TAU) * flinch_distance * 3.0
+	create_tween().tween_property(_body, "position", Vector2.ZERO, 0.3) \
+		.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(0.6).timeout
+	var line: DialogueData = _next_overheat_line()
+	if line != null:
+		await Dialogue.play(line)
+	await Transition.fade_out()
+	_restart()
+	await Transition.fade_in()
+	_running = true
+
+
+## Everything back to the start: no ink, a full machine, cool skin, fresh tasks, the view on the client.
+func _restart() -> void:
+	canvas.clear()
+	canvas.flush()
+	for material in _materials:
+		material.set_shader_parameter("done", 0.0)
+		material.set_shader_parameter("flash", 0.0)
+	_completed_parts = 0
+	_ink_left = ink_capacity
+	_heat.clear()
+	_heat.flush()
+	_was_heating = false
+	_view.position.x = 0.0
+	_at_table = false
+	_show_turn_hints()
+	_body.position = Vector2.ZERO
+	for modifier in _modifiers:
+		modifier.queue_free()
+	_modifiers.clear()
+	_add_modifiers(_tasks)
+	_machine.needle = _machine.pointer
+	_steady_needle = _machine.pointer
+	# The click that closed the spirit's line may still be held.
+	_wait_for_release = true
+	_update_ink_display()
+	_hud.show_progress(canvas)
+
+
+func _next_overheat_line() -> DialogueData:
+	if overheat_lines.is_empty():
+		return null
+	if _overheat_bag.is_empty():
+		_overheat_bag = overheat_lines.duplicate()
+		_overheat_bag.shuffle()
+		# A fresh bag never opens with the line just said.
+		if _overheat_bag.size() > 1 and _overheat_bag.back() == _last_overheat_line:
+			_overheat_bag.push_front(_overheat_bag.pop_back())
+	_last_overheat_line = _overheat_bag.pop_back()
+	return _last_overheat_line
 
 
 ## Silences the warning: no heartbeat, no throb, no HUD line.

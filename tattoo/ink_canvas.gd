@@ -115,6 +115,12 @@ func is_complete() -> bool:
 	return not _part_done.has(0)
 
 
+## Takes all ink off every part.
+func clear() -> void:
+	for part in part_count():
+		clear_part(part)
+
+
 ## Takes all ink off a part, done or not.
 func clear_part(index: int) -> void:
 	for cell in _part_cells[index]:
