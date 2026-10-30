@@ -16,9 +16,9 @@ extends TattooModifier
 
 @export_group("Weight")
 ## Mass each fairy adds; the machine's springs slow down by sqrt(1 + weight).
-@export var weight_per_moth: float = 0.5
+@export var weight_per_moth: float = 1.5
 ## How far each fairy pulls the needle down, in pixels.
-@export var sag_per_moth: float = 3.5
+@export var sag_per_moth: float = 6.0
 ## Each extra roulette hit multiplies weight and sag by this.
 @export var intensity_factor: float = 1.25
 
