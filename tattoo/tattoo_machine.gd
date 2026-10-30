@@ -12,6 +12,9 @@ extends Node2D
 const NEEDLE_TIP: Vector3 = Vector3(-5.1824, 1.4684, 0.0325)
 ## The far end of the machine body (its rightmost point), where a flame can burn.
 const TOP: Vector3 = Vector3(2.5117, 1.0952, 0.0206)
+## Longest step of the spring simulation. The needle spring is stiff: stepped once per frame below
+## ~35 fps it overshoots more every frame and the machine jumps back and forth across the screen.
+const MAX_STEP: float = 1.0 / 120.0
 
 ## Visual buzz while working, in pixels. Doesn't move where the ink goes.
 @export var buzz: float = 1.5
@@ -105,10 +108,17 @@ func _process(delta: float) -> void:
 
 
 ## Mass on a spring: the needle chases the hand, the top chases its lean.
+## Long frames are split into short steps, so it feels the same and stays stable at any frame rate.
 func _simulate(delta: float) -> void:
 	if _position.distance_to(_target) > snap_distance:
 		_position = _target
 		_velocity = Vector2.ZERO
+	var steps: int = maxi(1, ceili(delta / MAX_STEP))
+	for i in steps:
+		_step(delta / steps)
+
+
+func _step(delta: float) -> void:
 	# A mass on a spring: frequency falls with the square root of the mass.
 	var heavy: float = 1.0 / sqrt(1.0 + weight)
 	_velocity += _spring(_target - _position, _velocity, follow_frequency * heavy, follow_damping) * delta
