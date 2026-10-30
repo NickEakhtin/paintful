@@ -210,6 +210,11 @@ func machine_top_position() -> Vector2:
 	return _machine.top_position()
 
 
+## Where the stencil is, in the coordinates of the task layer (tasks draw in the same space).
+func stencil_rect() -> Rect2:
+	return _canvas_rect.get_rect()
+
+
 ## Whether the view is swinging to the side table or back right now.
 func is_turning() -> bool:
 	return _turning

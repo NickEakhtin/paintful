@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://modifiers/chatter/chat_bubble.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="bubble_style"]
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+corner_detail = 12
+
+[node name="ChatBubble" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 0
+offset_right = 260.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("bubble_style")
+
+[node name="Text" type="RichTextLabel" parent="Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.05, 0.05, 0.05, 1)
+theme_override_font_sizes/normal_font_size = 22
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+visible_characters_behavior = 1

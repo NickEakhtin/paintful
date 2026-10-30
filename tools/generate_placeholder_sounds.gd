@@ -20,6 +20,7 @@ func _init() -> void:
 	_save("ignite.wav", _ignite())
 	_save("perch.wav", _perch())
 	_save("flutter.wav", _flutter())
+	_save("mumble.wav", _mumble())
 	quit()
 
 
@@ -138,6 +139,25 @@ func _flutter() -> PackedFloat32Array:
 		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.25)
 		var beat: float = 0.5 + 0.5 * sin(TAU * 28.0 * t)
 		samples.append(smoothed * beat * beat * sin(PI * float(i) / count) * 0.7)
+	return samples
+
+
+## Chatty client's "bla-bla": five quick voiced syllables, each at its own pitch and brightness.
+func _mumble() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var syllable: int = int(RATE * 0.1)
+	var phase: float = 0.0
+	for s in 5:
+		var pitch: float = randf_range(170.0, 260.0)
+		var bright: float = randf_range(0.3, 0.8)
+		for i in syllable:
+			var t: float = float(i) / syllable
+			phase += TAU * pitch * (1.0 - 0.15 * t) / RATE # each syllable sags in pitch
+			var voice: float = sin(phase) + bright * 0.6 * sin(2.0 * phase) + bright * 0.4 * sin(3.0 * phase)
+			var envelope: float = minf(1.0, t * 12.0) * pow(1.0 - t, 1.5)
+			samples.append(voice * envelope * 0.3)
+		for i in int(RATE * 0.015): # a short gap between syllables
+			samples.append(0.0)
 	return samples
 
 
