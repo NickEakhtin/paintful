@@ -104,6 +104,7 @@
 # Game concept
 First-person game. The player is a tattoo artist with esoteric leanings: believes in spirits, does occult tattoos.
 At the start a dark spirit contacts them: it must be freed, and for that the artist has to carry out its tasks every day.
+- **The spirit lives inside the tattoo machine.** The machine is its vessel: it speaks to the artist through it and works through it in every session (the roulette tasks, the spirit-purple glowing needle, the flame on the machine). Keep this in mind for every new spirit line, task and effect.
 
 ## Locations
 - **Tattoo studio**: small; reception desk, entrance door with an OPEN/CLOSED sign, session chair, workstation with supplies.
