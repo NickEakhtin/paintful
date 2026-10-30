@@ -6,7 +6,7 @@ extends RefCounted
 ## A swing shorter than this, in pixels, doesn't count.
 var min_stroke: float = 40.0
 ## Nor one slower than this on average, in pixels per second.
-var min_speed: float = 600.0
+var min_speed: float = 450.0
 ## Where the last counted swing went, so whatever is shaken off can fly that way.
 var direction: Vector2 = Vector2.ZERO
 

@@ -38,6 +38,7 @@ func _ready() -> void:
 	_noise.seed = randi()
 	_noise.frequency = 1.5
 	_last_position = position
+	_add_dust()
 
 
 ## Flies toward `target` with a flutter; returns true once it is close enough to land.
@@ -139,6 +140,25 @@ func _draw() -> void:
 		draw_line(Vector2(side * 1.0, 11.5), Vector2(side * 1.3 + swing, 17.0), SKIN, 1.1)
 	draw_circle(Vector2(0.0, 3.2), 2.6, SKIN)
 	draw_circle(Vector2(0.0, 2.4), 2.7, Color(COLOR.darkened(0.25), 0.9), false, 1.0)
+
+
+## A thin trail of glowing dust that drifts down behind it.
+func _add_dust() -> void:
+	var dust: CPUParticles2D = CPUParticles2D.new()
+	dust.position = Vector2(0.0, 8.0)
+	dust.amount = 6
+	dust.lifetime = 0.9
+	dust.local_coords = false
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	dust.emission_sphere_radius = 5.0
+	dust.gravity = Vector2(0.0, 25.0)
+	dust.initial_velocity_max = 10.0
+	dust.scale_amount_min = 1.0
+	dust.scale_amount_max = 2.0
+	var fade: Gradient = Gradient.new()
+	fade.colors = PackedColorArray([Color(COLOR.lightened(0.4), 0.9), Color(COLOR, 0.0)])
+	dust.color_ramp = fade
+	add_child(dust)
 
 
 func _draw_wing(root: Vector2, side: float, size: Vector2, tilt: float, open: float) -> void:

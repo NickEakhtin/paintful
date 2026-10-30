@@ -18,6 +18,8 @@ func _init() -> void:
 	_save("chop.wav", _chop())
 	_save("hiss.wav", _hiss())
 	_save("ignite.wav", _ignite())
+	_save("perch.wav", _perch())
+	_save("flutter.wav", _flutter())
 	quit()
 
 
@@ -112,6 +114,30 @@ func _ignite() -> PackedFloat32Array:
 		var t: float = float(i) / count
 		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), lerpf(0.05, 0.3, t))
 		samples.append(smoothed * sin(t * PI) * 0.9)
+	return samples
+
+
+## A fairy landing on the machine: a tiny soft tap with a glassy ring.
+func _perch() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	for i in int(RATE * 0.12):
+		var t: float = float(i) / RATE
+		var tap: float = randf_range(-1.0, 1.0) * exp(-t * 120.0) * 0.3
+		var ring: float = sin(TAU * 3100.0 * t) * exp(-t * 30.0) * 0.25
+		samples.append((tap + ring) * minf(1.0, t * 800.0))
+	return samples
+
+
+## A fairy shaken off: a quick "frrr" of wings, soft noise chopped at about 28 Hz.
+func _flutter() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var count: int = int(RATE * 0.4)
+	for i in count:
+		var t: float = float(i) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.25)
+		var beat: float = 0.5 + 0.5 * sin(TAU * 28.0 * t)
+		samples.append(smoothed * beat * beat * sin(PI * float(i) / count) * 0.7)
 	return samples
 
 

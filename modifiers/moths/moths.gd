@@ -26,7 +26,7 @@ extends TattooModifier
 ## A swing of the mouse shorter than this, in pixels, isn't a shake.
 @export var shake_min_stroke: float = 40.0
 ## Nor one slower than this on average, in pixels per second.
-@export var shake_min_speed: float = 600.0
+@export var shake_min_speed: float = 450.0
 ## Grip each fairy loses on every sharp turn of a shake (±30%); at 0 it falls off.
 @export var shake_grip_loss: float = 0.45
 ## Grip regained per second.
