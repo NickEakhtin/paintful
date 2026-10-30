@@ -11,8 +11,8 @@ const REPLY_SCENE: PackedScene = preload("res://modifiers/chatter/reply.tscn")
 ## Seconds before the first bubble, so the player can settle in.
 @export var first_delay: float = 7.0
 ## Seconds between bubbles at intensity 1, picked at random in this range.
-@export var interval_min: float = 10.0
-@export var interval_max: float = 20.0
+@export var interval_min: float = 8.5
+@export var interval_max: float = 16.5
 ## Each extra roulette hit divides the interval by this.
 @export var intensity_factor: float = 1.5
 
