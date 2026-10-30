@@ -47,6 +47,28 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 ## Seconds for the swing either way.
 @export var turn_time: float = 0.22
 
+@export_group("Skin")
+## Working the needle in one place heats the skin: it turns pink, then red, then the session starts over.
+@export var skin_heat_enabled: bool = true
+## Heat grid cell, in pixels.
+@export var heat_cell: float = 8.0
+## Radius of the heated circle under the needle, in pixels.
+@export var heat_radius: float = 30.0
+## Heat per second under the needle centre; 1.0 is the limit.
+@export var heat_rate: float = 0.25
+## Heat where the skin starts to turn pink.
+@export_range(0.0, 1.0) var pink_from: float = 0.25
+## Heat where the skin is red and the client hisses.
+@export_range(0.0, 1.0) var warn_heat: float = 0.5
+## Heat where the warning gets urgent.
+@export_range(0.0, 1.0) var danger_heat: float = 0.8
+## Heat where the skin gives out and the session starts over.
+@export_range(0.0, 1.0) var fail_heat: float = 1.0
+## Seconds a spot must be left alone before it starts to cool.
+@export var cool_delay: float = 0.5
+## Heat lost per second once a spot cools.
+@export var cool_rate: float = 0.2
+
 var canvas: InkCanvas
 ## The skin panel; tasks may tint it.
 @onready var skin: Panel = $View/Body/Skin
@@ -68,11 +90,16 @@ var _at_table: bool = false
 var _turning: bool = false
 ## After the swing back, LMB must be let go once before it inks again.
 var _wait_for_release: bool = false
+var _heat: SkinHeat
+var _was_heating: bool = false
+## Last heated point, in skin-local pixels.
+var _last_heat_point: Vector2 = Vector2.ZERO
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
 @onready var _canvas_rect: Control = $View/Body/Canvas
 @onready var _stencil_layer: Control = $View/Body/Canvas/Stencil
+@onready var _redness: ColorRect = $View/Body/Redness
 @onready var _modifier_layer: Node2D = $View/Body/Modifiers
 @onready var _machine: TattooMachine = $Machine
 @onready var _hud: Control = $HUD
@@ -128,6 +155,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		_stencil_layer.add_child(rect)
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud.setup(part_names)
+	_setup_skin_heat()
 	_hud.show_progress(canvas)
 	_add_modifiers(tasks)
 
@@ -148,6 +176,8 @@ func _process(delta: float) -> void:
 	_apply_skin_offset()
 	_update_needle(delta)
 	_paint(delta)
+	_heat.cool(delta, cool_delay, cool_rate)
+	_heat.flush()
 	_update_ink_display()
 	canvas.flush()
 	_hud.show_progress(canvas)
@@ -272,6 +302,7 @@ func _paint(delta: float) -> void:
 	if _turning:
 		_machine.working = false
 		_was_inking = false
+		_was_heating = false
 		return
 	var pressing: bool = Input.is_action_pressed("use")
 	var clicked: bool = Input.is_action_just_pressed("use")
@@ -294,6 +325,41 @@ func _paint(delta: float) -> void:
 		_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
 	_was_inking = inking
+	_heat_skin(inking, delta)
+
+
+func _setup_skin_heat() -> void:
+	_heat = SkinHeat.new(skin.size, heat_cell)
+	var material: ShaderMaterial = _redness.material
+	material.set_shader_parameter("heat", _heat.texture)
+	material.set_shader_parameter("pink_from", pink_from)
+	material.set_shader_parameter("warn_heat", warn_heat)
+	material.set_shader_parameter("danger_heat", danger_heat)
+	material.set_shader_parameter("size", skin.size)
+	material.set_shader_parameter("corner_radius", _skin_corner_radius())
+
+
+## The working needle heats the skin under it, ink or no ink.
+func _heat_skin(working: bool, delta: float) -> void:
+	var point: Vector2 = _machine.needle - skin.get_global_rect().position
+	var heating: bool = skin_heat_enabled and working and _is_on_skin(point)
+	if heating:
+		_heat.heat(_last_heat_point if _was_heating else point, point, heat_radius, heat_rate * delta)
+	_last_heat_point = point
+	_was_heating = heating
+
+
+## Whether a skin-local point lies on the rounded skin panel.
+func _is_on_skin(point: Vector2) -> bool:
+	var radius: float = _skin_corner_radius()
+	var half: Vector2 = skin.size * 0.5
+	var q: Vector2 = (point - half).abs() - (half - Vector2(radius, radius))
+	return q.max(Vector2.ZERO).length() + minf(maxf(q.x, q.y), 0.0) <= radius
+
+
+func _skin_corner_radius() -> float:
+	var style: StyleBoxFlat = skin.get_theme_stylebox("panel") as StyleBoxFlat
+	return minf(style.corner_radius_top_left, minf(skin.size.x, skin.size.y) * 0.5) if style != null else 0.0
 
 
 ## One click in the ink cap: the ink wobbles and the machine takes a share of a full tank.

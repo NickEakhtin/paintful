@@ -13,6 +13,7 @@
 [ext_resource type="Resource" path="res://data/modifiers/chatter.tres" id="15_chatter"]
 [ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
 [ext_resource type="PackedScene" path="res://tattoo/ink_cap.tscn" id="12_ink_cap"]
+[ext_resource type="Shader" path="res://tattoo/skin_redness.gdshader" id="16_redness"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -32,6 +33,9 @@ corner_radius_top_right = 6
 [sub_resource type="ShaderMaterial" id="blur_material"]
 shader = ExtResource("11_blur")
 shader_parameter/strength = 0.0
+
+[sub_resource type="ShaderMaterial" id="redness_material"]
+shader = ExtResource("16_redness")
 
 [node name="TattooSession" type="CanvasLayer"]
 layer = 10
@@ -102,6 +106,22 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Redness" type="ColorRect" parent="View/Body"]
+material = SubResource("redness_material")
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -340.0
+offset_right = 380.0
+offset_bottom = 340.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
