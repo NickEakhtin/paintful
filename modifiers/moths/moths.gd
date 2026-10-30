@@ -22,16 +22,30 @@ extends TattooModifier
 ## Each extra roulette hit multiplies weight and sag by this.
 @export var intensity_factor: float = 1.25
 
+@export_group("Shake")
+## A swing of the mouse shorter than this, in pixels, isn't a shake.
+@export var shake_min_stroke: float = 40.0
+## Nor one slower than this on average, in pixels per second.
+@export var shake_min_speed: float = 600.0
+## Grip each fairy loses on every sharp turn of a shake (±30%); at 0 it falls off.
+@export var shake_grip_loss: float = 0.45
+## Grip regained per second.
+@export var grip_recover: float = 0.4
+
 var _spawn_timer: float = 0.0
 var _sag: float = 0.0
 var _time: float = 0.0
+var _shake: ShakeDetector = ShakeDetector.new()
 
 @onready var _swarm: Node2D = $Swarm
 @onready var _perch_sound: AudioStreamPlayer = $Perch
+@onready var _flutter_sound: AudioStreamPlayer = $Flutter
 
 
 func _ready() -> void:
 	_spawn_timer = first_spawn
+	_shake.min_stroke = shake_min_stroke
+	_shake.min_speed = shake_min_speed
 
 
 func _process(delta: float) -> void:
@@ -40,6 +54,17 @@ func _process(delta: float) -> void:
 	if _spawn_timer <= 0.0 and not session.is_turning() and _live_moths().size() < max_moths + 2:
 		_spawn()
 		_spawn_timer = spawn_interval / intensity * randf_range(0.7, 1.3)
+
+	# The mouse, not the needle: a heavy needle lags and would smooth the shake out.
+	var shook: bool = _shake.feed(session.pointer_position(), delta)
+	for moth in _perched():
+		moth.grip = minf(1.0, moth.grip + grip_recover * delta)
+		if shook:
+			moth.grip -= shake_grip_loss * randf_range(0.7, 1.3)
+			if moth.grip <= 0.0:
+				moth.shake_off(_shake.direction.rotated(randf_range(-0.6, 0.6)))
+				_flutter_sound.pitch_scale = randf_range(0.9, 1.2)
+				_flutter_sound.play()
 
 	var needle: Vector2 = session.needle_position()
 	var top: Vector2 = session.machine_top_position()

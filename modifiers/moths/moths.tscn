@@ -13,3 +13,7 @@ z_index = 10
 [node name="Perch" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("2_perch")
 volume_db = -14.0
+
+[node name="Flutter" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_perch")
+volume_db = -10.0
