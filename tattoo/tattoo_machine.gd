@@ -40,6 +40,8 @@ const TOP: Vector3 = Vector3(2.5117, 1.0952, 0.0206)
 @export var swing_damping: float = 0.4
 
 var working: bool = false
+## Extra mass on the machine (spirit tasks add it); 0 = just the machine. Both springs slow down with it.
+var weight: float = 0.0
 ## Mouse position in viewport pixels.
 var pointer: Vector2 = Vector2.ZERO
 ## Set: where the hand wants the needle. Get: where the needle actually is.
@@ -107,11 +109,13 @@ func _simulate(delta: float) -> void:
 	if _position.distance_to(_target) > snap_distance:
 		_position = _target
 		_velocity = Vector2.ZERO
-	_velocity += _spring(_target - _position, _velocity, follow_frequency, follow_damping) * delta
+	# A mass on a spring: frequency falls with the square root of the mass.
+	var heavy: float = 1.0 / sqrt(1.0 + weight)
+	_velocity += _spring(_target - _position, _velocity, follow_frequency * heavy, follow_damping) * delta
 	_position += _velocity * delta
 
 	var lean_target: Vector2 = (-_velocity * lean_per_speed).limit_length(max_lean)
-	_lean_velocity += _spring(lean_target - _lean, _lean_velocity, swing_frequency, swing_damping) * delta
+	_lean_velocity += _spring(lean_target - _lean, _lean_velocity, swing_frequency * heavy, swing_damping) * delta
 	_lean += _lean_velocity * delta
 
 

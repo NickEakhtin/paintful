@@ -20,6 +20,11 @@ func skin_offset() -> Vector2:
 	return Vector2.ZERO
 
 
+## Extra mass this task hangs on the machine; it follows the hand slower and swings more.
+func machine_weight() -> float:
+	return 0.0
+
+
 ## Whether the needle may lay ink right now; the machine stays silent while any task says no.
 func can_ink() -> bool:
 	return true

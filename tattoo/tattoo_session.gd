@@ -210,6 +210,11 @@ func machine_top_position() -> Vector2:
 	return _machine.top_position()
 
 
+## Whether the view is swinging to the side table or back right now.
+func is_turning() -> bool:
+	return _turning
+
+
 ## Takes the ink off every part that isn't done yet; done parts stay. They flash in `color`.
 func wipe_unfinished(color: Color) -> void:
 	for part in canvas.part_count():
@@ -250,9 +255,12 @@ func _update_needle(delta: float) -> void:
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
 	_steady_needle = _steady_needle.lerp(desired, 1.0 - exp(-needle_follow * delta))
 	var offset: Vector2 = Vector2.ZERO
+	var weight: float = 0.0
 	for modifier in _modifiers:
 		offset += modifier.needle_offset()
+		weight += modifier.machine_weight()
 	_machine.needle = _steady_needle + offset
+	_machine.weight = weight
 
 
 func _paint(delta: float) -> void:
@@ -381,6 +389,7 @@ func _flash(material: ShaderMaterial, color: Color = Color.WHITE) -> void:
 func _finish() -> void:
 	_running = false
 	_machine.working = false
+	_machine.weight = 0.0
 	_machine.visible = false
 	_set_highlight(0.0)
 	for material in _materials:
