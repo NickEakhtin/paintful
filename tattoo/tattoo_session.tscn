@@ -14,6 +14,8 @@
 [ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
 [ext_resource type="PackedScene" path="res://tattoo/ink_cap.tscn" id="12_ink_cap"]
 [ext_resource type="Shader" path="res://tattoo/skin_redness.gdshader" id="16_redness"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/wince.wav" id="17_wince"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/heartbeat.wav" id="18_heartbeat"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
@@ -215,3 +217,10 @@ volume_db = -6.0
 [node name="DipSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("6_dip")
 volume_db = -4.0
+
+[node name="Wince" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("17_wince")
+volume_db = -4.0
+
+[node name="Heartbeat" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("18_heartbeat")

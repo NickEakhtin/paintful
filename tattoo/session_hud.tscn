@@ -116,6 +116,27 @@ theme_override_font_sizes/font_size = 28
 text = "Чернила кончились — Q, к краске"
 horizontal_alignment = 1
 
+[node name="SkinWarning" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -144.0
+offset_right = 400.0
+offset_bottom = -104.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.3, 0.25, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+text = "Кожа покраснела — уведи иглу!"
+horizontal_alignment = 1
+
 [node name="Done" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1

@@ -16,6 +16,7 @@ var _flash_tween: Tween
 @onready var _summary: Label = $Done/Box/Summary
 @onready var _tasks: VBoxContainer = $Tasks
 @onready var _ink_warning: Label = $InkWarning
+@onready var _skin_warning: Label = $SkinWarning
 
 
 func setup(part_names: PackedStringArray) -> void:
@@ -70,9 +71,16 @@ func set_ink_empty(empty: bool) -> void:
 	_ink_warning.visible = empty
 
 
+## 0 hides the skin warning, 1 shows it, 2 makes it blink. Call every frame.
+func set_skin_warning(level: int) -> void:
+	_skin_warning.visible = level > 0
+	_skin_warning.modulate.a = 1.0 if level < 2 else 0.55 + 0.45 * sin(Time.get_ticks_msec() / 70.0)
+
+
 func show_done(result: SessionResult) -> void:
 	_hint.visible = false
 	_ink_warning.visible = false
+	_skin_warning.visible = false
 	_tasks.visible = false
 	var lines: PackedStringArray = PackedStringArray()
 	for i in result.tasks.size():

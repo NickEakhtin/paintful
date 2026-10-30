@@ -64,6 +64,8 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export_range(0.0, 1.0) var danger_heat: float = 0.8
 ## Heat where the skin gives out and the session starts over.
 @export_range(0.0, 1.0) var fail_heat: float = 1.0
+## How far the skin jumps when the client flinches at the redness, in pixels.
+@export var flinch_distance: float = 6.0
 ## Seconds a spot must be left alone before it starts to cool.
 @export var cool_delay: float = 0.5
 ## Heat lost per second once a spot cools.
@@ -94,6 +96,10 @@ var _heat: SkinHeat
 var _was_heating: bool = false
 ## Last heated point, in skin-local pixels.
 var _last_heat_point: Vector2 = Vector2.ZERO
+## 0 calm, 1 red (`warn_heat`), 2 about to give out (`danger_heat`).
+var _skin_stage: int = 0
+## The client's flinch: pushes the skin and settles back.
+var _flinch: Vector2 = Vector2.ZERO
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
@@ -105,6 +111,8 @@ var _last_heat_point: Vector2 = Vector2.ZERO
 @onready var _hud: Control = $HUD
 @onready var _ding: AudioStreamPlayer = $Ding
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
+@onready var _wince: AudioStreamPlayer = $Wince
+@onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _ink_cap: InkCap = $View/InkCap
 @onready var _to_table_hint: Label = $View/ToTable
 @onready var _to_client_hint: Label = $View/ToClient
@@ -178,6 +186,7 @@ func _process(delta: float) -> void:
 	_paint(delta)
 	_heat.cool(delta, cool_delay, cool_rate)
 	_heat.flush()
+	_update_redness(delta)
 	_update_ink_display()
 	canvas.flush()
 	_hud.show_progress(canvas)
@@ -276,7 +285,7 @@ func _apply_skin_offset() -> void:
 	var offset: Vector2 = Vector2.ZERO
 	for modifier in _modifiers:
 		offset += modifier.skin_offset()
-	_body.position = offset
+	_body.position = offset + _flinch
 
 
 ## Mouse position -> needle position: magnet pull and smoothing, then task offsets.
@@ -355,6 +364,45 @@ func _is_on_skin(point: Vector2) -> bool:
 	var half: Vector2 = skin.size * 0.5
 	var q: Vector2 = (point - half).abs() - (half - Vector2(radius, radius))
 	return q.max(Vector2.ZERO).length() + minf(maxf(q.x, q.y), 0.0) <= radius
+
+
+## Warning stages: the red spot throbs with a heartbeat, the client hisses and flinches.
+func _update_redness(delta: float) -> void:
+	var peak: float = _heat.peak()
+	var stage: int = 0
+	if peak >= danger_heat:
+		stage = 2
+	elif peak >= warn_heat:
+		stage = 1
+	if stage > _skin_stage:
+		_wince.pitch_scale = 1.0 if stage == 1 else 1.15
+		_wince.play()
+		_flinch = Vector2.from_angle(randf() * TAU) * flinch_distance * stage
+	_skin_stage = stage
+	_flinch = _flinch.lerp(Vector2.ZERO, 1.0 - exp(-20.0 * delta))
+	_hud.set_skin_warning(stage)
+
+	var pulse: float = 0.0
+	if stage == 0:
+		_heartbeat.stop()
+	else:
+		_heartbeat.pitch_scale = 1.0 if stage == 1 else 1.4
+		_heartbeat.volume_db = -14.0 if stage == 1 else -5.0
+		if not _heartbeat.playing:
+			_heartbeat.play()
+		# The spot throbs on the beat: "lub" at 0, "dub" at 0.18 s into the loop.
+		var beat: float = _heartbeat.get_playback_position()
+		pulse = exp(-beat * 9.0) + 0.7 * exp(-maxf(0.0, beat - 0.18) * 9.0) * float(beat >= 0.18)
+	(_redness.material as ShaderMaterial).set_shader_parameter("pulse", minf(1.0, pulse))
+
+
+## Silences the warning: no heartbeat, no throb, no HUD line.
+func _calm_skin() -> void:
+	_skin_stage = 0
+	_flinch = Vector2.ZERO
+	_heartbeat.stop()
+	_hud.set_skin_warning(0)
+	(_redness.material as ShaderMaterial).set_shader_parameter("pulse", 0.0)
 
 
 func _skin_corner_radius() -> float:
@@ -460,6 +508,7 @@ func _flash(material: ShaderMaterial, color: Color = Color.WHITE) -> void:
 func _finish() -> void:
 	_running = false
 	_machine.working = false
+	_calm_skin()
 	_machine.weight = 0.0
 	_machine.visible = false
 	_set_highlight(0.0)

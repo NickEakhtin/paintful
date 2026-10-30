@@ -24,6 +24,9 @@ func _init() -> void:
 	_save("swish.wav", _swish())
 	_save("pop.wav", _pop())
 	_save("uh_huh.wav", _uh_huh())
+	_save("wince.wav", _wince())
+	_save("cry.wav", _cry())
+	_save("heartbeat.wav", _heartbeat())
 	quit()
 
 
@@ -201,6 +204,53 @@ func _uh_huh() -> PackedFloat32Array:
 			samples.append(hum * minf(1.0, t * 10.0) * minf(1.0, (1.0 - t) * 6.0) * 0.35)
 		for i in int(RATE * 0.05):
 			samples.append(0.0)
+	return samples
+
+
+## The client hissing through the teeth, "ss-s": bright noise swelling and fading.
+func _wince() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var previous: float = 0.0
+	var smoothed: float = 0.0
+	var count: int = int(RATE * 0.55)
+	for i in count:
+		var t: float = float(i) / count
+		var noise: float = randf_range(-1.0, 1.0)
+		smoothed = lerpf(smoothed, noise - previous, 0.6) # high-pass, then soften the very top
+		previous = noise
+		samples.append(smoothed * pow(sin(t * PI), 0.7) * (1.0 - 0.4 * t) * 0.4)
+	return samples
+
+
+## The client's short "ow!": a voiced tone with an open "a" formant, pitch falling, a quick close.
+func _cry() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var phase: float = 0.0
+	var count: int = int(RATE * 0.32)
+	for i in count:
+		var t: float = float(i) / count
+		var pitch: float = lerpf(430.0, 300.0, t)
+		phase += TAU * pitch / RATE
+		var voice: float = 0.0
+		for k in range(1, 9): # harmonics near 800 Hz ring out: the "a"
+			var formant: float = exp(-pow((k * pitch - 800.0) / 450.0, 2.0))
+			voice += sin(k * phase) * (0.25 + formant) / k
+		var envelope: float = minf(1.0, t * 40.0) * pow(1.0 - t, 1.2)
+		samples.append(voice * envelope * 0.45)
+	return samples
+
+
+## A heartbeat, "lub-dub": two low thumps in 0.8 s; loops.
+func _heartbeat() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	for i in int(RATE * 0.8):
+		var t: float = float(i) / RATE
+		var value: float = 0.0
+		for beat in [[0.0, 1.0], [0.18, 0.7]]:
+			var local: float = t - beat[0]
+			if local >= 0.0:
+				value += sin(TAU * 52.0 * local) * exp(-local * 22.0) * minf(1.0, local * 300.0) * beat[1]
+		samples.append(value * 0.8)
 	return samples
 
 
