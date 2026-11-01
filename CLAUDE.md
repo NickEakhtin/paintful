@@ -35,6 +35,7 @@
 
 # Building blocks
 - `player/player.tscn` (`Player`, group `player`): walking, mouse look, one held item (`held_item`, `hold()`, `take_item()`).
+  Walking runs at the physics rate; the camera is `top_level` and drawn between the last two physics head positions (`_update_camera`, `process_priority` -10), so it doesn't judder when the FPS isn't a multiple of 60. Mouse look applies at once. `HoldPoint` sits under the camera.
   Block input with `lock_controls(&"reason")` / `unlock_controls(&"reason")`; it stays locked while any reason remains. HUD is inside the player scene.
 - `Interactable` (`interaction/interactable.gd`, an Area3D on layer 3 with a CollisionShape3D child): use as is and connect `interacted(player)`, or extend and override `get_prompt()`, `can_interact()`, `interact()`.
   The player's ray (`player/interactor.gd`, 2 m) shows `"E — <prompt>"` when interaction is possible, the bare prompt when it isn't, nothing for an empty prompt.

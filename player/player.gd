@@ -14,13 +14,34 @@ const PITCH_LIMIT: float = 1.48 # ~85 degrees
 
 var held_item: Item = null
 var _locks: Dictionary[StringName, bool] = {}
+## Head position at the last two physics ticks; the camera is drawn between them.
+var _head_previous: Vector3
+var _head_current: Vector3
 
 @onready var _head: Node3D = $Head
-@onready var _hold_point: Node3D = $Head/HoldPoint
+@onready var _camera: Camera3D = $Head/Camera3D
+@onready var _hold_point: Node3D = $Head/Camera3D/HoldPoint
 
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	# Before anything that reads the camera this frame (speech bubbles).
+	process_priority = -10
+	_head_current = _head.global_position
+	_head_previous = _head_current
+	_update_camera()
+
+
+## Walking moves the body at the physics rate; drawn as is, the camera judders whenever the
+## frame rate isn't a multiple of it. So the camera (top_level) slides between the last two
+## head positions, while turning (mouse look) applies at once.
+func _process(_delta: float) -> void:
+	_update_camera()
+
+
+func _update_camera() -> void:
+	var origin: Vector3 = _head_previous.lerp(_head_current, Engine.get_physics_interpolation_fraction())
+	_camera.global_transform = Transform3D(_head.global_basis, origin)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -49,6 +70,8 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, target.x, acceleration * delta)
 	velocity.z = move_toward(velocity.z, target.z, acceleration * delta)
 	move_and_slide()
+	_head_previous = _head_current
+	_head_current = _head.global_position
 
 
 ## Blocks movement, look and interaction until every reason is unlocked.
