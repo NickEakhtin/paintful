@@ -149,7 +149,7 @@ func roll_and_start(new_stencil: StencilData) -> void:
 	start(new_stencil, tasks)
 
 
-## `tasks` may repeat a task: each repeat raises its intensity.
+## `tasks` are the spirit tasks for this session, each once.
 func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
 	canvas = InkCanvas.new(stencil, completion_threshold)
@@ -287,14 +287,10 @@ func wipe_unfinished(color: Color) -> void:
 
 
 func _add_modifiers(tasks: Array[ModifierData]) -> void:
-	var counts: Dictionary[ModifierData, int] = {}
 	for task in tasks:
-		counts[task] = counts.get(task, 0) + 1
-	for task in counts:
 		var modifier: TattooModifier = task.scene.instantiate()
 		modifier.session = self
 		modifier.data = task
-		modifier.intensity = counts[task]
 		_modifiers.append(modifier)
 		_modifier_layer.add_child(modifier)
 
@@ -602,7 +598,6 @@ func _finish() -> void:
 	for modifier in _modifiers:
 		modifier.stop()
 		_result.tasks.append(modifier.data)
-		_result.intensities.append(modifier.intensity)
 		_result.passed.append(modifier.is_passed())
 	_body.position = Vector2.ZERO
 	_hud.show_done(_result)

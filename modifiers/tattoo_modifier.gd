@@ -6,8 +6,6 @@ extends Node2D
 ## The session this task runs in. Set before the node enters the tree.
 var session: TattooSession
 var data: ModifierData
-## How many roulette reels landed on this task; scale the effect with it.
-var intensity: int = 1
 
 
 ## Extra needle movement in viewport pixels, added after the magnet.
@@ -35,9 +33,9 @@ func status_text() -> String:
 	return title()
 
 
-## Task name with "×2" when the roulette landed on it more than once.
+## Task name as the roulette shows it.
 func title() -> String:
-	return data.display_name + (" ×%d" % intensity if intensity > 1 else "")
+	return data.display_name
 
 
 ## Whether the spirit is satisfied. Asked once the tattoo is done.

@@ -4,7 +4,6 @@ extends RefCounted
 
 var tasks: Array[ModifierData] = []
 ## Same order as `tasks`.
-var intensities: Array[int] = []
 var passed: Array[bool] = []
 
 

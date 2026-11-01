@@ -85,10 +85,7 @@ func show_done(result: SessionResult) -> void:
 	_tasks.visible = false
 	var lines: PackedStringArray = PackedStringArray()
 	for i in result.tasks.size():
-		var task_name: String = result.tasks[i].display_name
-		if result.intensities[i] > 1:
-			task_name += " ×%d" % result.intensities[i]
-		lines.append("%s — %s" % [task_name, "выполнено" if result.passed[i] else "провалено"])
+		lines.append("%s — %s" % [result.tasks[i].display_name, "выполнено" if result.passed[i] else "провалено"])
 	if result.tasks.is_empty():
 		lines.append("Дух ничего не требовал")
 	elif result.is_perfect():

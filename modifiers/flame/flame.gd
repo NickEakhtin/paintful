@@ -12,8 +12,6 @@ extends TattooModifier
 @export var burn_rate: float = 4.0
 ## Flame regained per second below `safe_speed`.
 @export var recover_rate: float = 0.6
-## Each extra roulette hit multiplies both speeds by this.
-@export var intensity_factor: float = 0.75
 
 @export_group("Relight")
 ## Needle speed below which the machine counts as held still.
@@ -93,8 +91,8 @@ func stop() -> void:
 
 
 func _blow(speed: float, delta: float) -> void:
-	var safe: float = _safe_speed()
-	var blowout: float = _blowout_speed()
+	var safe: float = safe_speed
+	var blowout: float = blowout_speed
 	if speed >= blowout:
 		_health = 0.0
 	elif speed > safe:
@@ -105,20 +103,12 @@ func _blow(speed: float, delta: float) -> void:
 		_go_out()
 
 
-func _safe_speed() -> float:
-	return safe_speed * pow(intensity_factor, intensity - 1)
-
-
-func _blowout_speed() -> float:
-	return blowout_speed * pow(intensity_factor, intensity - 1)
-
-
 ## Rises at once with the speed, so the player sees "too fast" before any flame is lost,
 ## and settles a little slower.
 func _update_gust(speed: float, delta: float) -> void:
-	var from: float = _safe_speed() * react_from
+	var from: float = safe_speed * react_from
 	# The curve rises early, so even a brisk move shows.
-	var target: float = pow(clampf((speed - from) / (_blowout_speed() - from), 0.0, 1.0), 0.7)
+	var target: float = pow(clampf((speed - from) / (blowout_speed - from), 0.0, 1.0), 0.7)
 	var rate: float = 20.0 if target > _gust else 5.0
 	_gust = lerpf(_gust, target, 1.0 - exp(-rate * delta))
 

@@ -2,7 +2,7 @@ extends TattooModifier
 ## "Remind him of his childhood": spiders run over the skin. Click one with the needle to squash it.
 ## A spider that runs off the skin escapes and the client flinches.
 
-## Seconds between spiders at intensity 1; repeats divide it.
+## Seconds between spiders (±30%).
 @export var spawn_interval: float = 5.0
 ## Pixels per second.
 @export var speed: float = 90.0
@@ -35,7 +35,7 @@ func _process(delta: float) -> void:
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0:
 		_spawn()
-		_spawn_timer = spawn_interval / intensity * randf_range(0.7, 1.3)
+		_spawn_timer = spawn_interval * randf_range(0.7, 1.3)
 
 	var bounds: Rect2 = session.skin.get_rect().grow(10.0)
 	for spider in _live_spiders():
@@ -100,5 +100,5 @@ func _spawn() -> void:
 	var spider: Spider = Spider.new()
 	spider.position = center + Vector2(cos(angle) * bounds.size.x, sin(angle) * bounds.size.y) * 0.47
 	var heading: float = (center - spider.position).angle() + randf_range(-0.6, 0.6)
-	spider.velocity = Vector2.from_angle(heading) * speed * (1.0 + 0.15 * (intensity - 1))
+	spider.velocity = Vector2.from_angle(heading) * speed
 	add_child(spider)

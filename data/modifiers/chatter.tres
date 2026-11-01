@@ -9,5 +9,4 @@ id = &"chatter"
 display_name = "Болтун"
 spirit_line = "Я развяжу ему язык. Не слушай — работай."
 color = Color(1, 0.85, 0.35, 1)
-max_count = 2
 scene = ExtResource("2_scene")

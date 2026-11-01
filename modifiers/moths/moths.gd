@@ -4,7 +4,7 @@ extends TattooModifier
 ## Can't be failed; it only gets in the way.
 
 @export_group("Spawn")
-## Seconds between fairies at intensity 1; repeats divide it.
+## Seconds between fairies (±30%).
 @export var spawn_interval: float = 6.0
 @export var first_spawn: float = 3.0
 ## No more than this many hang on the machine; the rest circle and wait.
@@ -19,8 +19,6 @@ extends TattooModifier
 @export var weight_per_moth: float = 1.1
 ## How far each fairy pulls the needle down, in pixels.
 @export var sag_per_moth: float = 5.0
-## Each extra roulette hit multiplies weight and sag by this.
-@export var intensity_factor: float = 1.25
 
 @export_group("Shake")
 ## A swing of the mouse shorter than this, in pixels, isn't a shake.
@@ -53,7 +51,7 @@ func _process(delta: float) -> void:
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0 and not session.is_turning() and _live_moths().size() < max_moths + 2:
 		_spawn()
-		_spawn_timer = spawn_interval / intensity * randf_range(0.7, 1.3)
+		_spawn_timer = spawn_interval * randf_range(0.7, 1.3)
 
 	# The mouse, not the needle: a heavy needle lags and would smooth the shake out.
 	var shook: bool = _shake.feed(session.pointer_position(), delta)
@@ -85,12 +83,12 @@ func _process(delta: float) -> void:
 			moth.fly_to(top + Vector2(cos(angle) * 60.0, sin(angle) * 30.0 - 30.0), delta)
 			waiting += 1
 
-	var target_sag: float = _perched().size() * sag_per_moth * _factor()
+	var target_sag: float = _perched().size() * sag_per_moth
 	_sag = lerpf(_sag, target_sag, 1.0 - exp(-6.0 * delta))
 
 
 func machine_weight() -> float:
-	return _perched().size() * weight_per_moth * _factor()
+	return _perched().size() * weight_per_moth
 
 
 func needle_offset() -> Vector2:
@@ -108,10 +106,6 @@ func stop() -> void:
 	super()
 	for moth in _live_moths():
 		moth.shake_off(Vector2.from_angle(randf() * TAU))
-
-
-func _factor() -> float:
-	return pow(intensity_factor, intensity - 1)
 
 
 func _live_moths() -> Array[Moth]:

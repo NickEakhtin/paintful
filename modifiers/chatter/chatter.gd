@@ -10,11 +10,9 @@ const REPLY_SCENE: PackedScene = preload("res://modifiers/chatter/reply.tscn")
 @export_group("Timing")
 ## Seconds before the first bubble, so the player can settle in.
 @export var first_delay: float = 7.0
-## Seconds between bubbles at intensity 1, picked at random in this range.
+## Seconds between bubbles, picked at random in this range.
 @export var interval_min: float = 8.5
 @export var interval_max: float = 16.5
-## Each extra roulette hit divides the interval by this.
-@export var intensity_factor: float = 1.5
 
 @export_group("Bubbles")
 ## How far a bubble may sit off the centre of its quarter of the stencil, in pixels.
@@ -77,7 +75,7 @@ func _process(delta: float) -> void:
 	if free.is_empty():
 		return
 	_spawn(free.pick_random())
-	_spawn_timer = randf_range(interval_min, interval_max) / pow(intensity_factor, intensity - 1)
+	_spawn_timer = randf_range(interval_min, interval_max)
 
 
 func status_text() -> String:
