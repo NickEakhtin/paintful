@@ -9,6 +9,8 @@ signal part_completed(index: int)
 const SIZE: int = 256
 
 var texture: ImageTexture
+## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
+var blocked: Array[Rect2] = []
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
@@ -46,8 +48,9 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 			var cell: int = y * SIZE + x
 			if _part_of[cell] < 0:
 				continue
-			var d2: float = Vector2(x + 0.5, y + 0.5).distance_squared_to(center)
-			if d2 <= r2:
+			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
+			var d2: float = point.distance_squared_to(center)
+			if d2 <= r2 and not _is_blocked(point):
 				laid += _add_ink(cell, amount * (1.0 - 0.5 * d2 / r2))
 	return laid
 
@@ -76,7 +79,7 @@ func find_unfilled_near(center: Vector2, radius: float) -> Vector2:
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
 			var d2: float = point.distance_squared_to(center)
-			if d2 < best_d2:
+			if d2 < best_d2 and not _is_blocked(point):
 				best_d2 = d2
 				best = point
 	return best
@@ -115,6 +118,13 @@ func is_complete() -> bool:
 	return not _part_done.has(0)
 
 
+## Whether `cell` (in cells, fractions allowed) is part of the stencil.
+func is_stencil(cell: Vector2) -> bool:
+	var x: int = floori(cell.x)
+	var y: int = floori(cell.y)
+	return x >= 0 and y >= 0 and x < SIZE and y < SIZE and _part_of[y * SIZE + x] >= 0
+
+
 ## Takes all ink off every part.
 func clear() -> void:
 	for part in part_count():
@@ -127,6 +137,14 @@ func clear_part(index: int) -> void:
 		_set_ink(cell, 0.0)
 	_part_filled[index] = 0
 	_part_done[index] = 0
+
+
+func _is_blocked(point: Vector2) -> bool:
+	for rect in blocked:
+		var offset: Vector2 = (point - rect.get_center()) / (rect.size * 0.5)
+		if offset.length_squared() <= 1.0:
+			return true
+	return false
 
 
 func _add_ink(cell: int, amount: float) -> float:

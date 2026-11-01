@@ -7,6 +7,9 @@ extends Node2D
 var session: TattooSession
 var data: ModifierData
 
+## Tasks with a lower value draw under the others on the skin (Chatterbox bubbles -2, Observers' eyes -1).
+@export var draw_order: int = 0
+
 
 ## Extra needle movement in viewport pixels, added after the magnet.
 func needle_offset() -> Vector2:
@@ -21,6 +24,12 @@ func skin_offset() -> Vector2:
 ## Extra mass this task hangs on the machine; it follows the hand slower and swings more.
 func machine_weight() -> float:
 	return 0.0
+
+
+## Where ink can't land right now and the magnet doesn't pull, in viewport pixels.
+## Each rect stands for the ellipse inside it.
+func ink_blocks() -> Array[Rect2]:
+	return []
 
 
 ## Whether the needle may lay ink right now; the machine stays silent while any task says no.

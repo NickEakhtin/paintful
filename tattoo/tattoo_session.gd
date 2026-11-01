@@ -191,6 +191,7 @@ func _process(delta: float) -> void:
 	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
+	_update_ink_blocks()
 	_update_needle(delta)
 	_paint(delta)
 	_heat.cool(delta, cool_delay, cool_rate)
@@ -231,6 +232,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func skip() -> void:
 	if not _running:
 		return
+	canvas.blocked.clear()
 	for part in canvas.part_count():
 		for cell in canvas._part_cells[part]:
 			@warning_ignore("integer_division")
@@ -244,6 +246,11 @@ func skip() -> void:
 ## Where the needle touches, in viewport pixels.
 func needle_position() -> Vector2:
 	return _machine.needle
+
+
+## Whether the machine is inking right now: LMB down, every task lets it, not swinging. Dry counts too.
+func is_working() -> bool:
+	return _machine.working
 
 
 ## Where the mouse is, in viewport pixels.
@@ -292,7 +299,22 @@ func _add_modifiers(tasks: Array[ModifierData]) -> void:
 		modifier.session = self
 		modifier.data = task
 		_modifiers.append(modifier)
+	# Lower `draw_order` goes into the layer first, so it draws under the rest; ties keep the roulette order.
+	var layered: Array[TattooModifier] = _modifiers.duplicate()
+	layered.sort_custom(func(a: TattooModifier, b: TattooModifier) -> bool:
+		return a.draw_order < b.draw_order \
+				or (a.draw_order == b.draw_order and _modifiers.find(a) < _modifiers.find(b)))
+	for modifier in layered:
 		_modifier_layer.add_child(modifier)
+
+
+## Hands the canvas where tasks keep ink off this frame, in cells.
+func _update_ink_blocks() -> void:
+	canvas.blocked.clear()
+	for modifier in _modifiers:
+		for rect in modifier.ink_blocks():
+			var from: Vector2 = _to_cell(rect.position)
+			canvas.blocked.append(Rect2(from, _to_cell(rect.end) - from))
 
 
 func _apply_skin_offset() -> void:

@@ -49,8 +49,6 @@ var _bag: PackedStringArray = PackedStringArray()
 
 
 func _ready() -> void:
-	# Draw under the other tasks, so spiders stay in sight on top of the bubbles.
-	get_parent().move_child.call_deferred(self, 0)
 	_spawn_timer = first_delay
 	var screen: Vector2 = get_viewport_rect().size
 	hand = HAND_SCENE.instantiate()
