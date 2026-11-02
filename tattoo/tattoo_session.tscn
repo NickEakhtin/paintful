@@ -15,6 +15,7 @@
 [ext_resource type="Shader" path="res://tattoo/motion_blur.gdshader" id="11_blur"]
 [ext_resource type="PackedScene" path="res://tattoo/ink_cap.tscn" id="12_ink_cap"]
 [ext_resource type="Shader" path="res://tattoo/skin_redness.gdshader" id="16_redness"]
+[ext_resource type="Shader" path="res://tattoo/skin_press.gdshader" id="25_press"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/wince.wav" id="17_wince"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/heartbeat.wav" id="18_heartbeat"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/cry.wav" id="19_cry"]
@@ -45,6 +46,9 @@ shader_parameter/strength = 0.0
 
 [sub_resource type="ShaderMaterial" id="redness_material"]
 shader = ExtResource("16_redness")
+
+[sub_resource type="ShaderMaterial" id="press_material"]
+shader = ExtResource("25_press")
 
 [node name="TattooSession" type="CanvasLayer"]
 layer = 10
@@ -136,6 +140,26 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="PressCopy" type="BackBufferCopy" parent="View/Body"]
+copy_mode = 2
+
+[node name="Press" type="ColorRect" parent="View/Body"]
+visible = false
+material = SubResource("press_material")
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -340.0
+offset_right = 380.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
 [node name="Modifiers" type="Node2D" parent="View/Body"]
 
 [node name="SideTable" type="Panel" parent="View"]
@@ -203,6 +227,9 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
 text = "« Q — клиент"
+
+[node name="BlurCopy" type="BackBufferCopy" parent="."]
+copy_mode = 2
 
 [node name="MotionBlur" type="ColorRect" parent="."]
 visible = false

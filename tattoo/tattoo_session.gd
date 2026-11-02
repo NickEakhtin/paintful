@@ -38,6 +38,19 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 ## Seconds fresh ink takes to dry from wet gloss to matte.
 @export var ink_dry_time: float = 6.0
 
+@export_group("Feel")
+## Radius of the dent under the working needle, in pixels.
+@export var press_radius: float = 26.0
+## How far the picture is pulled into the dent, in pixels.
+@export var press_depth: float = 3.0
+## Pink halo around the tip; alpha is its strength.
+@export var press_tint: Color = Color(1.0, 0.45, 0.45, 0.28)
+## Seconds for the dent to appear and to go once the needle stops.
+@export var press_in_time: float = 0.08
+@export var press_out_time: float = 0.25
+## How far the skin picture trembles while the machine buzzes, in pixels.
+@export var skin_buzz: float = 0.5
+
 @export_group("Ink supply")
 ## Ink the machine holds, in filled-cell units (the black square is 22 500 cells).
 @export var ink_capacity: float = 3000.0
@@ -107,12 +120,15 @@ var _flinch: Vector2 = Vector2.ZERO
 var _tasks: Array[ModifierData] = []
 var _overheat_bag: Array[DialogueData] = []
 var _last_overheat_line: DialogueData = null
+## How hard the needle presses into the skin right now, 0..1 (the look only).
+var _press: float = 0.0
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
 @onready var _canvas_rect: Control = $View/Body/Canvas
 @onready var _stencil_layer: Control = $View/Body/Canvas/Stencil
 @onready var _redness: ColorRect = $View/Body/Redness
+@onready var _press_rect: ColorRect = $View/Body/Press
 @onready var _modifier_layer: Node2D = $View/Body/Modifiers
 @onready var _machine: TattooMachine = $Machine
 @onready var _hud: Control = $HUD
@@ -178,6 +194,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud.setup(part_names, MECHANICS.ink_supply)
 	_setup_skin_heat()
+	_setup_skin_press()
 	_hud.show_progress(canvas)
 	_tasks = tasks
 	if not MECHANICS.spirit_tasks:
@@ -209,6 +226,7 @@ func _process(delta: float) -> void:
 	_heat.cool(delta, cool_delay, cool_rate)
 	_heat.flush()
 	_update_redness(delta)
+	_update_skin_press(delta)
 	if MECHANICS.skin_heat and _heat.peak() >= fail_heat:
 		_overheat()
 		return
@@ -408,6 +426,40 @@ func _setup_skin_heat() -> void:
 	material.set_shader_parameter("corner_radius", _skin_corner_radius())
 
 
+func _setup_skin_press() -> void:
+	var material: ShaderMaterial = _press_rect.material
+	material.set_shader_parameter("radius", press_radius)
+	material.set_shader_parameter("depth", press_depth)
+	material.set_shader_parameter("tint", press_tint)
+	material.set_shader_parameter("size", skin.size)
+	material.set_shader_parameter("corner_radius", _skin_corner_radius())
+
+
+## The needle dents the skin while it works, and the picture trembles with the buzz.
+## Only the look: ink, heat and the needle itself don't move.
+## Hidden at once during a swing: the smear can't see what it draws.
+func _update_skin_press(delta: float) -> void:
+	if _turning:
+		_calm_press()
+		return
+	var working: bool = MECHANICS.skin_press and _machine.working
+	var time: float = press_in_time if working else press_out_time
+	_press = move_toward(_press, 1.0 if working else 0.0, delta / maxf(time, 0.001))
+	_press_rect.visible = _press > 0.0
+	if not _press_rect.visible:
+		return
+	var shake: Vector2 = Vector2(randf_range(-skin_buzz, skin_buzz), randf_range(-skin_buzz, skin_buzz)) if working else Vector2.ZERO
+	var material: ShaderMaterial = _press_rect.material
+	material.set_shader_parameter("tip", _machine.needle - _press_rect.get_global_rect().position)
+	material.set_shader_parameter("press", smoothstep(0.0, 1.0, _press))
+	material.set_shader_parameter("shake", shake)
+
+
+func _calm_press() -> void:
+	_press = 0.0
+	_press_rect.visible = false
+
+
 ## The working needle heats the skin under it, ink or no ink.
 func _heat_skin(working: bool, delta: float) -> void:
 	var point: Vector2 = _machine.needle - skin.get_global_rect().position
@@ -463,6 +515,7 @@ func _overheat() -> void:
 	_machine.working = false
 	_was_inking = false
 	_calm_skin()
+	_calm_press()
 	for modifier in _modifiers:
 		modifier.stop()
 	_cry.play()
@@ -635,6 +688,7 @@ func _finish() -> void:
 	_running = false
 	_machine.working = false
 	_calm_skin()
+	_calm_press()
 	_machine.weight = 0.0
 	_machine.visible = false
 	_set_highlight(0.0)
