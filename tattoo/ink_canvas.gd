@@ -46,6 +46,7 @@ func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 
 ## Adds ink in a soft circle: full `amount` at the centre, half at the edge.
 ## `center` and `radius` are in cells. Cells outside the stencil are skipped.
+## Every stencil cell under the needle turns wet again, already full ones too: fresh ink lies over old.
 ## Returns the ink actually laid down, in filled-cell units.
 func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var x0: int = maxi(0, floori(center.x - radius))
@@ -63,6 +64,7 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 			var d2: float = point.distance_squared_to(center)
 			if d2 <= r2 and not _is_blocked(point):
 				laid += _add_ink(cell, amount * (1.0 - 0.5 * d2 / r2))
+				_mark_inked(cell)
 	return laid
 
 
@@ -169,7 +171,6 @@ func _add_ink(cell: int, amount: float) -> float:
 		return 0.0
 	var after: float = minf(1.0, before + amount)
 	_set_ink(cell, after)
-	_mark_inked(cell)
 	if after >= 1.0:
 		var part: int = _part_of[cell]
 		_part_filled[part] += 1

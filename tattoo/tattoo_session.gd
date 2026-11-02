@@ -25,7 +25,7 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 
 @export_group("Tuning")
 ## Needle size in grid cells; the grid is InkCanvas.SIZE cells wide.
-@export var brush_radius: float = 9.0
+@export var brush_radius: float = 6.3
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
 @export_range(0.5, 1.0) var completion_threshold: float = 0.97
@@ -40,9 +40,9 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 
 @export_group("Feel")
 ## Radius of the dent under the working needle, in pixels.
-@export var press_radius: float = 26.0
+@export var press_radius: float = 18.0
 ## How far the picture is pulled into the dent, in pixels.
-@export var press_depth: float = 3.0
+@export var press_depth: float = 2.1
 ## Pink halo around the tip; alpha is its strength.
 @export var press_tint: Color = Color(1.0, 0.45, 0.45, 0.28)
 ## Seconds for the dent to appear and to go once the needle stops.

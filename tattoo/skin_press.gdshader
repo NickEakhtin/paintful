@@ -12,9 +12,9 @@ uniform vec2 tip = vec2(0.0);
 uniform float press = 0.0;
 // Picture offset this frame, in pixels.
 uniform vec2 shake = vec2(0.0);
-uniform float radius = 26.0;
+uniform float radius = 18.0;
 // Farthest the picture moves toward the tip, in pixels (halfway out the dent).
-uniform float depth = 3.0;
+uniform float depth = 2.1;
 // Light and shade on the dent's walls.
 uniform float shade = 0.14;
 uniform vec4 tint : source_color = vec4(1.0, 0.45, 0.45, 0.28);

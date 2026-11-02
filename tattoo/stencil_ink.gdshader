@@ -18,6 +18,8 @@ uniform vec4 gloss_color : source_color = vec4(0.85, 0.9, 1.0, 1.0);
 uniform float gloss_strength = 1.0;
 // How much the ink surface bulges at its edges and ripples, for the highlights.
 uniform float bump = 0.9;
+// Wet ink stands this much above dry ink, so a fresh stroke over old ink shows a glossy rim.
+uniform float wet_height = 0.6;
 uniform vec4 highlight_color : source_color = vec4(1.0, 0.72, 0.2, 1.0);
 // 1 once the part is complete: covers soft coverage at the edges.
 uniform float done = 0.0;
@@ -41,15 +43,19 @@ float noise(vec2 p) {
 
 // Ink times the part's shape at `uv`; `shape` is the part texture's alpha there
 // (TEXTURE can't be passed into a function in canvas shaders).
+float wetness(vec2 uv) {
+	return 1.0 - smoothstep(0.0, dry_time, now - texture(inked_at, uv).r);
+}
+
+// Height of the ink surface: wet ink sits on top of dry ink as its own layer.
 float ink_at(float shape, vec2 uv) {
-	return max(texture(coverage, uv).r, done) * shape;
+	return max(texture(coverage, uv).r, done) * shape * (1.0 + wet_height * wetness(uv));
 }
 
 void fragment() {
 	float shape = texture(TEXTURE, UV).a;
 	float ink = max(texture(coverage, UV).r, done);
-	float wet = 1.0 - smoothstep(0.0, dry_time, now - texture(inked_at, UV).r);
-	wet *= smoothstep(0.3, 1.0, ink);
+	float wet = wetness(UV) * smoothstep(0.3, 1.0, ink);
 
 	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
 	float step_uv = 1.5 / 256.0;
