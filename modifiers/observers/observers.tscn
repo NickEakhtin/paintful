@@ -1,9 +1,32 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://modifiers/observers/observers.gd" id="1_script"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/eye_open.wav" id="2_open"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/eye_close.wav" id="3_close"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/eye_twitch.wav" id="4_twitch"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/eye_poke.wav" id="5_poke"]
 
 [node name="Observers" type="Node2D"]
 script = ExtResource("1_script")
 draw_order = -1
 
 [node name="Eyes" type="Node2D" parent="."]
+
+[node name="Open" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_open")
+volume_db = -10.0
+max_polyphony = 3
+
+[node name="Close" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_close")
+volume_db = -12.0
+max_polyphony = 3
+
+[node name="Twitch" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4_twitch")
+volume_db = -10.0
+max_polyphony = 3
+
+[node name="Poke" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_poke")
+volume_db = -2.0

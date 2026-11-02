@@ -4,6 +4,8 @@ extends Node2D
 ## for a while, trembles as a warning and opens again. Ink can't go under it while it's open.
 ## State and timing only; the look lives under `Visual`, which reads it. The origin is the eye centre.
 
+signal state_changed(state: State)
+
 enum State { EMERGING, CLOSED, WARNING, OPENING, OPEN, CLOSING }
 
 ## Width and height of the open eye, in pixels. The task sets this and the timings before adding the eye.
@@ -35,6 +37,8 @@ var tremble: float = 0.0
 var gaze: Vector2 = Vector2.ZERO
 ## The skin under it is red: the white turns bloodshot, so the redness isn't hidden.
 var alarmed: bool = false
+## 1 right after a poke, fading to 0: the eye winces, the pupil shrinks, the white goes red.
+var flinch: float = 0.0
 
 var _timer: float = 0.0
 var _since_open: float = 0.0
@@ -52,6 +56,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	presence = minf(1.0, presence + delta / emerge_time)
+	flinch = maxf(0.0, flinch - delta * 3.0)
 	_since_open += delta
 	_timer -= delta
 	match state:
@@ -113,6 +118,11 @@ func look_at_point(point: Vector2, look_range: float, delta: float) -> void:
 		_gaze_target = Vector2(randf_range(-1.0, 1.0), randf_range(-0.6, 0.6))
 
 
+## The needle got it.
+func poke() -> void:
+	flinch = 1.0
+
+
 ## Shuts and stays shut (the tattoo is done).
 func shut() -> void:
 	_shut_for_good = true
@@ -126,3 +136,4 @@ func shut() -> void:
 func _enter(new_state: State, time: float) -> void:
 	state = new_state
 	_timer = time
+	state_changed.emit(new_state)

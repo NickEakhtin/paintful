@@ -27,6 +27,10 @@ func _init() -> void:
 	_save("wince.wav", _wince())
 	_save("cry.wav", _cry())
 	_save("heartbeat.wav", _heartbeat())
+	_save("eye_open.wav", _eye_blink(0.12, 900.0, 1.0))
+	_save("eye_close.wav", _eye_blink(0.1, 600.0, 0.6))
+	_save("eye_twitch.wav", _eye_twitch())
+	_save("eye_poke.wav", _eye_poke())
 	quit()
 
 
@@ -251,6 +255,52 @@ func _heartbeat() -> PackedFloat32Array:
 			if local >= 0.0:
 				value += sin(TAU * 52.0 * local) * exp(-local * 22.0) * minf(1.0, local * 300.0) * beat[1]
 		samples.append(value * 0.8)
+	return samples
+
+
+## Wet lids parting or meeting: a smacky noise tick with a short sine blip gliding to `pitch`.
+func _eye_blink(length: float, pitch: float, loudness: float) -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var phase: float = 0.0
+	for i in int(RATE * length):
+		var t: float = float(i) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.5)
+		phase += TAU * lerpf(pitch * 0.4, pitch, t / length) / RATE
+		var smack: float = smoothed * exp(-t * 90.0)
+		var blip: float = sin(phase) * exp(-t * 35.0) * 0.5
+		samples.append((smack + blip) * minf(1.0, t * 800.0) * loudness * 0.6)
+	return samples
+
+
+## A trembling lid before it opens: a few faint wet ticks, quieter than a blink. 0.4 s.
+func _eye_twitch() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	samples.resize(int(RATE * 0.4))
+	samples.fill(0.0)
+	for tick in 5:
+		var start: int = int(RATE * (0.03 + tick * 0.07 + randf_range(-0.01, 0.01)))
+		var smoothed: float = 0.0
+		for i in int(RATE * 0.025):
+			if start + i >= samples.size():
+				break
+			var t: float = float(i) / RATE
+			smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.45)
+			samples[start + i] += smoothed * exp(-t * 160.0) * 0.25
+	return samples
+
+
+## Needle in the eye: a squelch, wet low-passed noise over a thump sliding down.
+func _eye_poke() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var phase: float = 0.0
+	for i in int(RATE * 0.22):
+		var t: float = float(i) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.18)
+		phase += TAU * lerpf(220.0, 70.0, t / 0.22) / RATE
+		var wobble: float = 0.6 + 0.4 * sin(TAU * 38.0 * t)
+		samples.append((smoothed * 1.6 * wobble + sin(phase) * 0.7) * exp(-t * 14.0) * minf(1.0, t * 600.0) * 0.6)
 	return samples
 
 

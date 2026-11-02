@@ -1,7 +1,7 @@
 extends Node2D
 ## Placeholder look of an Eye: almond-shaped lids over a white with an amber iris, lashes on top.
 ## Shut, it's just the lid line with lashes and a faint crease. Swap this node for sprites later;
-## it only reads the parent's state (`openness`, `presence`, `tremble`, `gaze`, `alarmed`).
+## it only reads the parent's state (`openness`, `presence`, `tremble`, `gaze`, `alarmed`, `flinch`).
 
 const OUTLINE: Color = Color(0.2, 0.1, 0.09)
 const WHITE: Color = Color(0.95, 0.92, 0.86)
@@ -34,7 +34,8 @@ func _draw() -> void:
 	# The warning: the lid quivers and opens a crack now and then.
 	var shake: float = _eye.tremble * sin(time * 47.0) * 1.6
 	var crack: float = _eye.tremble * 0.07 * maxf(0.0, sin(time * 23.0))
-	var open: float = maxf(_eye.openness, crack)
+	# A poked eye winces: the lids narrow for a moment.
+	var open: float = maxf(_eye.openness * (1.0 - 0.4 * _eye.flinch), crack)
 	modulate.a = _eye.presence
 
 	var upper: PackedVector2Array = PackedVector2Array()
@@ -71,18 +72,19 @@ func _draw_open(white: PackedVector2Array, half: Vector2) -> void:
 	draw_polygon(white, colors)
 
 	# Veins from the corners; many and bright when the skin under it is red.
-	var vein_color: Color = Color(VEIN, 0.85 if _eye.alarmed else 0.3)
+	var red: float = 1.0 if _eye.alarmed else _eye.flinch
+	var vein_color: Color = Color(VEIN, lerpf(0.3, 0.9, red))
 	for vein in _veins:
 		var start: Vector2 = Vector2(vein.x * half.x, vein.y * half.y * 0.4)
 		var end: Vector2 = Vector2(vein.x * half.x * 0.45, vein.y * half.y * 0.6)
 		var mid: Vector2 = start.lerp(end, 0.5) + Vector2(0.0, vein.y * 6.0)
-		_clipped_line(PackedVector2Array([start, mid, end]), white, vein_color, 1.5 if _eye.alarmed else 1.0)
+		_clipped_line(PackedVector2Array([start, mid, end]), white, vein_color, lerpf(1.0, 1.8, red))
 
 	var iris_radius: float = half.y * 0.72
 	var center: Vector2 = _eye.gaze * Vector2(half.x - iris_radius * 1.1, half.y * 0.3)
 	_clipped_circle(center, iris_radius + 2.0, white, IRIS_RIM)
 	_clipped_circle(center, iris_radius, white, IRIS)
-	_clipped_circle(center, iris_radius * 0.45, white, PUPIL)
+	_clipped_circle(center, iris_radius * 0.45 * (1.0 - 0.45 * _eye.flinch), white, PUPIL)
 	_clipped_circle(center + Vector2(-0.35, -0.4) * iris_radius, iris_radius * 0.16, white, Color(1, 1, 1, 0.9))
 	if _eye.alarmed:
 		draw_polyline(white + PackedVector2Array([white[0]]), Color(VEIN, 0.8), 3.0, true)
