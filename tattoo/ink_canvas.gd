@@ -1,19 +1,26 @@
 class_name InkCanvas
 extends RefCounted
 ## Ink coverage of a stencil on a square grid. Pure logic: no nodes, no input.
-## Ink only lands inside the stencil. `texture` holds coverage (red channel, 0..1);
+## Ink only lands inside the stencil. `texture` holds coverage (red channel, 0..1),
+## `inked_at_texture` when each cell last took ink (in `time` seconds, for the wet gloss);
 ## call flush() once per frame to upload changes.
 
 signal part_completed(index: int)
 
 const SIZE: int = 256
+## `inked_at` of cells that never took ink: long dry.
+const NEVER: float = -10000.0
 
 var texture: ImageTexture
+var inked_at_texture: ImageTexture
+## Clock stamped on fresh ink; the session advances it.
+var time: float = 0.0
 ## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
 var blocked: Array[Rect2] = []
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
+var _inked_at: PackedFloat32Array = PackedFloat32Array()
 ## Part index per cell, -1 outside the stencil.
 var _part_of: PackedInt32Array = PackedInt32Array()
 var _part_cells: Array[PackedInt32Array] = []
@@ -22,6 +29,7 @@ var _part_done: PackedByteArray = PackedByteArray()
 var _pixels: PackedByteArray = PackedByteArray()
 var _image: Image
 var _dirty: bool = false
+var _inked_at_dirty: bool = false
 
 
 func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
@@ -31,6 +39,9 @@ func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 	_pixels.resize(SIZE * SIZE)
 	_image = Image.create_from_data(SIZE, SIZE, false, Image.FORMAT_R8, _pixels)
 	texture = ImageTexture.create_from_image(_image)
+	_inked_at.resize(SIZE * SIZE)
+	_inked_at.fill(NEVER)
+	inked_at_texture = ImageTexture.create_from_image(_inked_at_image())
 
 
 ## Adds ink in a soft circle: full `amount` at the centre, half at the edge.
@@ -91,6 +102,9 @@ func flush() -> void:
 		_image.set_data(SIZE, SIZE, false, Image.FORMAT_R8, _pixels)
 		texture.update(_image)
 		_dirty = false
+	if _inked_at_dirty:
+		inked_at_texture.update(_inked_at_image())
+		_inked_at_dirty = false
 
 
 func part_count() -> int:
@@ -135,6 +149,8 @@ func clear() -> void:
 func clear_part(index: int) -> void:
 	for cell in _part_cells[index]:
 		_set_ink(cell, 0.0)
+		_inked_at[cell] = NEVER
+	_inked_at_dirty = true
 	_part_filled[index] = 0
 	_part_done[index] = 0
 
@@ -153,6 +169,7 @@ func _add_ink(cell: int, amount: float) -> float:
 		return 0.0
 	var after: float = minf(1.0, before + amount)
 	_set_ink(cell, after)
+	_mark_inked(cell)
 	if after >= 1.0:
 		var part: int = _part_of[cell]
 		_part_filled[part] += 1
@@ -166,6 +183,18 @@ func _set_ink(cell: int, value: float) -> void:
 	_dirty = true
 
 
+func _mark_inked(cell: int) -> void:
+	_inked_at[cell] = time
+	_inked_at_dirty = true
+
+
+## Half floats filter on every GPU and are precise enough for a session-long clock.
+func _inked_at_image() -> Image:
+	var image: Image = Image.create_from_data(SIZE, SIZE, false, Image.FORMAT_RF, _inked_at.to_byte_array())
+	image.convert(Image.FORMAT_RH)
+	return image
+
+
 func _check_part(part: int) -> void:
 	if _part_done[part] == 1 or part_progress(part) < _threshold:
 		return
@@ -174,6 +203,7 @@ func _check_part(part: int) -> void:
 	for cell in _part_cells[part]:
 		if _ink[cell] < 1.0:
 			_set_ink(cell, 1.0)
+			_mark_inked(cell)
 	_part_filled[part] = _part_cells[part].size()
 	part_completed.emit(part)
 

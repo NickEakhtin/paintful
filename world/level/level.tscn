@@ -6,9 +6,7 @@
 [ext_resource type="Resource" path="res://data/clients/gleb.tres" id="9_gleb"]
 [ext_resource type="Script" path="res://characters/client/client_data.gd" id="10_client_data"]
 [ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="15_stencil_data"]
-[ext_resource type="Resource" path="res://data/stencils/sigil/sigil.tres" id="16_sigil"]
-[ext_resource type="Resource" path="res://data/stencils/eye/eye.tres" id="17_eye"]
-[ext_resource type="Resource" path="res://data/stencils/moon/moon.tres" id="18_moon"]
+[ext_resource type="Resource" path="res://data/stencils/square/square.tres" id="16_square"]
 [ext_resource type="Resource" path="res://data/dialogues/random_hello.tres" id="19_hello"]
 [ext_resource type="Resource" path="res://data/dialogues/random_bye.tres" id="20_bye"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/chop.wav" id="21_chop"]
@@ -93,7 +91,7 @@ entrance = NodePath("../Studio/EntranceDoor")
 open_sign = NodePath("../Studio/OpenSign")
 workstation = NodePath("../Studio/Workstation")
 seat_point = NodePath("../Studio/TattooChair/SeatPoint")
-random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_sigil"), ExtResource("17_eye"), ExtResource("18_moon")])
+random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_square")])
 random_greeting = ExtResource("19_hello")
 random_farewell = ExtResource("20_bye")
 back_door = NodePath("../Studio/BackDoor")

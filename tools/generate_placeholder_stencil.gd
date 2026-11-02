@@ -1,5 +1,5 @@
 extends SceneTree
-## Draws the placeholder stencils (sigil, eye, moon): one PNG per part in data/stencils/<name>/.
+## Draws the placeholder stencils (sigil, eye, moon, square): one PNG per part in data/stencils/<name>/.
 ## Run: Godot --headless --path . --script res://tools/generate_placeholder_stencil.gd
 
 const SIZE: int = 512
@@ -21,6 +21,8 @@ func _init() -> void:
 	_save("moon", "crescent", _crescent)
 	_save("moon", "stars", func(p: Vector2) -> bool: return _near_any(p, [Vector2(300, 180), Vector2(340, 270), Vector2(290, 340)], 17.0))
 	_save("moon", "dot_ring", func(p: Vector2) -> bool: return _near_any(p, _circle_points(12, 232.0, 0.0), 10.0))
+
+	_save("square", "square", func(p: Vector2) -> bool: return absf(p.x - CENTER.x) <= 150.0 and absf(p.y - CENTER.y) <= 150.0)
 	quit()
 
 

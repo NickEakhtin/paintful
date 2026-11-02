@@ -34,9 +34,11 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export_range(0.0, 1.0) var magnet_strength: float = 0.85
 ## How fast the needle catches up with where it should be; higher is snappier.
 @export var needle_follow: float = 42.0
+## Seconds fresh ink takes to dry from wet gloss to matte.
+@export var ink_dry_time: float = 6.0
 
 @export_group("Ink supply")
-## Ink the machine holds, in filled-cell units (the sigil is about 18 700 cells).
+## Ink the machine holds, in filled-cell units (the black square is 22 500 cells).
 @export var ink_capacity: float = 3000.0
 ## Clicks on the ink cap that fill an empty machine; each one adds an equal share.
 @export_range(1, 10) var refill_clicks: int = 3
@@ -161,6 +163,8 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = INK_SHADER
 		material.set_shader_parameter("coverage", canvas.texture)
+		material.set_shader_parameter("inked_at", canvas.inked_at_texture)
+		material.set_shader_parameter("dry_time", ink_dry_time)
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
 		rect.texture = part.texture
@@ -187,6 +191,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 
 
 func _process(delta: float) -> void:
+	_dry_ink(delta)
 	# Nothing happens while the screen fades in or out around the session.
 	if not _running or Transition.is_busy:
 		return
@@ -206,6 +211,15 @@ func _process(delta: float) -> void:
 	_hud.show_tasks(_modifiers)
 	if canvas.is_complete():
 		_finish()
+
+
+## Fresh ink keeps drying whatever else happens, the "done" panel included.
+func _dry_ink(delta: float) -> void:
+	if canvas == null:
+		return
+	canvas.time += delta
+	for material in _materials:
+		material.set_shader_parameter("now", canvas.time)
 
 
 func _unhandled_input(event: InputEvent) -> void:
