@@ -11,6 +11,7 @@ signal finished(result: SessionResult)
 
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
+const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 
 @export var stencil: StencilData
 ## Testing shortcut: F3 finishes the tattoo and closes the session at once. Turn off for release.
@@ -50,8 +51,6 @@ const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 @export var turn_time: float = 0.22
 
 @export_group("Skin")
-## Working the needle in one place heats the skin: it turns pink, then red, then the session starts over.
-@export var skin_heat_enabled: bool = true
 ## Heat grid cell, in pixels.
 @export var heat_cell: float = 8.0
 ## Radius of the heated circle under the needle, in pixels.
@@ -136,14 +135,18 @@ func _ready() -> void:
 func _start_if_main_scene() -> void:
 	if get_tree().current_scene == self and stencil != null and canvas == null:
 		finished.connect(func(_done: SessionResult) -> void: get_tree().reload_current_scene())
-		if fixed_tasks.is_empty():
+		if fixed_tasks.is_empty() and MECHANICS.spirit_tasks:
 			roll_and_start(stencil)
 		else:
 			start(stencil, fixed_tasks)
 
 
 ## Lets the spirit spin the roulette over the bare skin, then starts with what came up.
+## With spirit tasks switched off it starts at once, without tasks.
 func roll_and_start(new_stencil: StencilData) -> void:
+	if not MECHANICS.spirit_tasks:
+		start(new_stencil)
+		return
 	var roulette: Roulette = ROULETTE_SCENE.instantiate()
 	add_child(roulette)
 	var tasks: Array[ModifierData] = await roulette.spin(task_pool)
@@ -173,14 +176,18 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_stencil_layer.add_child(rect)
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_hud.setup(part_names)
+	_hud.setup(part_names, MECHANICS.ink_supply)
 	_setup_skin_heat()
 	_hud.show_progress(canvas)
 	_tasks = tasks
-	_add_modifiers(tasks)
+	if not MECHANICS.spirit_tasks:
+		_tasks = []
+	_add_modifiers(_tasks)
 	_hud.setup_tasks(_modifiers)
 
 	_machine.visible = true
+	_machine.inertia = MECHANICS.machine_inertia
+	_machine.show_gauge = MECHANICS.ink_supply
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
 	_show_turn_hints()
@@ -202,7 +209,7 @@ func _process(delta: float) -> void:
 	_heat.cool(delta, cool_delay, cool_rate)
 	_heat.flush()
 	_update_redness(delta)
-	if skin_heat_enabled and _heat.peak() >= fail_heat:
+	if MECHANICS.skin_heat and _heat.peak() >= fail_heat:
 		_overheat()
 		return
 	_update_ink_display()
@@ -342,7 +349,9 @@ func _apply_skin_offset() -> void:
 func _update_needle(delta: float) -> void:
 	var desired: Vector2 = _machine.pointer
 	var pointer_cell: Vector2 = _to_cell(_machine.pointer)
-	var target: Vector2 = canvas.find_unfilled_near(pointer_cell, magnet_radius)
+	var target: Vector2 = Vector2.INF
+	if MECHANICS.magnet:
+		target = canvas.find_unfilled_near(pointer_cell, magnet_radius)
 	if target.is_finite():
 		var distance: float = pointer_cell.distance_to(target) / magnet_radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
@@ -381,7 +390,8 @@ func _paint(delta: float) -> void:
 			laid = canvas.stroke(_last_cell, cell, brush_radius, ink_rate * delta)
 		else:
 			laid = canvas.stamp(cell, brush_radius, ink_rate * delta)
-		_ink_left = maxf(0.0, _ink_left - laid)
+		if MECHANICS.ink_supply:
+			_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
 	_was_inking = inking
 	_heat_skin(inking, delta)
@@ -401,7 +411,7 @@ func _setup_skin_heat() -> void:
 ## The working needle heats the skin under it, ink or no ink.
 func _heat_skin(working: bool, delta: float) -> void:
 	var point: Vector2 = _machine.needle - skin.get_global_rect().position
-	var heating: bool = skin_heat_enabled and working and _is_on_skin(point)
+	var heating: bool = MECHANICS.skin_heat and working and _is_on_skin(point)
 	if heating:
 		_heat.heat(_last_heat_point if _was_heating else point, point, heat_radius, heat_rate * delta)
 	_last_heat_point = point
@@ -570,9 +580,10 @@ func _turn(to_table: bool) -> void:
 
 
 ## Each view shows only the way to the other one.
+## Without the ink supply there's no reason to turn, so no hints.
 func _show_turn_hints() -> void:
-	_to_table_hint.visible = not _at_table
-	_to_client_hint.visible = _at_table
+	_to_table_hint.visible = MECHANICS.ink_supply and not _at_table
+	_to_client_hint.visible = MECHANICS.ink_supply and _at_table
 
 
 ## Peaks halfway through the swing.

@@ -60,6 +60,13 @@ var ink_level: float = 1.0:
 			ink_level = value
 			queue_redraw()
 var low_ink: bool = false
+## Whether the ink gauge is drawn.
+var show_gauge: bool = true:
+	set(value):
+		show_gauge = value
+		queue_redraw()
+## Off: the needle is exactly at `needle` with no spring lag; the top still swings.
+var inertia: bool = true
 ## How fast the needle really moves, in pixels per second. Zero right after a teleport.
 var velocity: Vector2:
 	get:
@@ -114,6 +121,9 @@ func _simulate(delta: float) -> void:
 		_position = _target
 		_velocity = Vector2.ZERO
 	var steps: int = maxi(1, ceili(delta / MAX_STEP))
+	if not inertia:
+		_velocity = (_target - _position) / maxf(delta, 0.0001)
+		_position = _target
 	for i in steps:
 		_step(delta / steps)
 
@@ -121,8 +131,9 @@ func _simulate(delta: float) -> void:
 func _step(delta: float) -> void:
 	# A mass on a spring: frequency falls with the square root of the mass.
 	var heavy: float = 1.0 / sqrt(1.0 + weight)
-	_velocity += _spring(_target - _position, _velocity, follow_frequency * heavy, follow_damping) * delta
-	_position += _velocity * delta
+	if inertia:
+		_velocity += _spring(_target - _position, _velocity, follow_frequency * heavy, follow_damping) * delta
+		_position += _velocity * delta
 
 	var lean_target: Vector2 = (-_velocity * lean_per_speed).limit_length(max_lean)
 	_lean_velocity += _spring(lean_target - _lean, _lean_velocity, swing_frequency * heavy, swing_damping) * delta
@@ -164,7 +175,8 @@ func _hold_basis(across: float) -> Basis:
 
 
 func _draw() -> void:
-	_draw_gauge()
+	if show_gauge:
+		_draw_gauge()
 
 
 ## Vertical ink gauge up and to the left of the needle, clear of the machine body.

@@ -19,8 +19,10 @@ var _flash_tween: Tween
 @onready var _skin_warning: Label = $SkinWarning
 
 
-func setup(part_names: PackedStringArray) -> void:
+func setup(part_names: PackedStringArray, ink_supply: bool = true) -> void:
 	_part_names = part_names
+	if not ink_supply:
+		_hint.text = "ЛКМ — бить · ПКМ — показать недобитое · F3 — пропустить (тест)"
 	for part_name in part_names:
 		var label: Label = _make_label(22)
 		_parts.add_child(label)

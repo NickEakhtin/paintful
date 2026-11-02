@@ -10,6 +10,7 @@ extends Node
 const CLIENT_SCENE: PackedScene = preload("res://characters/client/client.tscn")
 const SESSION_SCENE: PackedScene = preload("res://tattoo/tattoo_session.tscn")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
+const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 const SPIRIT_FIRST_DAY: DialogueData = preload("res://data/dialogues/spirit_day1.tres")
 const SPIRIT_MORNING: DialogueData = preload("res://data/dialogues/spirit_morning.tres")
 const SPIRIT_ROULETTE: DialogueData = preload("res://data/dialogues/spirit_roulette.tres")
@@ -87,8 +88,11 @@ func _run_day() -> void:
 		var client: Client = next
 		var is_last: bool = i == clients.size() - 1
 		await _greet(client)
-		var tasks: Array[ModifierData] = await _spirit_roulette()
-		await _prepare_table(client)
+		var tasks: Array[ModifierData] = []
+		if MECHANICS.spirit_tasks:
+			tasks = await _spirit_roulette()
+		if MECHANICS.table_prep:
+			await _prepare_table(client)
 		await _call_to_chair(client)
 		var result: SessionResult = await _tattoo(client, tasks)
 		if is_last:
@@ -99,7 +103,8 @@ func _run_day() -> void:
 			client.stand_up(_point("ChairSeat"))
 			next = _bring_in(clients[i + 1])
 			_walk_out(client)
-			await _tidy_up()
+			if MECHANICS.table_cleanup:
+				await _tidy_up()
 
 	open_sign.can_close = true
 	Events.objective_changed.emit("Закрой студию")

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Mechanics" format=3]
+
+[ext_resource type="Script" path="res://tattoo/mechanics.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+spirit_tasks = false
+skin_heat = false
+ink_supply = false
+magnet = false
+machine_inertia = false
+table_prep = false
+table_cleanup = false
