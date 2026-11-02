@@ -39,8 +39,10 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-float ink_at(sampler2D part, vec2 uv) {
-	return max(texture(coverage, uv).r, done) * texture(part, uv).a;
+// Ink times the part's shape at `uv`; `shape` is the part texture's alpha there
+// (TEXTURE can't be passed into a function in canvas shaders).
+float ink_at(float shape, vec2 uv) {
+	return max(texture(coverage, uv).r, done) * shape;
 }
 
 void fragment() {
@@ -51,8 +53,10 @@ void fragment() {
 
 	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
 	float step_uv = 1.5 / 256.0;
-	vec2 slope = vec2(ink_at(TEXTURE, UV + vec2(step_uv, 0.0)) - ink_at(TEXTURE, UV - vec2(step_uv, 0.0)),
-			ink_at(TEXTURE, UV + vec2(0.0, step_uv)) - ink_at(TEXTURE, UV - vec2(0.0, step_uv)));
+	vec2 dx = vec2(step_uv, 0.0);
+	vec2 dy = vec2(0.0, step_uv);
+	vec2 slope = vec2(ink_at(texture(TEXTURE, UV + dx).a, UV + dx) - ink_at(texture(TEXTURE, UV - dx).a, UV - dx),
+			ink_at(texture(TEXTURE, UV + dy).a, UV + dy) - ink_at(texture(TEXTURE, UV - dy).a, UV - dy));
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;
 	vec3 normal = normalize(vec3(-(slope + ripple * 0.12) * bump, 1.0));
 
