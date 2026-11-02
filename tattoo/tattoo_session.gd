@@ -51,6 +51,18 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 ## How far the skin picture trembles while the machine buzzes, in pixels.
 @export var skin_buzz: float = 0.5
 
+@export_group("Flow")
+## Seconds of steady stroking over the stencil to reach full flow.
+@export var flow_build_time: float = 5.0
+## Seconds full flow takes to fade once the stroke breaks.
+@export var flow_fade_time: float = 1.2
+## A break shorter than this (a quick slip off the stencil) doesn't touch the flow.
+@export var flow_grace: float = 0.25
+## Slower than this (pixels per second) the needle counts as standing: flow holds, doesn't grow.
+@export var flow_min_speed: float = 40.0
+## Trail widens by this share of `brush_radius` at full flow.
+@export var flow_brush_bonus: float = 0.25
+
 @export_group("Ink supply")
 ## Ink the machine holds, in filled-cell units (the black square is 22 500 cells).
 @export var ink_capacity: float = 3000.0
@@ -122,6 +134,7 @@ var _overheat_bag: Array[DialogueData] = []
 var _last_overheat_line: DialogueData = null
 ## How hard the needle presses into the skin right now, 0..1 (the look only).
 var _press: float = 0.0
+var _flow: InkFlow
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
@@ -175,6 +188,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
 	canvas = InkCanvas.new(stencil, completion_threshold)
 	canvas.part_completed.connect(_on_part_completed)
+	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
 	var part_names: PackedStringArray = PackedStringArray()
 	for part in stencil.parts:
@@ -389,6 +403,7 @@ func _paint(delta: float) -> void:
 		_machine.working = false
 		_was_inking = false
 		_was_heating = false
+		_update_flow(delta, false)
 		return
 	var pressing: bool = Input.is_action_pressed("use")
 	var clicked: bool = Input.is_action_just_pressed("use")
@@ -402,17 +417,27 @@ func _paint(delta: float) -> void:
 		_dip()
 	var inking: bool = pressing and not over_cap and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
+	_update_flow(delta, inking and _ink_left > 0.0 and canvas.is_stencil(cell))
 	if inking and _ink_left > 0.0:
+		var radius: float = brush_radius * (1.0 + flow_brush_bonus * _flow.strength())
 		var laid: float
 		if _was_inking:
-			laid = canvas.stroke(_last_cell, cell, brush_radius, ink_rate * delta)
+			laid = canvas.stroke(_last_cell, cell, radius, ink_rate * delta)
 		else:
-			laid = canvas.stamp(cell, brush_radius, ink_rate * delta)
+			laid = canvas.stamp(cell, radius, ink_rate * delta)
 		if MECHANICS.ink_supply:
 			_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
 	_was_inking = inking
 	_heat_skin(inking, delta)
+
+
+## `stroking`: the needle inks over the stencil right now. Flow builds while it also moves.
+func _update_flow(delta: float, stroking: bool) -> void:
+	stroking = stroking and MECHANICS.flow
+	var moving: bool = _machine.velocity.length() > flow_min_speed
+	_flow.update(delta, stroking and moving, stroking and not moving)
+	_machine.flow = _flow.strength()
 
 
 func _setup_skin_heat() -> void:
@@ -516,6 +541,8 @@ func _overheat() -> void:
 	_was_inking = false
 	_calm_skin()
 	_calm_press()
+	_flow.clear()
+	_machine.flow = 0.0
 	for modifier in _modifiers:
 		modifier.stop()
 	_cry.play()
@@ -689,6 +716,8 @@ func _finish() -> void:
 	_machine.working = false
 	_calm_skin()
 	_calm_press()
+	_flow.clear()
+	_machine.flow = 0.0
 	_machine.weight = 0.0
 	_machine.visible = false
 	_set_highlight(0.0)

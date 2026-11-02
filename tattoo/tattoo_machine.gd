@@ -28,6 +28,18 @@ const MAX_STEP: float = 1.0 / 120.0
 ## Which way the top of the machine points over the skin (x right, y up on screen).
 @export var hold_heading: Vector2 = Vector2(0.65, 0.75)
 
+@export_group("Flow")
+## Hum pitch added at full flow (0.12 is about two semitones).
+@export var flow_pitch: float = 0.12
+## Hum volume added at full flow, in dB.
+@export var flow_volume_db: float = 3.0
+## Soft glow around the needle tip in flow: the spirit in the machine likes a steady hand.
+@export var glow_color: Color = Color(0.62, 0.3, 0.95, 0.45)
+@export var glow_radius_min: float = 40.0
+@export var glow_radius_max: float = 80.0
+## Seconds per breath of the glow at full flow.
+@export var glow_breath: float = 1.5
+
 @export_group("Weight")
 ## How quickly the needle catches up with the hand, in radians per second. Lower feels heavier.
 @export var follow_frequency: float = 33.0
@@ -67,6 +79,8 @@ var show_gauge: bool = true:
 		queue_redraw()
 ## Off: the needle is exactly at `needle` with no spring lag; the top still swings.
 var inertia: bool = true
+## Flow strength, 0..1 (the session's `InkFlow`): higher hum, glow at the tip.
+var flow: float = 0.0
 ## How fast the needle really moves, in pixels per second. Zero right after a teleport.
 var velocity: Vector2:
 	get:
@@ -78,9 +92,12 @@ var _velocity: Vector2 = Vector2.ZERO
 ## How far the top leans from the hold direction (screen axes), and how fast it's swinging.
 var _lean: Vector2 = Vector2.ZERO
 var _lean_velocity: Vector2 = Vector2.ZERO
+var _hum_volume_db: float = 0.0
+var _spray_speed: float = 0.0
 
 @onready var _spray: CPUParticles2D = $Spray
 @onready var _hum: AudioStreamPlayer = $Hum
+@onready var _glow: Sprite2D = $Glow
 @onready var _view: SubViewport = $Model
 @onready var _camera: Camera3D = $Model/Camera3D
 @onready var _model: Node3D = $Model/TattooMachineModel
@@ -90,6 +107,8 @@ func _ready() -> void:
 	pointer = get_viewport().get_mouse_position()
 	_target = pointer
 	_position = pointer
+	_hum_volume_db = _hum.volume_db
+	_spray_speed = _spray.initial_velocity_max
 
 
 func _input(event: InputEvent) -> void:
@@ -107,11 +126,24 @@ func _process(delta: float) -> void:
 
 	var dry: bool = ink_level <= 0.0
 	_spray.emitting = working and not dry
-	_hum.pitch_scale = 0.8 if dry else 1.0 # a dry machine sounds hollow
+	_spray.initial_velocity_max = _spray_speed * (1.0 + 0.6 * flow)
+	_hum.pitch_scale = 0.8 if dry else 1.0 + flow_pitch * flow # a dry machine sounds hollow
+	_hum.volume_db = _hum_volume_db + flow_volume_db * flow
+	_update_glow()
 	if working and not _hum.playing:
 		_hum.play()
 	elif not working and _hum.playing:
 		_hum.stop()
+
+
+func _update_glow() -> void:
+	_glow.visible = flow > 0.0
+	if not _glow.visible:
+		return
+	var breath: float = 1.0 + 0.1 * flow * sin(Time.get_ticks_msec() / 1000.0 * TAU / glow_breath)
+	var radius: float = lerpf(glow_radius_min, glow_radius_max, flow) * breath
+	_glow.scale = Vector2.ONE * radius / (_glow.texture.get_width() * 0.5)
+	_glow.modulate = Color(glow_color, glow_color.a * flow)
 
 
 ## Mass on a spring: the needle chases the hand, the top chases its lean.
