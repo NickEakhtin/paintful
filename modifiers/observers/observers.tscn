@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://modifiers/observers/observers.gd" id="1_script"]
+
+[node name="Observers" type="Node2D"]
+script = ExtResource("1_script")
+draw_order = -1
+
+[node name="Eyes" type="Node2D" parent="."]

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ModifierData" format=3]
+
+[ext_resource type="Script" path="res://modifiers/modifier_data.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://modifiers/observers/observers.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"observers"
+display_name = "Наблюдатели"
+spirit_line = "Я хочу видеть, как ты работаешь. Не коли мне в глаза."
+color = Color(0.85, 0.35, 0.6, 1)
+scene = ExtResource("2_scene")
