@@ -100,6 +100,8 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 @export var cool_rate: float = 0.2
 
 var canvas: InkCanvas
+## The ink's look at the screen's resolution (InkPaint), fed from `canvas` every frame.
+var _paint_view: InkPaint = null
 ## The skin panel; tasks may tint it.
 @onready var skin: Panel = $View/Body/Skin
 
@@ -188,6 +190,12 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
 	canvas = InkCanvas.new(stencil, completion_threshold)
 	canvas.part_completed.connect(_on_part_completed)
+	if _paint_view != null:
+		_paint_view.queue_free()
+	_paint_view = InkPaint.new()
+	add_child(_paint_view)
+	var pixels: Vector2 = _canvas_rect.get_global_rect().size * get_viewport().get_final_transform().get_scale()
+	_paint_view.setup(maxf(pixels.x, pixels.y), InkCanvas.SIZE)
 	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
 	var part_names: PackedStringArray = PackedStringArray()
@@ -196,12 +204,15 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = INK_SHADER
 		material.set_shader_parameter("coverage", canvas.texture)
+		material.set_shader_parameter("paint", _paint_view.get_texture())
+		material.set_shader_parameter("paint_texel", 1.0 / _paint_view.size.x)
 		material.set_shader_parameter("inked_at", canvas.inked_at_texture)
 		material.set_shader_parameter("dry_time", ink_dry_time)
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
 		rect.texture = part.texture
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # big stencils stay clean on small screens
 		rect.material = material
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_stencil_layer.add_child(rect)
@@ -245,7 +256,7 @@ func _process(delta: float) -> void:
 		_overheat()
 		return
 	_update_ink_display()
-	canvas.flush()
+	_flush_ink()
 	_hud.show_progress(canvas)
 	_hud.show_tasks(_modifiers)
 	if canvas.is_complete():
@@ -290,7 +301,9 @@ func skip() -> void:
 		for cell in canvas._part_cells[part]:
 			@warning_ignore("integer_division")
 			canvas.stamp(Vector2(cell % InkCanvas.SIZE + 0.5, cell / InkCanvas.SIZE + 0.5), 0.5, 1.0)
-	canvas.flush()
+	canvas.dabs.clear()   # every part is done now, and done parts show full anyway
+	canvas.strokes.clear()
+	_flush_ink()
 	_finish()
 	_waiting_for_close = false
 	finished.emit(_result)
@@ -563,7 +576,7 @@ func _overheat() -> void:
 ## Everything back to the start: no ink, a full machine, cool skin, fresh tasks, the view on the client.
 func _restart() -> void:
 	canvas.clear()
-	canvas.flush()
+	_flush_ink()
 	for material in _materials:
 		material.set_shader_parameter("done", 0.0)
 		material.set_shader_parameter("flash", 0.0)
@@ -669,6 +682,17 @@ func _show_turn_hints() -> void:
 ## Peaks halfway through the swing.
 func _set_blur(progress: float) -> void:
 	(_blur.material as ShaderMaterial).set_shader_parameter("strength", sin(progress * PI))
+
+
+## Uploads the grid and hands this frame's stamps (or a wipe) to the screen-resolution look.
+func _flush_ink() -> void:
+	if canvas.cleared:
+		canvas.cleared = false
+		_paint_view.clear_ink()
+	_paint_view.add_ink(canvas.dabs, canvas.strokes)
+	canvas.dabs.clear()
+	canvas.strokes.clear()
+	canvas.flush()
 
 
 func _to_cell(screen_position: Vector2) -> Vector2:

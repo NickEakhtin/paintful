@@ -17,6 +17,14 @@ var inked_at_texture: ImageTexture
 var time: float = 0.0
 ## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
 var blocked: Array[Rect2] = []
+## Every stamp since the look last took them, as (centre x, centre y, radius, amount) in cells: InkPaint redraws
+## them at the screen's resolution. A stroke is kept as one segment in `strokes` instead. The look clears both.
+var dabs: Array[Vector4] = []
+## Strokes since the look last took them: [from (cells), to (cells), radius, amount].
+var strokes: Array[Array] = []
+var _in_stroke: bool = false
+## Set when ink was taken off; the look wipes itself and clears this.
+var cleared: bool = false
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
@@ -55,6 +63,8 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var y1: int = mini(SIZE - 1, ceili(center.y + radius))
 	var r2: float = radius * radius
 	var laid: float = 0.0
+	if not _in_stroke:
+		dabs.append(Vector4(center.x, center.y, radius, amount))
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * SIZE + x
@@ -73,8 +83,11 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * 0.5)))
 	var laid: float = 0.0
+	strokes.append([from, to, radius, amount])
+	_in_stroke = true
 	for i in steps:
 		laid += stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
+	_in_stroke = false
 	return laid
 
 
@@ -149,6 +162,7 @@ func clear() -> void:
 
 ## Takes all ink off a part, done or not.
 func clear_part(index: int) -> void:
+	cleared = true
 	for cell in _part_cells[index]:
 		_set_ink(cell, 0.0)
 		_inked_at[cell] = NEVER

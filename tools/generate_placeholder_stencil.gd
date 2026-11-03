@@ -1,8 +1,11 @@
 extends SceneTree
 ## Draws the placeholder stencils (sigil, eye, moon, square): one PNG per part in data/stencils/<name>/.
+## The shapes are laid out on a 512-unit square and drawn at OUT_SIZE pixels (2048: sharp on a 4K screen; real
+## stencils follow the same rule, 2048 px per part, 4096 for big ones). Writes over existing files.
 ## Run: Godot --headless --path . --script res://tools/generate_placeholder_stencil.gd
 
 const SIZE: int = 512
+const OUT_SIZE: int = 2048
 const OUT_DIR: String = "res://data/stencils/"
 const CENTER: Vector2 = Vector2(SIZE / 2.0, SIZE / 2.0)
 
@@ -28,10 +31,11 @@ func _init() -> void:
 
 func _save(stencil: String, part_name: String, inside: Callable) -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + stencil)
-	var image: Image = Image.create_empty(SIZE, SIZE, false, Image.FORMAT_RGBA8)
-	for y in SIZE:
-		for x in SIZE:
-			if inside.call(Vector2(x + 0.5, y + 0.5)):
+	var image: Image = Image.create_empty(OUT_SIZE, OUT_SIZE, false, Image.FORMAT_RGBA8)
+	var unit: float = float(SIZE) / OUT_SIZE
+	for y in OUT_SIZE:
+		for x in OUT_SIZE:
+			if inside.call(Vector2(x + 0.5, y + 0.5) * unit):
 				image.set_pixel(x, y, Color.WHITE)
 	image.save_png("%s%s/%s.png" % [OUT_DIR, stencil, part_name])
 
