@@ -52,11 +52,15 @@ func _ready() -> void:
 	body.add_child(shape)
 	add_child(body)
 	# the interactable stays over the opening (the player walks through it), so the hatch can be closed again
-	# after it has slid away under the floor
+	# after it has slid away under the floor; it stands a little above the lid, so the ray meets it before the lid
 	_interactable = Interactable.new()
 	_interactable.name = "Interactable"
 	_interactable.top_level = true
-	_interactable.add_child(shape.duplicate())
+	var zone: CollisionShape3D = CollisionShape3D.new()
+	zone.shape = BoxShape3D.new()
+	(zone.shape as BoxShape3D).size = Vector3(size.x, 0.14, size.z)
+	zone.position.y = 0.05
+	_interactable.add_child(zone)
 	_interactable.interacted.connect(_on_interacted)
 	add_child(_interactable)
 	_interactable.global_transform = global_transform

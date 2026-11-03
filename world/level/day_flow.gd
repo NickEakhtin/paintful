@@ -265,6 +265,8 @@ func _prepare_ritual() -> void:
 		var text: String = "Подготовь ритуал: свечи в круг %d/%d" % [placed, spots.size()]
 		if not knife_ready:
 			text += ", нож на жертвенный стол"
+		if not level_switch.underground:
+			text = "Спустись в подвал: люк в конце коридора за тату-залом"
 		Events.objective_changed.emit(text)
 		await get_tree().create_timer(0.2).timeout
 
