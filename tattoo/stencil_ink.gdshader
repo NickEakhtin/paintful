@@ -1,20 +1,19 @@
 shader_type canvas_item;
 // Draws one stencil part: the faint transfer turns into ink where coverage grows.
-// Edges come from the full-resolution part texture and the ink's shape from `paint` (InkPaint: the same stamps
-// drawn at the screen's resolution), so strokes stay crisp on any monitor; the low-resolution logic grid
-// (`coverage`) only masks it, so ink shows only where the logic laid some.
+// Edges come from the full-resolution part texture, the ink's shape and its wetness from InkPaint (`paint`,
+// `wet`: the logic's stamps drawn at the screen's resolution), so strokes stay crisp on any monitor.
 // Fresh ink is wet: deep black with a glossy sheen (a window reflection plus a bright rim
 // where it beads at the edges); over `dry_time` it dries to flat, slightly grey matte.
 
-uniform sampler2D coverage : filter_linear, repeat_disable, hint_default_black;
 uniform sampler2D paint : filter_linear, repeat_disable, hint_default_black;
+// 1 where ink just landed, decaying as exp(-3 * age / dry_time) (InkPaint.DECAY).
+uniform sampler2D wet_map : filter_linear, repeat_disable, hint_default_black;
 // One texel of `paint`, in UV.
 uniform float paint_texel = 0.00390625;
 // How dark the first touch of the needle shows: ink appears with a crisp edge at once and darkens with every
 // pass until the spot is full (the logic still counts only full ink).
 uniform float first_pass = 0.35;
-// When each cell last took ink, in the same clock as `now` (InkCanvas.inked_at_texture).
-uniform sampler2D inked_at : filter_linear, repeat_disable, hint_default_black;
+// The session clock; only the ripple of wet ink moves with it.
 uniform float now = 0.0;
 uniform float dry_time = 6.0;
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
@@ -48,18 +47,18 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-// Ink at `uv`: the screen-resolution dabs, where the logic grid has any ink at all.
+// Ink at `uv`, from the screen-resolution dabs.
 float ink_amount(vec2 uv) {
-	float gate = smoothstep(0.0, 0.01, texture(coverage, uv).r);   // wider than the stroke: never cuts its rim
 	float laid = texture(paint, uv).r;
-	float presence = smoothstep(0.0, 0.015, laid);                   // the dab's rim: a pixel wide
-	return max(presence * mix(first_pass, 1.0, smoothstep(0.0, 1.0, min(laid, 1.0))) * gate, done);
+	float presence = smoothstep(0.0, 0.004, laid);                   // the dab's rim: a pixel wide, faint touches too
+	return max(presence * mix(first_pass, 1.0, smoothstep(0.0, 1.0, min(laid, 1.0))), done);
 }
 
 // Ink times the part's shape at `uv`; `shape` is the part texture's alpha there
 // (TEXTURE can't be passed into a function in canvas shaders).
 float wetness(vec2 uv) {
-	return 1.0 - smoothstep(0.0, dry_time, now - texture(inked_at, uv).r);
+	float age = -log(max(texture(wet_map, uv).r, 1e-6)) / 3.0;   // in dry times
+	return 1.0 - smoothstep(0.0, 1.0, age);
 }
 
 // Height of the ink surface: wet ink sits on top of dry ink as its own layer.

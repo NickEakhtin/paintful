@@ -195,7 +195,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_paint_view = InkPaint.new()
 	add_child(_paint_view)
 	var pixels: Vector2 = _canvas_rect.get_global_rect().size * get_viewport().get_final_transform().get_scale()
-	_paint_view.setup(maxf(pixels.x, pixels.y), InkCanvas.SIZE)
+	_paint_view.setup(maxf(pixels.x, pixels.y), InkCanvas.SIZE, ink_dry_time)
 	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
 	var part_names: PackedStringArray = PackedStringArray()
@@ -203,10 +203,9 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		part_names.append(part.display_name)
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = INK_SHADER
-		material.set_shader_parameter("coverage", canvas.texture)
-		material.set_shader_parameter("paint", _paint_view.get_texture())
-		material.set_shader_parameter("paint_texel", 1.0 / _paint_view.size.x)
-		material.set_shader_parameter("inked_at", canvas.inked_at_texture)
+		material.set_shader_parameter("paint", _paint_view.coverage)
+		material.set_shader_parameter("wet_map", _paint_view.wetness)
+		material.set_shader_parameter("paint_texel", _paint_view.texel())
 		material.set_shader_parameter("dry_time", ink_dry_time)
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
@@ -689,6 +688,7 @@ func _flush_ink() -> void:
 	if canvas.cleared:
 		canvas.cleared = false
 		_paint_view.clear_ink()
+	_paint_view.set_blocks(canvas.blocked)
 	_paint_view.add_ink(canvas.dabs, canvas.strokes)
 	canvas.dabs.clear()
 	canvas.strokes.clear()
