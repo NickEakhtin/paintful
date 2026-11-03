@@ -53,6 +53,11 @@ func hint() -> String:
 	return ""
 
 
+## The "show what's left" ping, 0..1 (rises, then fades). A skin can light up what's left out of sight.
+func set_highlight(_value: float, _canvas: InkCanvas) -> void:
+	pass
+
+
 ## Per frame, from the session. `active`: the player may use the free hand on the skin now.
 func update_surface(_delta: float, _active: bool) -> void:
 	pass

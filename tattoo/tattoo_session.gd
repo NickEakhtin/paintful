@@ -728,6 +728,8 @@ func _ping_highlight() -> void:
 func _set_highlight(value: float) -> void:
 	for material in _materials:
 		material.set_shader_parameter("highlight", value)
+	if _surface != null and canvas != null:
+		_surface.set_highlight(value, canvas)
 
 
 func _on_part_completed(index: int) -> void:

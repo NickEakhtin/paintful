@@ -21,13 +21,16 @@ var side: int = 0
 var amount: float = 0.0
 ## Tilt of the pull, positive = up.
 var angle: float = 0.0
+## Whether the key for the gripped side is held right now.
+var holding: bool = false
 
 
 func update(delta: float, left: bool, right: bool, up: bool, down: bool) -> void:
 	var want: int = 0
 	if left != right:
 		want = -1 if left else 1
-	if want != 0 and (side == want or amount <= 0.0):
+	holding = want != 0 and (side == want or amount <= 0.0)
+	if holding:
 		if side != want:
 			side = want
 			angle = 0.0
@@ -46,6 +49,7 @@ func shear(max_pull: float) -> float:
 
 
 func release() -> void:
+	holding = false
 	side = 0
 	amount = 0.0
 	angle = 0.0

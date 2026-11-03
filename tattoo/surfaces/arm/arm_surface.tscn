@@ -4,6 +4,8 @@
 [ext_resource type="Shader" path="res://tattoo/surfaces/arm/arm_skin.gdshader" id="2_skin"]
 [ext_resource type="Shader" path="res://tattoo/surfaces/arm/studio_bokeh.gdshader" id="3_bokeh"]
 [ext_resource type="Script" path="res://tattoo/left_hand_visual.gd" id="4_hand"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/skin_stretch.wav" id="5_stretch"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/skin_release.wav" id="6_release"]
 
 [sub_resource type="ShaderMaterial" id="bokeh_material"]
 shader = ExtResource("3_bokeh")
@@ -17,7 +19,7 @@ background_mode = 1
 background_color = Color(0, 0, 0, 0)
 ambient_light_source = 2
 ambient_light_color = Color(0.62, 0.5, 0.45, 1)
-ambient_light_energy = 0.55
+ambient_light_energy = 0.4
 tonemap_mode = 2
 
 [node name="ArmSurface" type="Control"]
@@ -70,7 +72,7 @@ far = 4000.0
 
 [node name="Key" type="DirectionalLight3D" parent="View3D/Viewport"]
 light_color = Color(1, 0.94, 0.86, 1)
-light_energy = 1.25
+light_energy = 1.6
 
 [node name="Fill" type="DirectionalLight3D" parent="View3D/Viewport"]
 light_color = Color(1, 0.78, 0.6, 1)
@@ -98,3 +100,11 @@ mouse_filter = 2
 [node name="Hand" type="Node2D" parent="."]
 scale = Vector2(0.9, 0.9)
 script = ExtResource("4_hand")
+
+[node name="StretchSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_stretch")
+volume_db = -4.0
+
+[node name="ReleaseSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_release")
+volume_db = -6.0

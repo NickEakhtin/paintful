@@ -49,6 +49,9 @@ var pull: SkinPull = SkinPull.new()
 
 var _material: ShaderMaterial
 var _wrap: float = 0.0
+var _highlight: float = 0.0
+## Which sides hide unfinished stencil, found when a ping starts: (left, right), 0 or 1.
+var _hidden_left_right: Vector2 = Vector2.ZERO
 
 @onready var _background: ColorRect = $Background
 @onready var _view_viewport: SubViewport = $View3D/Viewport
@@ -59,6 +62,8 @@ var _wrap: float = 0.0
 @onready var _hand: Node2D = $Hand
 @onready var _key_light: DirectionalLight3D = $View3D/Viewport/Key
 @onready var _fill_light: DirectionalLight3D = $View3D/Viewport/Fill
+@onready var _stretch_sound: AudioStreamPlayer = $StretchSound
+@onready var _release_sound: AudioStreamPlayer = $ReleaseSound
 
 
 func _ready() -> void:
@@ -127,12 +132,45 @@ func hint() -> String:
 
 
 func update_surface(delta: float, active: bool) -> void:
+	var was_side: int = pull.side
+	var was_holding: bool = pull.holding
 	if active and not Transition.is_busy:
 		pull.update(delta, Input.is_action_pressed("hand_left"), Input.is_action_pressed("hand_right"),
 				Input.is_action_pressed("hand_up"), Input.is_action_pressed("hand_down"))
 	else:
 		pull.update(delta, false, false, false, false)
+	if was_side == 0 and pull.side != 0:
+		_stretch_sound.play()
+	elif was_holding and not pull.holding and pull.amount > 0.3:
+		_release_sound.play()
 	_sync_pull()
+
+
+## A ping also lights up the silhouette on each side that still hides unfinished stencil, so it's
+## clear which way to pull.
+func set_highlight(value: float, canvas: InkCanvas) -> void:
+	if value > 0.0 and _highlight <= 0.0:
+		_hidden_left_right = _find_hidden(canvas)
+	_highlight = value
+	_material.set_shader_parameter("hint_left", _hidden_left_right.x * value)
+	_material.set_shader_parameter("hint_right", _hidden_left_right.y * value)
+
+
+func _find_hidden(canvas: InkCanvas) -> Vector2:
+	var found: Vector2 = Vector2.ZERO
+	var out_of_reach: float = shape.ink_soft_angle
+	for part in canvas.part_count():
+		if canvas.is_part_done(part):
+			continue
+		for cell in canvas.part_cells(part):
+			if canvas.cell_ink(cell) >= 1.0:
+				continue
+			var theta: float = _cell_to_skin(Vector2(cell % grid.x + 0.5, 0.0)).x
+			if theta < -out_of_reach:
+				found.x = 1.0
+			elif theta > out_of_reach:
+				found.y = 1.0
+	return found
 
 
 func release() -> void:

@@ -31,6 +31,8 @@ func _init() -> void:
 	_save("eye_close.wav", _eye_blink(0.1, 600.0, 0.6))
 	_save("eye_twitch.wav", _eye_twitch())
 	_save("eye_poke.wav", _eye_poke())
+	_save("skin_stretch.wav", _skin_stretch())
+	_save("skin_release.wav", _skin_release())
 	quit()
 
 
@@ -313,6 +315,37 @@ func _buzz() -> PackedFloat32Array:
 		var phase: float = TAU * freq * t
 		var tone: float = sin(phase) + 0.5 * sin(2.0 * phase) + 0.25 * sin(3.0 * phase) + 0.2 * signf(sin(phase))
 		samples.append(tone * 0.18)
+	return samples
+
+
+## Skin pulled tight under the fingers: a rubbery creak, soft stick-slip clicks speeding up and rising.
+func _skin_stretch() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var count: int = int(RATE * 0.32)
+	var phase: float = 0.0
+	var smoothed: float = 0.0
+	for i in count:
+		var t: float = float(i) / count
+		phase += TAU * lerpf(35.0, 90.0, t) / RATE
+		var grain: float = pow(maxf(0.0, sin(phase)), 6.0)
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.25)
+		var body: float = sin(phase * lerpf(5.0, 7.0, t)) * 0.5 + smoothed * 0.5
+		samples.append(body * grain * sin(t * PI) * 0.5)
+	return samples
+
+
+## Skin let go: a soft slap as it snaps back, a low thump under a short burst of noise.
+func _skin_release() -> PackedFloat32Array:
+	var samples: PackedFloat32Array = PackedFloat32Array()
+	var smoothed: float = 0.0
+	var phase: float = 0.0
+	for i in int(RATE * 0.14):
+		var t: float = float(i) / RATE
+		phase += TAU * lerpf(150.0, 70.0, minf(t / 0.08, 1.0)) / RATE
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), 0.35)
+		var thump: float = sin(phase) * exp(-t * 30.0) * 0.5
+		var slap: float = smoothed * exp(-t * 60.0) * 0.5
+		samples.append((thump + slap) * minf(1.0, t * 2000.0))
 	return samples
 
 

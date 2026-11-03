@@ -172,6 +172,16 @@ func total_progress() -> float:
 	return float(filled) / maxi(1, total)
 
 
+## Grid indices (y * size.x + x) of a part's cells.
+func part_cells(index: int) -> PackedInt32Array:
+	return _part_cells[index]
+
+
+## Ink in one cell (grid index), 0..1.
+func cell_ink(cell: int) -> float:
+	return _ink[cell]
+
+
 func is_complete() -> bool:
 	return not _part_done.has(0)
 

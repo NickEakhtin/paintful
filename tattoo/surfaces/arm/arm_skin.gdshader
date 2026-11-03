@@ -26,14 +26,20 @@ uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
 uniform float wrap_angle = 2.094;
 uniform float stencil_height = 700.0;
 
-uniform vec4 skin_color : source_color = vec4(0.78, 0.55, 0.42, 1.0);
-uniform vec4 skin_shadow_color : source_color = vec4(0.55, 0.3, 0.24, 1.0);
+uniform vec4 skin_color : source_color = vec4(0.74, 0.5, 0.38, 1.0);
+uniform vec4 skin_shadow_color : source_color = vec4(0.5, 0.27, 0.21, 1.0);
 // Where the skin is stretched it turns paler and shinier; where it bunches up it folds.
 uniform vec4 stretched_color : source_color = vec4(0.92, 0.74, 0.64, 1.0);
 uniform float stretch_tint = 1.6;
 uniform float fold_strength = 0.35;
 
+// "Show what's left" ping: the silhouette glows on a side that still hides unfinished stencil.
+uniform float hint_left = 0.0;
+uniform float hint_right = 0.0;
+uniform vec4 hint_color : source_color = vec4(1.0, 0.72, 0.2, 1.0);
+
 varying vec2 skin_uv;
+varying float skin_theta;
 varying float stretch;
 
 float radius_at(float v) {
@@ -111,6 +117,7 @@ void vertex() {
 	NORMAL = normalize(cross(along_v, along_theta));
 	stretch = length(along_theta) / (2.0 * e * radius_at(v));
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
+	skin_theta = theta;
 }
 
 void fragment() {
@@ -137,6 +144,8 @@ void fragment() {
 	ALBEDO = mix(skin, ink.rgb, ink.a);
 	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
 	SPECULAR = 0.35;
+	float hint = skin_theta < 0.0 ? hint_left : hint_right;
+	EMISSION = hint_color.rgb * hint * smoothstep(0.6, 0.98, edge) * 1.2;
 	RIM = 0.2;
 	RIM_TINT = 0.7;
 }
