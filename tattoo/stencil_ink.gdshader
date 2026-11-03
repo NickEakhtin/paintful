@@ -50,7 +50,9 @@ float noise(vec2 p) {
 // Ink at `uv`, from the screen-resolution dabs.
 float ink_amount(vec2 uv) {
 	float laid = texture(paint, uv).r;
-	float presence = smoothstep(0.0, 0.004, laid);                   // the dab's rim: a pixel wide, faint touches too
+	// the rim of the ink, anti-aliased over one screen pixel whatever the dose: a fixed threshold made it a
+	// hard, stepped edge on a curve
+	float presence = smoothstep(0.0, max(fwidth(laid) * 1.5, 1e-4), laid);
 	return max(presence * mix(first_pass, 1.0, smoothstep(0.0, 1.0, min(laid, 1.0))), done);
 }
 
@@ -92,7 +94,11 @@ void fragment() {
 	float sheen = (specular + window * 0.4) * wet * gloss_strength;
 
 	// Dry ink is flat and a little grainy; wet ink is deeper.
-	vec3 dry = ink_color.rgb * (0.9 + 0.2 * noise(UV * 180.0));
+	// grain at the screen's own pixels (paint_texel is one), so it stays fine on any monitor instead of
+	// showing its cells as squares on a big one
+	vec2 grain_uv = UV / paint_texel;
+	float grain = 0.65 * noise(grain_uv / 1.3) + 0.35 * noise(grain_uv / 0.6 + 31.7);
+	vec3 dry = ink_color.rgb * (0.9 + 0.2 * grain);
 	vec3 inked = mix(dry, wet_ink_color.rgb, wet) + gloss_color.rgb * sheen;
 
 	vec4 color = mix(stencil_color, vec4(inked, ink_color.a), ink);
