@@ -28,10 +28,13 @@ environment = ExtResource("22_environment")
 [node name="Basement" parent="." instance=ExtResource("4_basement")]
 
 
-[node name="Lighting" type="Node3D" parent="." node_paths=PackedStringArray("sun", "studio_lamps")]
+[node name="Lighting" type="Node3D" parent="." node_paths=PackedStringArray("sun", "environment", "studio", "keep_lit", "sky")]
 script = ExtResource("2_day_night")
 sun = NodePath("Sun")
-studio_lamps = NodePath("../Studio/Lights")
+environment = NodePath("../WorldEnvironment")
+studio = NodePath("../Studio")
+keep_lit = [NodePath("../Studio/StreetProps"), NodePath("../Studio/Decor/TattooSign"), NodePath("../Studio/SkySphere")]
+sky = NodePath("../Studio/SkySphere")
 
 [node name="Sun" type="DirectionalLight3D" parent="Lighting"]
 transform = Transform3D(-0.9898387, 0.14217448, 0.0024174128, 0.11474254, 0.7885815, 0.6041304, 0.083985604, 0.59826905, -0.796882, 0.33125532, 2.554284, 1.7492366)
