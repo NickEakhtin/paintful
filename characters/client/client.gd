@@ -33,6 +33,7 @@ var _walk_done: bool = false
 
 func _ready() -> void:
 	_interactable.interacted.connect(func(_player: Player) -> void: talk_requested.emit(self))
+	_interactable.set_meta(&"outline_mesh", _body_mesh)   # the player's outline traces the body
 	allow_talk(false)
 	set_eyes_glowing(false)
 	if data != null:

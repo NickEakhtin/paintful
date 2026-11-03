@@ -43,6 +43,7 @@ func _travel(down: bool) -> void:
 	var landing: Marker3D = basement_landing if down else studio_landing
 	player.global_transform = landing.global_transform
 	player.velocity = Vector3.ZERO
+	player.snap_hand()
 	for i in companions.size():
 		var companion: Node3D = companions[i]
 		if is_instance_valid(companion):

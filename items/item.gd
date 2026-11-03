@@ -8,8 +8,9 @@ extends Interactable
 ## Placeholder look; the collision box is sized to fit the mesh.
 @export var mesh: Mesh
 @export var color: Color = Color.WHITE
-## A real model instead of the placeholder mesh (its pivot at the bottom); the box fits it the same way.
+## A real model instead of the placeholder mesh; it is set on its bottom and the box fits it the same way.
 @export var model: PackedScene
+@export var model_scale: float = 1.0
 
 ## Slot the item lies in, null while carried.
 var slot: ItemSlot = null
@@ -22,15 +23,21 @@ var home: ItemSlot = null
 
 func _ready() -> void:
 	var bounds: AABB = AABB()
+	set_meta(&"outline_mesh", _mesh_instance)   # the player's outline traces it
 	if model != null:
 		_mesh_instance.visible = false
 		var visual: Node3D = model.instantiate()
+		visual.scale = Vector3.ONE * model_scale
 		add_child(visual)
 		var first: bool = true
 		for part: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
+			if first:
+				set_meta(&"outline_mesh", part)
 			var box_part: AABB = (visual.transform * _local_to(visual, part)) * part.get_aabb()
 			bounds = box_part if first else bounds.merge(box_part)
 			first = false
+		visual.position.y -= bounds.position.y
+		bounds.position.y = 0.0
 	else:
 		if mesh != null:
 			_mesh_instance.mesh = mesh

@@ -8,7 +8,7 @@ shader = ExtResource("1_shader")
 
 [node name="RetroPost" type="CanvasLayer"]
 script = ExtResource("2_script")
-layer = 100
+layer = -1
 
 [node name="Screen" type="ColorRect" parent="."]
 material = SubResource("mat")

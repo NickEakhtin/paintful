@@ -19,8 +19,7 @@
 [ext_resource type="PackedScene" path="res://art/models/book/book.glb" id="17_xv8yg"]
 [ext_resource type="PackedScene" path="res://world/props/simple_wooden_cabinet/simple_wooden_cabinet.tscn" id="18_73fb5"]
 [ext_resource type="Script" path="res://world/props/simple_wooden_cabinet/simple_wooden_cabinet.gd" id="19_r622i"]
-[ext_resource type="PackedScene" path="res://cultic/scenes/props/yellow_paint_pickup.tscn" id="20_1i052"]
-[ext_resource type="Script" path="res://cultic/scripts/yellow_paint_pickup.gd" id="21_qb3lf"]
+[ext_resource type="PackedScene" path="res://world/props/yellow_paint/yellow_paint_model.tscn" id="21_paint_model"]
 [ext_resource type="PackedScene" path="res://art/models/wall_lamp/wall_lamp.glb" id="22_i1ysi"]
 [ext_resource type="PackedScene" path="res://art/models/frame_arched/frame_arched.glb" id="23_natur"]
 [ext_resource type="PackedScene" path="res://art/models/frame_oval/frame_oval.glb" id="24_7ketm"]
@@ -872,12 +871,6 @@ script = ExtResource("19_r622i")
 [node name="SimpleWoodenCabinet3" type="Node3D" parent="Furniture" unique_id=1634020664 instance=ExtResource("18_73fb5")]
 transform = Transform3D(6.4255744e-08, 0, -0.49000004, 0, 0.42000002, 0, 0.49000004, 0, 6.4255744e-08, 1.5263933, 1.6443051, 4.023356)
 script = ExtResource("19_r622i")
-
-[node name="YellowPaint" type="StaticBody3D" parent="Furniture/SimpleWoodenCabinet3" unique_id=2120832177 instance=ExtResource("20_1i052")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.02)
-collision_layer = 4
-collision_mask = 0
-script = ExtResource("21_qb3lf")
 
 [node name="SimpleWoodenCabinet4" type="Node3D" parent="Furniture" unique_id=806932711 instance=ExtResource("18_73fb5")]
 transform = Transform3D(6.4255744e-08, 0, -0.49000004, 0, 0.42000002, 0, 0.49000004, 0, 6.4255744e-08, 1.5263933, 1.6443051, 0.766502)
@@ -2191,6 +2184,15 @@ display_name = "Перчатки"
 mesh = SubResource("gloves_mesh")
 color = Color(0.2, 0.4, 0.9, 1)
 
+[node name="PaintSlot" parent="Gameplay" instance=ExtResource("slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.536, 1.995, 4.023)
+
+[node name="YellowPaint" parent="Gameplay/PaintSlot" instance=ExtResource("item")]
+item_id = &"yellow_paint"
+display_name = "Жёлтая краска"
+model = ExtResource("21_paint_model")
+model_scale = 0.45
+
 [node name="SeatPoint" type="Marker3D" parent="Gameplay" unique_id=1910253469]
 transform = Transform3D(0.699945, 0, -0.714197, 0, 1, 0, 0.714197, 0, 0.699945, 8.38, 0.95, 2.58)
 
@@ -2198,4 +2200,4 @@ transform = Transform3D(0.699945, 0, -0.714197, 0, 1, 0, 0.714197, 0, 0.699945, 
 script = ExtResource("109_f4iii")
 exact = [NodePath("../Shell"), NodePath("../WetAsphalt"), NodePath("../WetAsphalt2")]
 boxes = [NodePath("../Furniture"), NodePath("../Decor"), NodePath("../NewModels"), NodePath("../RepoModels"), NodePath("../StreetProps")]
-skip_names = PackedStringArray("curtain", "rug", "light", "sky", "simplewoodencabinet", "candle", "book", "coin", "inkbottle", "mug")
+skip_names = PackedStringArray("curtain", "rug", "light", "sky", "simplewoodencabinet", "candle", "book", "coin", "inkbottle", "mug", "worktable", "stationcart")

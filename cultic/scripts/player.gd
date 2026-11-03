@@ -33,7 +33,7 @@ extends CharacterBody3D
 @onready var _camera: Camera3D = $Head/Camera3D
 @onready var _hand: Node3D = $Head/Camera3D/PlayerHand
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-var _outline := preload("res://cultic/scripts/interaction_outline.gd").new()
+var _outline := preload("res://player/outline/interaction_outline.gd").new()
 var _head_rest: Vector3
 var _bob_phase := 0.0
 var _bob_amount := 0.0                # current bob strength, eased towards the walking speed
@@ -142,7 +142,7 @@ func _interaction_hit() -> Dictionary:
 
 
 func _physics_process(delta: float) -> void:
-	_outline.track(_interaction_hit() if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _camera.is_current() else {})
+	_outline.track(null)   # the outline now follows our Interactables only
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	elif can_jump and Input.is_physical_key_pressed(KEY_SPACE):
@@ -167,7 +167,7 @@ func get_hand_bob_state() -> Vector3:
 
 func _process(delta: float) -> void:
 	if not is_physics_processing():
-		_outline.track({})
+		_outline.track(null)
 	var speed := Vector2(velocity.x, velocity.z).length()
 	var walking := is_on_floor() and speed > 0.1
 	_bob_amount = move_toward(_bob_amount, minf(speed / walk_speed, 1.6) if walking else 0.0, delta * bob_smoothing)

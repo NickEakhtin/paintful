@@ -17,8 +17,8 @@ height = 0.186
 mass = 1.8
 linear_damp = 1.35
 angular_damp = 3.0
-collision_layer = 16
-collision_mask = 17
+collision_layer = 32
+collision_mask = 35
 continuous_cd = true
 
 [node name="Iron" type="MeshInstance3D" parent="."]
