@@ -1,7 +1,8 @@
 extends Node
 ## The game window. Starts fullscreen (borderless, at the desktop's own resolution); F11, Alt+Enter and, on macOS,
 ## Cmd+Ctrl+F switch between fullscreen and a window. The choice is kept in `user://settings.cfg`.
-## `--windowed` / `--fullscreen` on the command line win over the saved choice (tests take screenshots in a window).
+## `--windowed` / `--fullscreen` after `--` on the command line win over the saved choice (tests take screenshots
+## in a window): `Godot --path . res://_test/x.tscn -- --windowed`. Godot keeps its own `--windowed` to itself.
 
 const SETTINGS_PATH: String = "user://settings.cfg"
 ## The layout's base size: the window never gets smaller than this (unless the screen is).
@@ -18,9 +19,11 @@ func _ready() -> void:
 		return
 	var window: Window = get_window()
 	window.min_size = MIN_SIZE.min(DisplayServer.screen_get_usable_rect(window.current_screen).size)
-	var args: PackedStringArray = OS.get_cmdline_args()
-	if args.has("--windowed") or args.has("--fullscreen") or args.has("-f"):
-		fullscreen = window.mode == Window.MODE_FULLSCREEN or window.mode == Window.MODE_EXCLUSIVE_FULLSCREEN
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if args.has("--windowed") or args.has("--fullscreen"):
+		fullscreen = args.has("--fullscreen")
+		if fullscreen:
+			window.mode = Window.MODE_FULLSCREEN
 		return
 	var settings: ConfigFile = ConfigFile.new()
 	settings.load(SETTINGS_PATH)

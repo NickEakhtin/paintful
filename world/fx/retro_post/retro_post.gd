@@ -1,25 +1,34 @@
 extends CanvasLayer
 ## The colleague's grimy low-fi filter (retro_post.gdshader) over the 3D world only: it sits under every UI layer
 ## (HUD, dialogues, the tattoo session, the black fades), so text and the session stay sharp.
-## A game pixel is a share of the window height (`game_rows` of them), so the look is the same on any monitor.
-## The filter turns the picture into chunky pixels anyway, so the 3D world is rendered at a fraction of the
-## window's resolution and without MSAA: it looks the same through the filter and costs far less.
+## A game pixel is a whole number of screen pixels, as retro 3D games do it (a fractional one makes uneven
+## pixels): as big as fits `min_rows` game pixels in the window height, at most `max_pixel_size`. So 720p and
+## 1080p get 360 rows (2 and 3 px), 1440p 480, 4K 720: bigger monitors show finer pixels, never a blurry stretch.
+## The 3D world is rendered at exactly one pixel per game pixel and without MSAA: the filter samples one point per
+## game pixel anyway, so it looks the same and costs far less (a 4K screen renders 1280x720).
 
-@export var render_scale: float = 0.5
-## Game pixels from the top of the window to the bottom (his 1280 px window with 4 px pixels).
-@export var game_rows: float = 320.0
+## Fewest game pixels from the top of the window to the bottom.
+@export var min_rows: int = 360
+## Largest game pixel, in screen pixels.
+@export var max_pixel_size: int = 3
 
 @onready var _material: ShaderMaterial = ($Screen as ColorRect).material as ShaderMaterial
 
 
 func _ready() -> void:
 	var viewport: Viewport = get_viewport()
-	viewport.scaling_3d_scale = render_scale
 	viewport.msaa_3d = Viewport.MSAA_DISABLED
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.size_changed.connect(_fit)
 	_fit()
 
 
+## Screen pixels per game pixel for this window height.
+func pixel_size() -> int:
+	return clampi(get_window().size.y / min_rows, 1, max_pixel_size)
+
+
 func _fit() -> void:
-	_material.set_shader_parameter("pixel_size", maxf(1.0, get_window().size.y / game_rows))
+	var pixel: int = pixel_size()
+	_material.set_shader_parameter("pixel_size", float(pixel))
+	get_viewport().scaling_3d_scale = 1.0 / pixel
