@@ -1,11 +1,11 @@
 # Paintings for the picture frames (models/frame_*.glb). Each frame model's through-opening is traced from its mesh
 # (front view, flood fill from the centre), so the sheets and canvases match the real arch / oval / rectangle.
-# Usage: Godot --headless --path . --script tools/paintings/frame_paintings.gd
+# Usage: Godot --headless --path . --script res://tools/art/paintings/frame_paintings.gd
 #   art/paintings/templates/<size>_<W>x<H>cm.png  blank sheet to paint on, one per frame size: white = visible,
 #                                                 light grey rim = bleed hidden behind the frame, grey = cut away
 #   art/paintings/canvas/<size>.png               what the frames show: art/paintings/<size>.png (your painting,
 #                                                 any size, cropped to fill) cut to the frame's shape, or plain white
-# The canvas quads in scenes/CULTIC_ROOM_MAIN_SCENE.tscn are sized from the numbers this prints ("quad").
+# The canvas quads in world/studio/studio.tscn are sized from the numbers this prints ("quad").
 extends SceneTree
 
 # frame size name -> [model, scale of the frame instances in the scene (x, y)]

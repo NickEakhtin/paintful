@@ -43,13 +43,13 @@
 - `items/item.tscn` (`Item`): set `item_id`, `display_name`, `mesh`, `color`, or `model` (+ `model_scale`; set on its bottom) for a real look. Put it under an `ItemSlot` in the editor to start there. No dropping on the floor.
 - `items/item_slot.tscn` (`ItemSlot`): `accepts` filters by `item_id` (empty = any); signals `item_placed(item)`, `item_removed(item)`.
 - Stairs: visual steps without collision plus an invisible ramp `StaticBody3D` — `CharacterBody3D` doesn't climb steps.
-- Scenes: `main/main.tscn` is the start screen and leads to the level; `world/sandbox/sandbox.tscn` is a test ground (shelf with items, table with slots, stairs, day sign, tattoo chair).
+- Scenes: `main/main.tscn` is the start screen and leads to the level; `world/sandbox/sandbox.tscn` is a grey-box test ground (shelf with items, table with slots, stairs, day sign, tattoo chair) with the real player.
 
-## Art from the colleague (CULTIC) — merge in progress, see `docs/plan_visual_merge.md`
-- The art is his (Hyper3D Rodin models through his pipeline in `tools/art/`); binaries live in Git LFS (`git lfs install` once per clone).
-- `art/models/<name>/`: one folder per model with its textures. `art/materials/`, `art/characters/`, `art/paintings/`, `art/props/`; `art/concepts/` is ignored by Godot.
-- `world/props/<name>/` and `world/fx/<name>/`: his props and effects as our scenes. Interactive ones use our `Interactable` (cabinets, wall cabinet and station cart build theirs from the models' bounds on start; the basement hatch emits `descend_requested(player)` when someone listens, otherwise it just opens and closes). Outline hints stay as metas (`outline_mesh`, `outline_front_sign`) on the Interactables for the player's outline (stage 7).
-- `cultic/` is his project still waiting to be taken apart: `cultic/scenes/CULTIC_ROOM_MAIN_SCENE.tscn` is the reference room (his player walks it, but only his own leftovers react to it there: doors, skull, altar lift, basement exit). Each merge stage takes its part out; the last one deletes the folder.
+## Art from the colleague (CULTIC)
+- The art is his (Hyper3D Rodin models through his pipeline, `tools/art/pipeline/README.md`; model notes in `docs/models.md`); binaries live in Git LFS (`git lfs install` once per clone). How his project was merged in: `docs/plan_visual_merge.md`.
+- `art/models/<name>/`: one folder per model with its textures; `art/catalog.tscn` shows every model in rows. `art/materials/`, `art/characters/`, `art/paintings/`, `art/props/`; `art/concepts/` is ignored by Godot.
+- `world/props/<name>/` and `world/fx/<name>/`: his props and effects as our scenes. Interactive ones use our `Interactable` (cabinets, wall cabinet and station cart build theirs from the models' bounds on start; the basement hatch emits `descend_requested(player)` when someone listens, otherwise it just opens and closes). Builders of his ground, roots, ruins and the volcano: `tools/art/props/`.
+- His models carry no collision; a scene adds a `scene_collision.gd` node (see Level) or a prop builds its own. Anything you hand the player to pick up needs its top above any auto box under it (or the box skipped), or the ray hits the box first.
 
 ## Level (`world/`)
 - `world/level/level.tscn` is the game: `Studio` + `Basement` (both authored in level coordinates), `WorldEnvironment` (`world/level/environment.tres`, the colleague's), `Lighting` (`DayNight` + his sun), `Points`, `Player`, `LevelSwitch`, `DayFlow`.
