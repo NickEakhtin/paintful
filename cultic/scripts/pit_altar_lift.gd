@@ -1,7 +1,7 @@
 extends StaticBody3D
 
 const VIOLET := Color(0.68, 0.22, 1.0)
-const PIT_PARTICLE_SHADER := preload("res://cultic/scripts/pit_violet_particles.gdshader")
+const PIT_PARTICLE_SHADER := preload("res://world/props/volcano/pit_violet_particles.gdshader")
 
 @export var altar: Node3D
 @export_range(0.5, 30.0, 0.1) var rise_seconds := 7.0

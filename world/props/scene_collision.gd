@@ -1,5 +1,5 @@
 extends Node
-## The colleague's models come without collision, so the studio gets it on start (his rules from his player):
+## The colleague's models come without collision, so a scene (the studio, the basement) gets it on start (his rules from his player):
 ## exact shapes for the shell and the ground outside (walls with door and window holes stay walkable), a box around
 ## each piece of furniture turned with it, nothing for small props, flat things on the floor, things hung on the
 ## walls and the names in `skip_names`. Everything lands on the "world" layer, so the navmesh bake sees it too

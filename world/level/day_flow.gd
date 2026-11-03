@@ -50,8 +50,12 @@ const PREP_COUNT: int = 2
 ## Candle spots of the ritual circle.
 @export var ritual_circle: Node3D
 @export var altar_slot: ItemSlot
+## Starts the ritual: over the crater the altar rises from.
 @export var altar: Interactable
 @export var altar_glow: OmniLight3D
+## Turns the basement violet once the ritual starts.
+@export var skull: SkullRitual
+@export var altar_lift: PitAltarLift
 @export var head_wall: Node3D
 @export var chop_sound: AudioStreamPlayer
 
@@ -250,7 +254,7 @@ func _spirit_claims(client: Client) -> void:
 	await Dialogue.play(SPIRIT_CHOSEN, client.head, client.data.display_name)
 
 
-## Candles into every spot of the circle, the knife onto the altar.
+## Candles into every spot of the circle, the knife onto the offering table by the skull.
 func _prepare_ritual() -> void:
 	var spots: Array[Node] = ritual_circle.get_children().filter(func(n: Node) -> bool: return n is CandleSpot)
 	while true:
@@ -260,7 +264,7 @@ func _prepare_ritual() -> void:
 			break
 		var text: String = "Подготовь ритуал: свечи в круг %d/%d" % [placed, spots.size()]
 		if not knife_ready:
-			text += ", нож на алтарь"
+			text += ", нож на жертвенный стол"
 		Events.objective_changed.emit(text)
 		await get_tree().create_timer(0.2).timeout
 
@@ -285,9 +289,11 @@ func _ritual(client: Client) -> void:
 	await altar.interacted
 	_set_altar_ready(false)
 	Events.objective_changed.emit("")
+	skull.activate(player.get_viewport().get_camera_3d())
+	altar_lift.raise()
 	create_tween().tween_property(altar_glow, "light_energy", 2.5, 1.5)
 	await client.walk_to(_point("RitualCenter"))
-	client.face(altar_slot.global_position)
+	client.face(altar_lift.global_position)
 	client.kneel()
 	await Dialogue.play(SPIRIT_RITUAL)
 
