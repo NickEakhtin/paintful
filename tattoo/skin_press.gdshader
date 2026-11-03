@@ -6,7 +6,7 @@ shader_type canvas_item;
 // but nothing drawn after it (tasks, machine). Cut to the rounded skin panel.
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
-// Needle tip in this rect's pixels.
+// Needle tip in this rect's layout pixels (all lengths here are layout pixels, not screen pixels).
 uniform vec2 tip = vec2(0.0);
 // How hard the needle presses, 0..1; the session eases it in and out.
 uniform float press = 0.0;
@@ -28,7 +28,8 @@ float inside_skin(vec2 uv) {
 	vec2 p = (uv - 0.5) * size;
 	vec2 q = abs(p) - (size * 0.5 - corner_radius);
 	float distance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner_radius;
-	return clamp(0.5 - distance, 0.0, 1.0);
+	// a screen pixel of soft edge on any monitor (`size` is in layout pixels, 2-3 screen pixels on 1440p/4K)
+	return clamp(0.5 - distance / max(fwidth(distance), 1e-4), 0.0, 1.0);
 }
 
 void fragment() {
@@ -40,7 +41,10 @@ void fragment() {
 	// Sample farther out than we draw: what's around the tip looks pulled into the dent.
 	float pull = r < 1.0 ? 4.0 * r * (1.0 - r) : 0.0;
 	vec2 source = p + out_dir * depth * pull * press - shake;
-	vec3 color = texture(screen_texture, SCREEN_UV + (source - p) * SCREEN_PIXEL_SIZE).rgb;
+	// `size`, `tip`, `shake` are layout pixels (the 1280x720 base), the screen is real pixels (x2 on 1440p, x3 on 4K):
+	// step through this rect's UV, so the dent is the same on every monitor
+	vec2 uv_to_screen = vec2(dFdx(SCREEN_UV.x) / dFdx(UV.x), dFdy(SCREEN_UV.y) / dFdy(UV.y));
+	vec3 color = texture(screen_texture, SCREEN_UV + (source - p) / size * uv_to_screen).rgb;
 
 	// Walls of the dent: the one facing the lamp is lighter, the other darker.
 	float wall = r < 1.0 ? r * (1.0 - r * r) / 0.385 : 0.0;
