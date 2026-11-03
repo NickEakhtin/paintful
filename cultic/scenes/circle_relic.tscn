@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://yi0lwyfucq65"]
+
+[ext_resource type="Material" path="res://art/materials/circle_relic_green.tres" id="green"]
+[ext_resource type="PackedScene" uid="uid://2uciuga1sb31" path="res://art/models/circle_relic/circle_relic.glb" id="model"]
+
+[sub_resource type="CylinderShape3D" id="body"]
+height = 2.15
+radius = 0.82
+
+[node name="CircleRelic" type="Node3D" unique_id=1438288869]
+
+[node name="Model" parent="." unique_id=1325312083 instance=ExtResource("model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Stone" type="StaticBody3D" parent="." unique_id=1146440361]
+
+[node name="Shape" type="CollisionShape3D" parent="Stone" unique_id=31547772]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.075, 0)
+shape = SubResource("body")
+
+[node name="RingLight" type="OmniLight3D" parent="." unique_id=992158213]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55749357, 0.4886619)
+light_color = Color(0.24, 1, 0.36, 1)
+light_energy = 1.15
+omni_range = 2.8
+
+[node name="circle_relic" parent="Model" index="0"]
+material_override = ExtResource("green")
+
+[editable path="Model"]

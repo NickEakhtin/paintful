@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cultic/scripts/volcano.gd" id="1_script"]
+[ext_resource type="ArrayMesh" path="res://art/models/ground/volcano_floor.res" id="2_floor"]
+[ext_resource type="ArrayMesh" path="res://art/models/ground/volcano_ceiling.res" id="3_ceiling"]
+
+[node name="Volcano" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_floor")
+
+[node name="Ceiling" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.75, 0)
+mesh = ExtResource("3_ceiling")
+
+[node name="PitGlow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.9, 0)
+light_color = Color(0.2, 1, 0.35, 1)
+light_energy = 0.8
+omni_range = 3.2

@@ -1,0 +1,12 @@
+{
+  "name": "cultic-pipeline",
+  "private": true,
+  "description": "Node deps for rodin_prop.sh / pivot.mjs / teximg.mjs (run: npm install)",
+  "dependencies": {
+    "@gltf-transform/cli": "4.1.1",
+    "@gltf-transform/core": "4.1.1",
+    "@gltf-transform/functions": "4.1.1",
+    "@gltf-transform/extensions": "4.1.1",
+    "meshoptimizer": "0.22.0"
+  }
+}

@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cultic/scripts/mesh_collision.gd" id="1_eaa01"]
+[ext_resource type="ArrayMesh" path="res://art/models/ruins/wall_low_short.res" id="2_pg3s0"]
+
+[node name="WallLowShort" type="Node3D" unique_id=70247322]
+script = ExtResource("1_eaa01")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=465073167]
+mesh = ExtResource("2_pg3s0")

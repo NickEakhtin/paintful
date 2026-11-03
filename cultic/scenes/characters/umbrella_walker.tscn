@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cultic/scripts/umbrella_walker.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/characters/umbrella_walker/frame_0.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://art/characters/umbrella_walker/frame_0_normal.png" id="3_normal"]
+
+[sub_resource type="StandardMaterial3D" id="mat"]
+transparency = 2
+alpha_scissor_threshold = 0.5
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("2_tex")
+roughness = 0.55
+normal_enabled = true
+normal_scale = 1.3
+normal_texture = ExtResource("3_normal")
+texture_filter = 0
+billboard_mode = 2
+
+[sub_resource type="QuadMesh" id="quad"]
+material = SubResource("mat")
+size = Vector2(1.433, 2.213)
+center_offset = Vector3(0, 1.1065, 0)
+
+[node name="UmbrellaWalker" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("quad")

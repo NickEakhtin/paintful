@@ -1,0 +1,63 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cultic/scripts/sliding_hatch.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/props/planks.png" id="2_planks"]
+[ext_resource type="Texture2D" path="res://art/props/planks_normal.png" id="3_normal"]
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_texture = ExtResource("2_planks")
+roughness = 0.82
+normal_enabled = true
+normal_texture = ExtResource("3_normal")
+texture_filter = 3
+
+[sub_resource type="StandardMaterial3D" id="wood_edge"]
+albedo_color = Color(0.09, 0.055, 0.035, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="iron"]
+albedo_color = Color(0.09, 0.085, 0.08, 1)
+metallic = 0.8
+roughness = 0.55
+
+[sub_resource type="BoxMesh" id="lid"]
+material = SubResource("wood_edge")
+size = Vector3(1.3, 0.04, 1.5)
+
+[sub_resource type="PlaneMesh" id="top"]
+material = SubResource("wood")
+size = Vector2(1.3, 1.5)
+
+[sub_resource type="BoxMesh" id="strap"]
+material = SubResource("iron")
+size = Vector3(1.32, 0.008, 0.07)
+
+[sub_resource type="TorusMesh" id="ring"]
+material = SubResource("iron")
+inner_radius = 0.04
+outer_radius = 0.056
+rings = 12
+ring_segments = 6
+
+[node name="BasementHatch" type="Node3D"]
+script = ExtResource("1_script")
+slide = Vector3(0, 0, 1.5)
+
+[node name="Lid" type="MeshInstance3D" parent="."]
+mesh = SubResource("lid")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0205, 0)
+mesh = SubResource("top")
+
+[node name="Strap1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.024, -0.5)
+mesh = SubResource("strap")
+
+[node name="Strap2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.024, 0.5)
+mesh = SubResource("strap")
+
+[node name="Ring" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.026, -0.64)
+mesh = SubResource("ring")

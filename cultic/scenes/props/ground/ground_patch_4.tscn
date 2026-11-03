@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://cultic/scripts/mesh_collision.gd" id="1_xo4cn"]
+[ext_resource type="ArrayMesh" path="res://art/models/ground/ground_patch_4.res" id="2_q6r4x"]
+
+[node name="GroundPatch4" type="Node3D" unique_id=2058560019]
+script = ExtResource("1_xo4cn")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1649618186]
+mesh = ExtResource("2_q6r4x")

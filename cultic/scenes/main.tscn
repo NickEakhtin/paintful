@@ -1,0 +1,329 @@
+[gd_scene load_steps=54 format=3]
+
+[ext_resource type="PackedScene" path="res://art/models/lamp/lamp.glb" id="1_lamp"]
+[ext_resource type="PackedScene" path="res://art/models/sofa/sofa.glb" id="2_sofa"]
+[ext_resource type="PackedScene" path="res://art/models/armchair/armchair.glb" id="3_armchair"]
+[ext_resource type="PackedScene" path="res://art/models/recliner/recliner.glb" id="4_recliner"]
+[ext_resource type="PackedScene" path="res://art/models/tattoo_sign/tattoo_sign.glb" id="5_tattoo_sign"]
+[ext_resource type="PackedScene" path="res://art/models/table_lamp/table_lamp.glb" id="7_table_lamp"]
+[ext_resource type="PackedScene" path="res://art/models/pillar/pillar.glb" id="8_pillar"]
+[ext_resource type="PackedScene" path="res://art/models/wall_lamp/wall_lamp.glb" id="9_wall_lamp"]
+[ext_resource type="PackedScene" path="res://art/models/book/book.glb" id="10_book"]
+[ext_resource type="PackedScene" path="res://art/models/rug/rug.glb" id="11_rug"]
+[ext_resource type="PackedScene" path="res://art/models/candle_tall/candle_tall.glb" id="12_candle_tall"]
+[ext_resource type="PackedScene" path="res://art/models/candle_big/candle_big.glb" id="13_candle_big"]
+[ext_resource type="PackedScene" path="res://art/models/candle_small/candle_small.glb" id="14_candle_small"]
+
+[ext_resource type="PackedScene" path="res://art/models/coffee_table/coffee_table.glb" id="15_coffee_table"]
+[ext_resource type="PackedScene" path="res://art/models/floor_tile/floor_tile.glb" id="16_floor_tile"]
+[ext_resource type="PackedScene" path="res://art/models/wall_wallpaper/wall_wallpaper.glb" id="17_wall_wallpaper"]
+[ext_resource type="PackedScene" path="res://art/models/coffee_mug/coffee_mug.glb" id="18_coffee_mug"]
+[ext_resource type="PackedScene" path="res://art/models/frame_arched/frame_arched.glb" id="19_frame_arched"]
+[ext_resource type="PackedScene" path="res://art/models/frame_oval/frame_oval.glb" id="22_frame_oval"]
+[ext_resource type="PackedScene" path="res://art/models/frame_square/frame_square.glb" id="23_frame_square"]
+[ext_resource type="PackedScene" path="res://art/models/coat_rack/coat_rack.glb" id="24_coat_rack"]
+[ext_resource type="PackedScene" path="res://art/models/wall_panel/wall_panel.glb" id="25_wall_panel"]
+[ext_resource type="PackedScene" path="res://art/models/chandelier/chandelier.glb" id="26_chandelier"]
+[ext_resource type="PackedScene" path="res://art/models/plant/plant.glb" id="27_plant"]
+[ext_resource type="PackedScene" path="res://art/models/brick_wall/brick_wall.glb" id="28_brick_wall"]
+[ext_resource type="PackedScene" path="res://art/models/wall_door_window/wall_door_window.glb" id="29_wall_door_window"]
+[ext_resource type="PackedScene" path="res://cultic/scenes/cabinet.tscn" id="30_cabinet"]
+[ext_resource type="PackedScene" path="res://art/models/column/column.glb" id="31_column"]
+[ext_resource type="PackedScene" path="res://art/models/floor_lamp/floor_lamp.glb" id="32_floor_lamp"]
+[ext_resource type="PackedScene" path="res://cultic/scenes/station_cart.tscn" id="33_station_cart"]
+[ext_resource type="PackedScene" path="res://art/models/ink_bottle_red/ink_bottle_red.glb" id="34_ink_bottle_red"]
+[ext_resource type="PackedScene" path="res://art/models/ink_bottle_blue/ink_bottle_blue.glb" id="35_ink_bottle_blue"]
+[ext_resource type="PackedScene" path="res://art/models/ink_bottle_green/ink_bottle_green.glb" id="36_ink_bottle_green"]
+[ext_resource type="PackedScene" path="res://art/models/ink_bottle_purple/ink_bottle_purple.glb" id="37_ink_bottle_purple"]
+[ext_resource type="PackedScene" path="res://art/models/ink_bottle_gold/ink_bottle_gold.glb" id="38_ink_bottle_gold"]
+[ext_resource type="PackedScene" path="res://art/models/coin/coin.glb" id="39_coin"]
+[ext_resource type="PackedScene" path="res://art/models/work_table/work_table.glb" id="40_work_table"]
+[ext_resource type="PackedScene" path="res://art/models/pendant_lamp/pendant_lamp.glb" id="41_pendant_lamp"]
+[ext_resource type="PackedScene" path="res://art/models/wall_shelf/wall_shelf.glb" id="42_wall_shelf"]
+[ext_resource type="PackedScene" path="res://art/models/stool/stool.glb" id="43_stool"]
+[ext_resource type="PackedScene" path="res://art/models/station_cart_painted/station_cart_painted.glb" id="44_station_cart_painted"]
+[ext_resource type="PackedScene" path="res://cultic/scenes/wall_cabinet.tscn" id="45_wall_cabinet"]
+[ext_resource type="PackedScene" path="res://art/models/curtain/curtain.glb" id="46_curtain"]
+[ext_resource type="PackedScene" path="res://art/models/bull_skull/bull_skull.glb" id="47_bull_skull"]
+[ext_resource type="PackedScene" path="res://art/models/reception_desk/reception_desk.glb" id="48_reception_desk"]
+[ext_resource type="PackedScene" path="res://art/models/statue/statue.glb" id="49_statue"]
+[ext_resource type="PackedScene" path="res://art/models/wall_divider/wall_divider.glb" id="50_wall_divider"]
+[ext_resource type="PackedScene" path="res://art/models/pipe_straight/pipe_straight.glb" id="51_pipe_straight"]
+[ext_resource type="PackedScene" path="res://art/models/pipe_elbow/pipe_elbow.glb" id="52_pipe_elbow"]
+[ext_resource type="PackedScene" path="res://art/models/tile_platform/tile_platform.glb" id="53_tile_platform"]
+[ext_resource type="PackedScene" path="res://art/models/street_lamp/street_lamp.glb" id="54_street_lamp"]
+[ext_resource type="PackedScene" path="res://art/models/iron_fence/iron_fence.glb" id="55_iron_fence"]
+[ext_resource type="PackedScene" path="res://art/models/brick_fence/brick_fence.glb" id="56_brick_fence"]
+[ext_resource type="PackedScene" path="res://art/models/dumpster/dumpster.glb" id="57_dumpster"]
+[ext_resource type="PackedScene" path="res://art/models/trash_can/trash_can.glb" id="58_trash_can"]
+[ext_resource type="PackedScene" path="res://art/models/brass_bowl/brass_bowl.glb" id="59_brass_bowl"]
+[ext_resource type="PackedScene" path="res://art/models/skull/skull.glb" id="60_skull"]
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.9
+glow_bloom = 0.05
+glow_hdr_threshold = 0.9
+ssr_enabled = true
+ssr_max_steps = 96
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 5, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 9.7, 4.2, 17)
+
+[node name="Models" type="Node3D" parent="."]
+
+[node name="Lamp" parent="Models" instance=ExtResource("1_lamp")]
+
+[node name="Sofa" parent="Models" instance=ExtResource("2_sofa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0)
+
+[node name="Armchair" parent="Models" instance=ExtResource("3_armchair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.9, 0, 0)
+
+[node name="Recliner" parent="Models" instance=ExtResource("4_recliner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.95, 0, 0)
+
+[node name="TattooSign" parent="Models" instance=ExtResource("5_tattoo_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.3, 0, 0)
+
+
+[node name="TableLamp" parent="Models" instance=ExtResource("7_table_lamp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.6, 0, 0)
+
+[node name="WallLamp" parent="Models" instance=ExtResource("9_wall_lamp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.95, 0, 0)
+
+[node name="Light" type="OmniLight3D" parent="Models/WallLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.206, 0.078)
+light_color = Color(1, 0.66, 0.32, 1)
+light_energy = 1.6
+shadow_enabled = true
+omni_range = 5.0
+omni_attenuation = 1.4
+
+[node name="Book" parent="Models" instance=ExtResource("10_book")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 0, 0)
+
+[node name="Rug" parent="Models" instance=ExtResource("11_rug")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.7, 0.008, 0)
+
+[node name="CandleTall" parent="Models" instance=ExtResource("12_candle_tall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.37, 0, 0)
+
+[node name="CandleBig" parent="Models" instance=ExtResource("13_candle_big")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.07, 0, 0)
+
+[node name="CandleSmall" parent="Models" instance=ExtResource("14_candle_small")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.84, 0, 0)
+
+[node name="CoffeeTable" parent="Models" instance=ExtResource("15_coffee_table")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.5, 0, 0)
+
+[node name="CoffeeMug" parent="Models" instance=ExtResource("18_coffee_mug")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.65, 0, 0)
+
+[node name="CoatRack" parent="Models" instance=ExtResource("24_coat_rack")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.1, 0, 0)
+
+[node name="Chandelier" parent="Models" instance=ExtResource("26_chandelier")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 1.8, 0)
+
+[node name="Light1" type="OmniLight3D" parent="Models/Chandelier"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.435, -0.603, 0.023)
+light_color = Color(1, 0.66, 0.32, 1)
+light_energy = 0.9
+omni_range = 4.0
+omni_attenuation = 1.4
+
+[node name="Light2" type="OmniLight3D" parent="Models/Chandelier"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.068, -0.607, 0.443)
+light_color = Color(1, 0.66, 0.32, 1)
+light_energy = 0.9
+omni_range = 4.0
+omni_attenuation = 1.4
+
+[node name="Light3" type="OmniLight3D" parent="Models/Chandelier"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.43, -0.601, -0.004)
+light_color = Color(1, 0.66, 0.32, 1)
+light_energy = 0.9
+omni_range = 4.0
+omni_attenuation = 1.4
+
+[node name="Light4" type="OmniLight3D" parent="Models/Chandelier"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.066, -0.607, -0.449)
+light_color = Color(1, 0.66, 0.32, 1)
+light_energy = 0.9
+omni_range = 4.0
+omni_attenuation = 1.4
+
+[node name="Plant" parent="Models" instance=ExtResource("27_plant")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 0, 0)
+
+[node name="Cabinet" parent="Models" instance=ExtResource("30_cabinet")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.5, 0, 0)
+demo = true
+
+[node name="FloorLamp" parent="Models" instance=ExtResource("32_floor_lamp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.2, 0, 0)
+
+[node name="Light" type="OmniLight3D" parent="Models/FloorLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.268, 1.334, 0)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 1.4
+shadow_enabled = true
+omni_range = 5.0
+omni_attenuation = 1.4
+
+[node name="StationCart" parent="Models" instance=ExtResource("33_station_cart")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 0)
+demo = true
+
+[node name="InkBottleRed" parent="Models" instance=ExtResource("34_ink_bottle_red")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.10, 0, 0)
+
+[node name="InkBottleBlue" parent="Models" instance=ExtResource("35_ink_bottle_blue")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.17, 0, 0)
+
+[node name="InkBottleGreen" parent="Models" instance=ExtResource("36_ink_bottle_green")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.24, 0, 0)
+
+[node name="InkBottlePurple" parent="Models" instance=ExtResource("37_ink_bottle_purple")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.31, 0, 0)
+
+[node name="InkBottleGold" parent="Models" instance=ExtResource("38_ink_bottle_gold")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.38, 0, 0)
+
+[node name="Coin" parent="Models" instance=ExtResource("39_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.6, 0, 0)
+
+[node name="WorkTable" parent="Models" instance=ExtResource("40_work_table")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36, 0, 0)
+
+[node name="PendantLamp" parent="Models" instance=ExtResource("41_pendant_lamp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.6, 1.8, 0)
+
+[node name="Light" type="OmniLight3D" parent="Models/PendantLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.62, 0)
+light_color = Color(1, 0.64, 0.32, 1)
+light_energy = 1.3
+shadow_enabled = true
+omni_range = 5.0
+omni_attenuation = 1.4
+
+[node name="Stool" parent="Models" instance=ExtResource("43_stool")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0, 0)
+
+[node name="StationCartPainted" parent="Models" instance=ExtResource("44_station_cart_painted")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.3, 0, 0)
+
+[node name="ReceptionDesk" parent="Models" instance=ExtResource("48_reception_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.4, 0, 0)
+
+[node name="Statue" parent="Models" instance=ExtResource("49_statue")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.4, 0, 0)
+
+[node name="PipeStraight" parent="Models" instance=ExtResource("51_pipe_straight")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.6, 0, 0)
+
+[node name="PipeElbow" parent="Models" instance=ExtResource("52_pipe_elbow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.4, 0, 0)
+
+[node name="StreetLamp" parent="Models" instance=ExtResource("54_street_lamp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47.9, 0, 0)
+
+[node name="Light" type="OmniLight3D" parent="Models/StreetLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.53, 3.15, 0)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 1.6
+shadow_enabled = true
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="IronFence" parent="Models" instance=ExtResource("55_iron_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.45, 0, 0)
+
+[node name="BrickFence" parent="Models" instance=ExtResource("56_brick_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54.53, 0, 0)
+
+[node name="Dumpster" parent="Models" instance=ExtResource("57_dumpster")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58.19, 0, 0)
+
+[node name="TrashCan" parent="Models" instance=ExtResource("58_trash_can")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.79, 0, 0)
+
+[node name="BrassBowl" parent="Models" instance=ExtResource("59_brass_bowl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.82, 0, 0)
+
+[node name="Skull" parent="Models" instance=ExtResource("60_skull")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.68, 0, 0)
+
+[node name="WallKit" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3)
+
+[node name="Pillar" parent="WallKit" instance=ExtResource("8_pillar")]
+
+[node name="WallWallpaper" parent="WallKit" instance=ExtResource("17_wall_wallpaper")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0, 0)
+
+[node name="WallPanel" parent="WallKit" instance=ExtResource("25_wall_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0, 0.1)
+
+[node name="FrameArched" parent="WallKit" instance=ExtResource("19_frame_arched")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 0, 0)
+
+[node name="FrameOval" parent="WallKit" instance=ExtResource("22_frame_oval")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0, 0)
+
+[node name="FrameSquare" parent="WallKit" instance=ExtResource("23_frame_square")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.2, 0, 0)
+
+[node name="BrickWall" parent="WallKit" instance=ExtResource("28_brick_wall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.8, 0, 0)
+
+[node name="WallShelf" parent="WallKit" instance=ExtResource("42_wall_shelf")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.8, 1.4, 0.15)
+
+[node name="WallCabinet" parent="WallKit" instance=ExtResource("45_wall_cabinet")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.2, 1.3, 0.15)
+demo = true
+
+[node name="Curtain" parent="WallKit" instance=ExtResource("46_curtain")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0.4, 0.15)
+
+[node name="BullSkull" parent="WallKit" instance=ExtResource("47_bull_skull")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 1.6, 0.15)
+
+[node name="WallDoorWindow" parent="WallKit" instance=ExtResource("29_wall_door_window")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.6, 0, 0)
+
+[node name="Column" parent="WallKit" instance=ExtResource("31_column")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.5, 0, 0)
+
+[node name="WallDivider" parent="WallKit" instance=ExtResource("50_wall_divider")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.6, 0, 0)
+
+[node name="FloorKit" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5.5)
+
+[node name="FloorTile" parent="FloorKit" instance=ExtResource("16_floor_tile")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0, 0)
+
+[node name="TilePlatform" parent="FloorKit" instance=ExtResource("53_tile_platform")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0)

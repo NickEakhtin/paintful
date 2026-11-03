@@ -1,0 +1,824 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://art/models/candle_tall/candle_tall.glb" id="candle_tall"]
+[ext_resource type="PackedScene" path="res://art/models/candle_big/candle_big.glb" id="candle_big"]
+[ext_resource type="PackedScene" path="res://art/models/candle_small/candle_small.glb" id="candle_small"]
+[ext_resource type="PackedScene" path="res://art/models/coin/coin.glb" id="coin"]
+[sub_resource type="Shader" id="fire_shader"]
+code = "shader_type spatial;
+render_mode unshaded, cull_disabled;
+instance uniform bool violet_flame = false;
+varying float h;
+void vertex() {
+ h = clamp(VERTEX.y / 0.043 + 0.5, 0.0, 1.0);
+ float phase = dot(MODEL_MATRIX[3].xz, vec2(12.1, 31.7));
+ float wave = sin(TIME * 6.7 + phase) + 0.4 * sin(TIME * 11.2 + 2.0 * phase);
+ VERTEX.xz *= 1.2 - 0.72 * h;
+ VERTEX.x += h*h*(0.003 + 0.002 * wave);
+ VERTEX.y += h * 0.0025 * wave;
+}
+void fragment() {
+ vec3 core = violet_flame ? vec3(2.55, 0.95, 3.8) : vec3(3.4, 1.70, 0.48);
+ vec3 tip = violet_flame ? vec3(1.05, 0.10, 2.7) : vec3(2.3, 0.44, 0.045);
+ ALBEDO = mix(core, tip, smoothstep(0.24, 0.97, h));
+}"
+
+[sub_resource type="ShaderMaterial" id="fire"]
+shader = SubResource("fire_shader")
+
+[sub_resource type="SphereMesh" id="flame"]
+material = SubResource("fire")
+radius = 0.009
+height = 0.043
+radial_segments = 8
+rings = 4
+
+[node name="SkullTableOffering" type="Node3D"]
+
+[node name="Candles" type="Node3D" parent="."]
+
+[node name="Coins" type="Node3D" parent="."]
+
+[node name="Left01" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(-0.29,0.02148,-0.12)
+rotation = Vector3(0,-2.424,0)
+scale = Vector3(1.090,1.090,1.090)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left01"]
+position = Vector3(0.00045, 0.32693, -0.00210)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left02" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-0.32,0.02252,0.09)
+rotation = Vector3(0,1.383,0)
+scale = Vector3(1.120,1.120,1.120)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left02"]
+position = Vector3(0.00254, 0.13792, -0.00115)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left03" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(-0.41,0.02167,-0.24)
+rotation = Vector3(0,-0.435,0)
+scale = Vector3(0.939,0.939,0.939)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left03"]
+position = Vector3(0.00110, 0.16678, 0.00032)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left04" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-0.43,0.02340,-0.045)
+rotation = Vector3(0,-2.116,0)
+scale = Vector3(0.879,0.879,0.879)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left04"]
+position = Vector3(0.00254, 0.13792, -0.00115)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left05" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-0.48,0.02343,0.2)
+rotation = Vector3(0,1.633,0)
+scale = Vector3(1.046,1.046,1.046)
+
+[node name="Left06" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(-0.57,0.02449,0.065)
+rotation = Vector3(0,1.180,0)
+scale = Vector3(0.921,0.921,0.921)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left06"]
+position = Vector3(0.00045, 0.32693, -0.00210)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left07" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-0.59,0.02417,-0.19)
+rotation = Vector3(0,0.276,0)
+scale = Vector3(0.972,0.972,0.972)
+
+[node name="Left08" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(-0.71,0.02579,-0.08)
+rotation = Vector3(0,-1.586,0)
+scale = Vector3(1.095,1.095,1.095)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left08"]
+position = Vector3(0.00110, 0.16678, 0.00032)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left09" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-0.82,0.02596,0.14)
+rotation = Vector3(0,-0.454,0)
+scale = Vector3(0.917,0.917,0.917)
+
+[node name="Left10" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(-1.01,0.02770,-0.005)
+rotation = Vector3(0,-0.560,0)
+scale = Vector3(1.134,1.134,1.134)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Left10"]
+position = Vector3(0.00045, 0.32693, -0.00210)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Left11" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(-1.27,0.02900,0.115)
+rotation = Vector3(0,-1.952,0)
+scale = Vector3(1.097,1.097,1.097)
+
+[node name="Left12" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(-1.55,0.03042,0.2)
+rotation = Vector3(0,2.154,0)
+scale = Vector3(1.074,1.074,1.074)
+
+[node name="Right01" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(0.29,0.01732,-0.16)
+rotation = Vector3(0,-1.765,0)
+scale = Vector3(0.969,0.969,0.969)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right01"]
+position = Vector3(0.00254, 0.13792, -0.00115)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right02" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(0.31,0.01765,0.055)
+rotation = Vector3(0,-2.135,0)
+scale = Vector3(0.897,0.897,0.897)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right02"]
+position = Vector3(0.00110, 0.16678, 0.00032)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right03" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(0.385,0.01659,0.18)
+rotation = Vector3(0,0.577,0)
+scale = Vector3(0.949,0.949,0.949)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right03"]
+position = Vector3(0.00254, 0.13792, -0.00115)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right04" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(0.405,0.01679,-0.075)
+rotation = Vector3(0,-1.458,0)
+scale = Vector3(1.106,1.106,1.106)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right04"]
+position = Vector3(0.00045, 0.32693, -0.00210)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right05" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(0.49,0.01567,-0.22)
+rotation = Vector3(0,-1.995,0)
+scale = Vector3(1.121,1.121,1.121)
+
+[node name="Right06" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(0.55,0.01593,0.04)
+rotation = Vector3(0,1.471,0)
+scale = Vector3(1.005,1.005,1.005)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right06"]
+position = Vector3(0.00110, 0.16678, 0.00032)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right07" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(0.64,0.01485,0.2)
+rotation = Vector3(0,2.474,0)
+scale = Vector3(1.113,1.113,1.113)
+
+[node name="Right08" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(0.7,0.01459,-0.115)
+rotation = Vector3(0,-2.502,0)
+scale = Vector3(1.128,1.128,1.128)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right08"]
+position = Vector3(0.00045, 0.32693, -0.00210)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right09" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(0.86,0.01430,0.075)
+rotation = Vector3(0,-2.991,0)
+scale = Vector3(1.104,1.104,1.104)
+
+[node name="Right10" parent="Candles" instance=ExtResource("candle_big")]
+position = Vector3(1.04,0.01342,-0.04)
+rotation = Vector3(0,-0.811,0)
+scale = Vector3(0.994,0.994,0.994)
+
+[node name="Flame" type="MeshInstance3D" parent="Candles/Right10"]
+position = Vector3(0.00110, 0.16678, 0.00032)
+mesh = SubResource("flame")
+cast_shadow = 0
+
+[node name="Right11" parent="Candles" instance=ExtResource("candle_tall")]
+position = Vector3(1.3,0.01348,0.145)
+rotation = Vector3(0,-2.485,0)
+scale = Vector3(0.987,0.987,0.987)
+
+[node name="Right12" parent="Candles" instance=ExtResource("candle_small")]
+position = Vector3(1.56,0.01472,0.075)
+rotation = Vector3(0,1.068,0)
+scale = Vector3(0.980,0.980,0.980)
+
+[node name="Coin001" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16186,0.02018,-0.17286)
+rotation = Vector3(0,0.3272,0)
+scale = Vector3(1.9369,1.9369,1.9369)
+
+[node name="Coin002" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.15880,0.03064,-0.17146)
+rotation = Vector3(0,-2.1513,0)
+scale = Vector3(1.9559,1.9559,1.9559)
+
+[node name="Coin003" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16378,0.04120,-0.16749)
+rotation = Vector3(0,-0.5662,0)
+scale = Vector3(2.0088,2.0088,2.0088)
+
+[node name="Coin004" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.10169,0.01978,-0.17134)
+rotation = Vector3(0,-2.3214,0)
+scale = Vector3(2.0564,2.0564,2.0564)
+
+[node name="Coin005" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.10464,0.03088,-0.17206)
+rotation = Vector3(0,-0.1061,0)
+scale = Vector3(2.0835,2.0835,2.0835)
+
+[node name="Coin006" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.03863,0.01937,-0.17379)
+rotation = Vector3(0,2.7671,0)
+scale = Vector3(2.2201,2.2201,2.2201)
+
+[node name="Coin007" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.02352,0.01898,-0.17446)
+rotation = Vector3(0,3.0438,0)
+scale = Vector3(2.1013,2.1013,2.1013)
+
+[node name="Coin008" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.01859,0.03033,-0.17909)
+rotation = Vector3(0,-1.6717,0)
+scale = Vector3(2.1122,2.1122,2.1122)
+
+[node name="Coin009" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.01373,0.04174,-0.18337)
+rotation = Vector3(0,0.2532,0)
+scale = Vector3(2.1168,2.1168,2.1168)
+
+[node name="Coin010" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09374,0.01878,-0.17252)
+rotation = Vector3(0,-2.2357,0)
+scale = Vector3(2.0429,2.0429,2.0429)
+
+[node name="Coin011" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09242,0.02981,-0.17227)
+rotation = Vector3(0,-2.3142,0)
+scale = Vector3(1.9042,1.9042,1.9042)
+
+[node name="Coin012" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15966,0.01852,-0.17065)
+rotation = Vector3(0,-1.9381,0)
+scale = Vector3(2.0480,2.0480,2.0480)
+
+[node name="Coin013" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15616,0.02958,-0.16900)
+rotation = Vector3(0,2.0981,0)
+scale = Vector3(2.0896,2.0896,2.0896)
+
+[node name="Coin014" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.19600,0.02106,-0.11281)
+rotation = Vector3(0,-1.2928,0)
+scale = Vector3(2.0259,2.0259,2.0259)
+
+[node name="Coin015" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.19837,0.03200,-0.11317)
+rotation = Vector3(0,-1.1608,0)
+scale = Vector3(2.0548,2.0548,2.0548)
+
+[node name="Coin016" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.19467,0.04310,-0.11315)
+rotation = Vector3(0,0.8096,0)
+scale = Vector3(1.9408,1.9408,1.9408)
+
+[node name="Coin017" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12730,0.02056,-0.11276)
+rotation = Vector3(0,0.1236,0)
+scale = Vector3(2.0344,2.0344,2.0344)
+
+[node name="Coin018" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.13049,0.03155,-0.10882)
+rotation = Vector3(0,2.3210,0)
+scale = Vector3(1.9376,1.9376,1.9376)
+
+[node name="Coin019" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12926,0.04201,-0.11081)
+rotation = Vector3(0,-2.9711,0)
+scale = Vector3(2.0743,2.0743,2.0743)
+
+[node name="Coin020" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06769,0.02004,-0.11454)
+rotation = Vector3(0,-3.1178,0)
+scale = Vector3(2.1779,2.1779,2.1779)
+
+[node name="Coin021" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.00196,0.01964,-0.11750)
+rotation = Vector3(0,-2.2377,0)
+scale = Vector3(2.0940,2.0940,2.0940)
+
+[node name="Coin022" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.00192,0.03095,-0.12212)
+rotation = Vector3(0,-2.4039,0)
+scale = Vector3(1.9752,1.9752,1.9752)
+
+[node name="Coin023" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.06932,0.01928,-0.11295)
+rotation = Vector3(0,0.1598,0)
+scale = Vector3(1.8741,1.8741,1.8741)
+
+[node name="Coin024" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.07277,0.02940,-0.11337)
+rotation = Vector3(0,1.9717,0)
+scale = Vector3(1.8874,1.8874,1.8874)
+
+[node name="Coin025" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.13127,0.01894,-0.11768)
+rotation = Vector3(0,-0.1554,0)
+scale = Vector3(1.8341,1.8341,1.8341)
+
+[node name="Coin026" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.13181,0.02885,-0.11970)
+rotation = Vector3(0,-0.5501,0)
+scale = Vector3(2.0080,2.0080,2.0080)
+
+[node name="Coin027" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.19620,0.01865,-0.11145)
+rotation = Vector3(0,0.3711,0)
+scale = Vector3(2.1959,2.1959,2.1959)
+
+[node name="Coin028" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.19600,0.03051,-0.10696)
+rotation = Vector3(0,0.8677,0)
+scale = Vector3(2.0660,2.0660,2.0660)
+
+[node name="Coin029" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.23761,0.02208,-0.05248)
+rotation = Vector3(0,-0.3291,0)
+scale = Vector3(1.9480,1.9480,1.9480)
+
+[node name="Coin030" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.23911,0.03260,-0.05675)
+rotation = Vector3(0,0.6289,0)
+scale = Vector3(1.9162,1.9162,1.9162)
+
+[node name="Coin031" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16738,0.02135,-0.06085)
+rotation = Vector3(0,1.3634,0)
+scale = Vector3(1.8979,1.8979,1.8979)
+
+[node name="Coin032" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16528,0.03160,-0.05638)
+rotation = Vector3(0,-2.8217,0)
+scale = Vector3(1.8721,1.8721,1.8721)
+
+[node name="Coin033" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.09523,0.02067,-0.05616)
+rotation = Vector3(0,-0.9524,0)
+scale = Vector3(1.9397,1.9397,1.9397)
+
+[node name="Coin034" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.09807,0.03115,-0.05865)
+rotation = Vector3(0,0.1960,0)
+scale = Vector3(1.9727,1.9727,1.9727)
+
+[node name="Coin035" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.03743,0.02037,-0.05276)
+rotation = Vector3(0,-0.2176,0)
+scale = Vector3(1.9995,1.9995,1.9995)
+
+[node name="Coin036" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.03598,0.01978,-0.05973)
+rotation = Vector3(0,0.6257,0)
+scale = Vector3(2.0481,2.0481,2.0481)
+
+[node name="Coin037" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.08931,0.01946,-0.05655)
+rotation = Vector3(0,1.7776,0)
+scale = Vector3(2.1523,2.1523,2.1523)
+
+[node name="Coin038" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.16464,0.01906,-0.06074)
+rotation = Vector3(0,0.2314,0)
+scale = Vector3(2.0131,2.0131,2.0131)
+
+[node name="Coin039" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.22875,0.01858,-0.06019)
+rotation = Vector3(0,-0.6341,0)
+scale = Vector3(2.0264,2.0264,2.0264)
+
+[node name="Coin040" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.23259,0.02952,-0.06345)
+rotation = Vector3(0,-2.6947,0)
+scale = Vector3(2.1358,2.1358,2.1358)
+
+[node name="Coin041" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.25322,0.02253,-0.00277)
+rotation = Vector3(0,1.8247,0)
+scale = Vector3(2.0224,2.0224,2.0224)
+
+[node name="Coin042" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.25735,0.03345,0.00026)
+rotation = Vector3(0,-1.4899,0)
+scale = Vector3(2.0017,2.0017,2.0017)
+
+[node name="Coin043" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.26213,0.04425,-0.00308)
+rotation = Vector3(0,-2.5956,0)
+scale = Vector3(2.0539,2.0539,2.0539)
+
+[node name="Coin044" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.19760,0.02206,0.00399)
+rotation = Vector3(0,-0.4265,0)
+scale = Vector3(1.9879,1.9879,1.9879)
+
+[node name="Coin045" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12947,0.02139,0.00174)
+rotation = Vector3(0,-2.5773,0)
+scale = Vector3(1.9824,1.9824,1.9824)
+
+[node name="Coin046" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06269,0.02082,-0.00399)
+rotation = Vector3(0,-0.4651,0)
+scale = Vector3(2.0916,2.0916,2.0916)
+
+[node name="Coin047" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06233,0.03211,0.00068)
+rotation = Vector3(0,1.2838,0)
+scale = Vector3(2.1147,2.1147,2.1147)
+
+[node name="Coin048" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06300,0.04353,-0.00160)
+rotation = Vector3(0,2.9619,0)
+scale = Vector3(2.2095,2.2095,2.2095)
+
+[node name="Coin049" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.00670,0.02023,-0.00018)
+rotation = Vector3(0,1.0613,0)
+scale = Vector3(2.1206,2.1206,2.1206)
+
+[node name="Coin050" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.00435,0.03169,0.00440)
+rotation = Vector3(0,-1.6961,0)
+scale = Vector3(2.0784,2.0784,2.0784)
+
+[node name="Coin051" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.06848,0.01984,-0.00106)
+rotation = Vector3(0,-2.9748,0)
+scale = Vector3(1.9952,1.9952,1.9952)
+
+[node name="Coin052" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.13300,0.01951,-0.00481)
+rotation = Vector3(0,2.1435,0)
+scale = Vector3(2.0215,2.0215,2.0215)
+
+[node name="Coin053" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.19854,0.01890,-0.00322)
+rotation = Vector3(0,-3.0208,0)
+scale = Vector3(1.8242,1.8242,1.8242)
+
+[node name="Coin054" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.19735,0.02875,-0.00147)
+rotation = Vector3(0,-2.6657,0)
+scale = Vector3(1.8354,1.8354,1.8354)
+
+[node name="Coin055" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.25655,0.01859,0.00116)
+rotation = Vector3(0,-2.9798,0)
+scale = Vector3(2.2119,2.2119,2.2119)
+
+[node name="Coin056" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.25887,0.03053,0.00477)
+rotation = Vector3(0,-0.2051,0)
+scale = Vector3(2.0472,2.0472,2.0472)
+
+[node name="Coin057" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.23366,0.02246,0.05384)
+rotation = Vector3(0,1.6373,0)
+scale = Vector3(2.0893,2.0893,2.0893)
+
+[node name="Coin058" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.17146,0.02191,0.05388)
+rotation = Vector3(0,1.5542,0)
+scale = Vector3(1.9632,1.9632,1.9632)
+
+[node name="Coin059" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16768,0.03251,0.05170)
+rotation = Vector3(0,1.5157,0)
+scale = Vector3(1.9635,1.9635,1.9635)
+
+[node name="Coin060" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.10353,0.02130,0.06057)
+rotation = Vector3(0,2.4097,0)
+scale = Vector3(2.1174,2.1174,2.1174)
+
+[node name="Coin061" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.10161,0.03273,0.05906)
+rotation = Vector3(0,3.1270,0)
+scale = Vector3(2.1064,2.1064,2.1064)
+
+[node name="Coin062" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.10271,0.04411,0.05647)
+rotation = Vector3(0,0.6045,0)
+scale = Vector3(2.1846,2.1846,2.1846)
+
+[node name="Coin063" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.03558,0.02082,0.05890)
+rotation = Vector3(0,-0.8957,0)
+scale = Vector3(2.1583,2.1583,2.1583)
+
+[node name="Coin064" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.03684,0.03247,0.06313)
+rotation = Vector3(0,2.1584,0)
+scale = Vector3(1.9852,1.9852,1.9852)
+
+[node name="Coin065" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.03518,0.02030,0.05997)
+rotation = Vector3(0,0.9470,0)
+scale = Vector3(1.7991,1.7991,1.7991)
+
+[node name="Coin066" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.03946,0.03002,0.05930)
+rotation = Vector3(0,1.7011,0)
+scale = Vector3(1.8074,1.8074,1.8074)
+
+[node name="Coin067" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.04220,0.03978,0.05516)
+rotation = Vector3(0,-0.2852,0)
+scale = Vector3(1.9030,1.9030,1.9030)
+
+[node name="Coin068" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09535,0.01986,0.05850)
+rotation = Vector3(0,-1.1591,0)
+scale = Vector3(2.1057,2.1057,2.1057)
+
+[node name="Coin069" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09513,0.03123,0.05868)
+rotation = Vector3(0,-2.1440,0)
+scale = Vector3(2.0351,2.0351,2.0351)
+
+[node name="Coin070" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09054,0.04222,0.06081)
+rotation = Vector3(0,-1.9759,0)
+scale = Vector3(2.0337,2.0337,2.0337)
+
+[node name="Coin071" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15388,0.01936,0.05917)
+rotation = Vector3(0,-0.6360,0)
+scale = Vector3(1.9234,1.9234,1.9234)
+
+[node name="Coin072" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15341,0.02975,0.05564)
+rotation = Vector3(0,-1.3275,0)
+scale = Vector3(1.9402,1.9402,1.9402)
+
+[node name="Coin073" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.22803,0.01886,0.06153)
+rotation = Vector3(0,3.0980,0)
+scale = Vector3(2.0181,2.0181,2.0181)
+
+[node name="Coin074" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.23102,0.02976,0.05803)
+rotation = Vector3(0,1.8845,0)
+scale = Vector3(2.0950,2.0950,2.0950)
+
+[node name="Coin075" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.19135,0.02215,0.11821)
+rotation = Vector3(0,1.0879,0)
+scale = Vector3(2.1759,2.1759,2.1759)
+
+[node name="Coin076" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12323,0.02147,0.11591)
+rotation = Vector3(0,-2.4460,0)
+scale = Vector3(2.0064,2.0064,2.0064)
+
+[node name="Coin077" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12219,0.03231,0.11125)
+rotation = Vector3(0,0.0175,0)
+scale = Vector3(1.9629,1.9629,1.9629)
+
+[node name="Coin078" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.12321,0.04290,0.11523)
+rotation = Vector3(0,0.2504,0)
+scale = Vector3(2.0342,2.0342,2.0342)
+
+[node name="Coin079" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06239,0.02106,0.10907)
+rotation = Vector3(0,1.0735,0)
+scale = Vector3(1.8378,1.8378,1.8378)
+
+[node name="Coin080" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.00639,0.02066,0.11477)
+rotation = Vector3(0,-2.9127,0)
+scale = Vector3(1.8912,1.8912,1.8912)
+
+[node name="Coin081" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.00952,0.03087,0.11338)
+rotation = Vector3(0,2.8564,0)
+scale = Vector3(1.9971,1.9971,1.9971)
+
+[node name="Coin082" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.06691,0.02003,0.11825)
+rotation = Vector3(0,-1.7488,0)
+scale = Vector3(2.1858,2.1858,2.1858)
+
+[node name="Coin083" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.06798,0.03184,0.11754)
+rotation = Vector3(0,0.2582,0)
+scale = Vector3(2.1863,2.1863,2.1863)
+
+[node name="Coin084" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.12489,0.01957,0.11020)
+rotation = Vector3(0,-0.0073,0)
+scale = Vector3(1.8087,1.8087,1.8087)
+
+[node name="Coin085" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.12238,0.02933,0.10761)
+rotation = Vector3(0,-1.5383,0)
+scale = Vector3(1.8864,1.8864,1.8864)
+
+[node name="Coin086" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.12026,0.03952,0.11109)
+rotation = Vector3(0,1.0152,0)
+scale = Vector3(1.8474,1.8474,1.8474)
+
+[node name="Coin087" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.19841,0.01899,0.10993)
+rotation = Vector3(0,-2.9885,0)
+scale = Vector3(2.0815,2.0815,2.0815)
+
+[node name="Coin088" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.20004,0.03023,0.11310)
+rotation = Vector3(0,-1.1342,0)
+scale = Vector3(2.2089,2.2089,2.2089)
+
+[node name="Coin089" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.20174,0.04216,0.10883)
+rotation = Vector3(0,2.2674,0)
+scale = Vector3(2.1524,2.1524,2.1524)
+
+[node name="Coin090" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.16748,0.02177,0.16684)
+rotation = Vector3(0,1.4032,0)
+scale = Vector3(2.2691,2.2691,2.2691)
+
+[node name="Coin091" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.09454,0.02119,0.16804)
+rotation = Vector3(0,0.5070,0)
+scale = Vector3(1.8652,1.8652,1.8652)
+
+[node name="Coin092" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.09665,0.03126,0.16937)
+rotation = Vector3(0,-1.6641,0)
+scale = Vector3(1.9016,1.9016,1.9016)
+
+[node name="Coin093" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.04177,0.02072,0.17285)
+rotation = Vector3(0,-2.7028,0)
+scale = Vector3(2.1974,2.1974,2.1974)
+
+[node name="Coin094" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.02681,0.02023,0.16639)
+rotation = Vector3(0,1.8437,0)
+scale = Vector3(2.1694,2.1694,2.1694)
+
+[node name="Coin095" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09503,0.01961,0.16720)
+rotation = Vector3(0,-2.1891,0)
+scale = Vector3(2.0037,2.0037,2.0037)
+
+[node name="Coin096" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15371,0.01911,0.17088)
+rotation = Vector3(0,0.0315,0)
+scale = Vector3(1.9622,1.9622,1.9622)
+
+[node name="Coin097" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.15404,0.02970,0.16653)
+rotation = Vector3(0,0.6058,0)
+scale = Vector3(2.0445,2.0445,2.0445)
+
+[node name="Coin098" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.00600,0.05317,-0.17500)
+rotation = Vector3(0,0.9835,0)
+scale = Vector3(2.1000,2.1000,2.1000)
+
+[node name="Coin099" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.06500,0.04213,-0.15100)
+rotation = Vector3(0,1.9871,0)
+scale = Vector3(2.1000,2.1000,2.1000)
+
+[node name="Coin100" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.05200,0.05317,-0.14800)
+rotation = Vector3(0,-2.2626,0)
+scale = Vector3(2.1000,2.1000,2.1000)
+
+[node name="Coin101" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.21000,0.02199,0.21000)
+rotation = Vector3(0,0.1266,0)
+scale = Vector3(1.8184,1.8184,1.8184)
+
+[node name="Coin102" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.13500,0.02122,0.24500)
+rotation = Vector3(0,-1.4926,0)
+scale = Vector3(1.7901,1.7901,1.7901)
+
+[node name="Coin103" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.05500,0.02040,0.28300)
+rotation = Vector3(0,3.0791,0)
+scale = Vector3(1.8496,1.8496,1.8496)
+
+[node name="Coin104" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.02000,0.02004,0.22900)
+rotation = Vector3(0,0.8195,0)
+scale = Vector3(1.7934,1.7934,1.7934)
+
+[node name="Coin105" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.09100,0.01921,0.27400)
+rotation = Vector3(0,-0.7456,0)
+scale = Vector3(1.8966,1.8966,1.8966)
+
+[node name="Coin106" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.16900,0.01880,0.23000)
+rotation = Vector3(0,1.9558,0)
+scale = Vector3(1.8499,1.8499,1.8499)
+
+[node name="Coin107" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.21800,0.01857,0.18500)
+rotation = Vector3(0,2.4607,0)
+scale = Vector3(1.8125,1.8125,1.8125)
+
+[node name="Coin108" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.25600,0.01791,0.25300)
+rotation = Vector3(0,1.2798,0)
+scale = Vector3(1.7850,1.7850,1.7850)
+
+[node name="Coin109" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.25651,0.02755,0.25338)
+rotation = Vector3(0,-0.5157,0)
+scale = Vector3(1.8302,1.8302,1.8302)
+
+[node name="Coin110" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.31000,0.01707,0.29700)
+rotation = Vector3(0,-1.5067,0)
+scale = Vector3(2.0186,2.0186,2.0186)
+
+[node name="Coin111" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.29000,0.02215,0.31000)
+rotation = Vector3(0,1.3068,0)
+scale = Vector3(1.6568,1.6568,1.6568)
+
+[node name="Coin112" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.36000,0.02299,0.26400)
+rotation = Vector3(0,3.1000,0)
+scale = Vector3(1.5885,1.5885,1.5885)
+
+[node name="Coin113" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(-0.36330,0.03156,0.26352)
+rotation = Vector3(0,0.7594,0)
+scale = Vector3(1.7343,1.7343,1.7343)
+
+[node name="Coin114" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.04700,0.01911,0.35100)
+rotation = Vector3(0,-1.3174,0)
+scale = Vector3(1.7340,1.7340,1.7340)
+
+[node name="Coin115" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.05167,0.02847,0.35276)
+rotation = Vector3(0,1.1532,0)
+scale = Vector3(1.7968,1.7968,1.7968)
+
+[node name="Coin116" parent="Coins" instance=ExtResource("coin")]
+position = Vector3(0.13000,0.01847,0.32700)
+rotation = Vector3(0,-1.2376,0)
+scale = Vector3(1.7807,1.7807,1.7807)
+
+[node name="WarmLeft" type="OmniLight3D" parent="."]
+position = Vector3(-0.36,0.32,0.09)
+light_color = Color(1,0.68,0.35,1)
+light_energy = 1.15
+light_specular = 0.7
+omni_range = 1.5
+
+[node name="WarmRight" type="OmniLight3D" parent="."]
+position = Vector3(0.39,0.32,0.1)
+light_color = Color(1,0.68,0.35,1)
+light_energy = 1.1
+light_specular = 0.7
+omni_range = 1.45

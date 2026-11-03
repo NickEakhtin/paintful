@@ -1,0 +1,86 @@
+{
+ "height": 0.85,
+ "ratio": 0.3,
+ "tile": 0.18,
+ "texdir": "tools/pipeline/wear",
+ "materials": [
+  {
+   "match": "painted wood",
+   "bc": "paint_bc.jpg",
+   "mr": "paint_mr.png"
+  },
+  {
+   "match": "aged warm copper|polished copper",
+   "bc": "copper_bc.jpg",
+   "mr": "copper_mr.png"
+  },
+  {
+   "match": "oxidized copper tray",
+   "bc": "top_bc.jpg",
+   "mr": "top_mr.png"
+  },
+  {
+   "match": "blackened iron",
+   "bc": "iron_bc.jpg",
+   "mr": "iron_mr.png"
+  },
+  {
+   "match": "rubber|interior",
+   "keep": true
+  }
+ ],
+ "groups": [
+  {
+   "name": "drawer",
+   "names": "^(Drawer|Long copper drawer bar)",
+   "box": [
+    -0.47,
+    0.47,
+    0.344,
+    0.51,
+    0.29
+   ],
+   "exclude": "^(Hinge|Upper cabinet|Drawer lower cross rail)",
+   "pivot": [
+    0,
+    0.344,
+    0.329
+   ]
+  },
+  {
+   "name": "door_left",
+   "box": [
+    -0.471,
+    -0.013,
+    -0.359,
+    0.295,
+    0.29
+   ],
+   "exclude": "^(Hinge|Lower front sill|Worn front lower sill)",
+   "pivot": [
+    -0.471,
+    -0.359,
+    0.293
+   ]
+  },
+  {
+   "name": "door_right",
+   "box": [
+    0.013,
+    0.471,
+    -0.359,
+    0.295,
+    0.29
+   ],
+   "exclude": "^(Hinge|Lower front sill|Worn front lower sill)",
+   "pivot": [
+    0.471,
+    -0.359,
+    0.293
+   ]
+  }
+ ],
+ "remat": {
+  "^(Left|Right) door leaf": "Worn blue-black painted wood"
+ }
+}

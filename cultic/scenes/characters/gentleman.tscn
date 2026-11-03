@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://cy2tka2c06wly"]
+
+[ext_resource type="Texture2D" uid="uid://db8cdop2gy24m" path="res://art/characters/gentleman.png" id="1_tex"]
+[ext_resource type="Texture2D" uid="uid://cyn3rc4458i54" path="res://art/characters/gentleman_normal.png" id="2_normal"]
+
+[sub_resource type="StandardMaterial3D" id="mat"]
+transparency = 2
+alpha_scissor_threshold = 0.5
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("1_tex")
+roughness = 0.75
+normal_enabled = true
+normal_scale = 1.3
+normal_texture = ExtResource("2_normal")
+billboard_mode = 2
+
+[sub_resource type="QuadMesh" id="quad"]
+material = SubResource("mat")
+size = Vector2(0.8645, 1.855)
+
+[node name="Gentleman" type="Node3D" unique_id=1146959881]
+
+[node name="Body" type="MeshInstance3D" parent="." unique_id=1104124781]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9275, 0)
+cast_shadow = 0
+mesh = SubResource("quad")

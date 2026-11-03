@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://art/models/cabinet/cabinet.glb" id="1_cabinet"]
+[ext_resource type="Script" path="res://cultic/scripts/cabinet.gd" id="2_script"]
+
+[node name="Cabinet" instance=ExtResource("1_cabinet")]
+script = ExtResource("2_script")
