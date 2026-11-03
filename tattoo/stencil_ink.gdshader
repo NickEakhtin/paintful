@@ -10,6 +10,8 @@ uniform sampler2D coverage : filter_linear, repeat_disable, hint_default_black;
 uniform sampler2D inked_at : filter_linear, repeat_disable, hint_default_black;
 uniform float now = 0.0;
 uniform float dry_time = 6.0;
+// 1.5 coverage cells in UV, for the slope of the ink surface (the session sets it from the grid size).
+uniform vec2 cell_step = vec2(0.00586, 0.00586);
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
 // Dried ink.
 uniform vec4 ink_color : source_color = vec4(0.11, 0.1, 0.14, 1.0);
@@ -58,9 +60,8 @@ void fragment() {
 	float wet = wetness(UV) * smoothstep(0.3, 1.0, ink);
 
 	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
-	float step_uv = 1.5 / 256.0;
-	vec2 dx = vec2(step_uv, 0.0);
-	vec2 dy = vec2(0.0, step_uv);
+	vec2 dx = vec2(cell_step.x, 0.0);
+	vec2 dy = vec2(0.0, cell_step.y);
 	vec2 slope = vec2(ink_at(texture(TEXTURE, UV + dx).a, UV + dx) - ink_at(texture(TEXTURE, UV - dx).a, UV - dx),
 			ink_at(texture(TEXTURE, UV + dy).a, UV + dy) - ink_at(texture(TEXTURE, UV - dy).a, UV - dy));
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;

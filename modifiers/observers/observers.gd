@@ -162,7 +162,7 @@ func _pick_spots() -> Array[Vector2]:
 	var candidates: Array[Vector2] = []
 	for i in CANDIDATES:
 		var point: Vector2 = stencil.position + stencil.size * Vector2(randf(), randf())
-		var cell: Vector2 = (point - stencil.position) / stencil.size * InkCanvas.SIZE
+		var cell: Vector2 = (point - stencil.position) / stencil.size * Vector2(session.canvas.size)
 		if session.canvas.is_stencil(cell) and skin.encloses(Rect2(point - eye_size * 0.5, eye_size)):
 			candidates.append(point)
 	var spots: Array[Vector2] = []
