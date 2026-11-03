@@ -160,6 +160,7 @@ var _flow: InkFlow
 
 func _ready() -> void:
 	_machine.visible = false
+	get_viewport().size_changed.connect(_on_window_resized)
 	_start_if_main_scene.call_deferred()
 
 
@@ -170,6 +171,31 @@ func _start_if_main_scene() -> void:
 			roll_and_start(stencil)
 		else:
 			start(stencil, fixed_tasks)
+
+
+## The stencil's larger side on screen, in real pixels (window pixels, not layout ones).
+func _stencil_screen_pixels() -> float:
+	var pixels: Vector2 = _canvas_rect.get_global_rect().size * get_viewport().get_final_transform().get_scale()
+	return maxf(pixels.x, pixels.y)
+
+
+## The ink look of every stencil part reads the InkPaint buffers (again after they're resized).
+func _bind_paint() -> void:
+	for material: ShaderMaterial in _materials:
+		material.set_shader_parameter("paint", _paint_view.coverage)
+		material.set_shader_parameter("wet_map", _paint_view.wetness)
+		material.set_shader_parameter("paint_texel", _paint_view.texel())
+
+
+## Fullscreen on or off, or a resized window: the ink look follows the screen's pixels (the machine and the
+## ink cap size themselves every frame).
+func _on_window_resized() -> void:
+	_resize_paint.call_deferred()   # after the layout has settled
+
+
+func _resize_paint() -> void:
+	if _paint_view != null:
+		_paint_view.resize(_stencil_screen_pixels())
 
 
 ## Lets the spirit spin the roulette over the bare skin, then starts with what came up.
@@ -194,8 +220,8 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		_paint_view.queue_free()
 	_paint_view = InkPaint.new()
 	add_child(_paint_view)
-	var pixels: Vector2 = _canvas_rect.get_global_rect().size * get_viewport().get_final_transform().get_scale()
-	_paint_view.setup(maxf(pixels.x, pixels.y), InkCanvas.SIZE, ink_dry_time)
+	_paint_view.setup(_stencil_screen_pixels(), InkCanvas.SIZE, ink_dry_time)
+	_paint_view.resized.connect(_bind_paint)
 	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
 	var part_names: PackedStringArray = PackedStringArray()
@@ -203,9 +229,6 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		part_names.append(part.display_name)
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = INK_SHADER
-		material.set_shader_parameter("paint", _paint_view.coverage)
-		material.set_shader_parameter("wet_map", _paint_view.wetness)
-		material.set_shader_parameter("paint_texel", _paint_view.texel())
 		material.set_shader_parameter("dry_time", ink_dry_time)
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
@@ -216,6 +239,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_stencil_layer.add_child(rect)
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bind_paint()
 	_hud.setup(part_names, MECHANICS.ink_supply)
 	_setup_skin_heat()
 	_setup_skin_press()

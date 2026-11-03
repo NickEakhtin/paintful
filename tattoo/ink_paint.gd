@@ -7,6 +7,10 @@ extends Node
 ## - `coverage`: the dabs add up, like the ink in the logic;
 ## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
+## `resize()` (the window changed size mid-session) moves the ink into buffers of the new size; `resized` then
+## says `coverage`, `wetness` and `texel()` changed.
+
+signal resized
 
 ## Largest side of the buffers, in pixels.
 const MAX_SIZE: int = 2048
@@ -16,6 +20,18 @@ const STROKE_SPACING: float = 0.15
 const MAX_BLOCKS: int = 8
 ## Wetness decays as exp(-DECAY * age / dry_time); the ink shader turns it back into an age.
 const DECAY: float = 3.0
+## Copies a buffer as is into one of another size; its values are already linear, so they go out re-encoded.
+const COPY_SHADER: String = """
+shader_type canvas_item;
+render_mode blend_disabled;
+vec3 to_srgb(vec3 c) {
+	return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
+}
+void fragment() {
+	vec4 value = texture(TEXTURE, UV);
+	COLOR = vec4(to_srgb(value.rgb), value.a);
+}
+"""
 const BRUSH_SHADER: String = """
 shader_type canvas_item;
 render_mode %s;
@@ -44,6 +60,11 @@ var _fader: Node2D = Node2D.new()
 var _pending: Array[Vector4] = []
 var _frame: Array[Vector4] = []
 var _cell_pixels: float = 1.0
+var _cells: int = 256
+## While the ink moves to new buffers: the old ones (frozen) and the frame that copies them.
+var _old_views: Array[SubViewport] = []
+var _move_frame: int = -1
+var _wanted_side: int = 0
 var _dry_time: float = 6.0
 var _dab: GradientTexture2D = GradientTexture2D.new()
 var _brush_materials: Array[ShaderMaterial] = []
@@ -98,13 +119,49 @@ func _enter_tree() -> void:
 
 ## `pixels`: the stencil's side on screen in real pixels; `cells`: the logic grid's side.
 func setup(pixels: float, cells: int, dry_time: float) -> void:
-	var side: int = clampi(roundi(pixels), 64, MAX_SIZE)
+	var side: int = _side(pixels)
 	_cover.size = Vector2i(side, side)
 	_wet.size = Vector2i(side, side)
+	_cells = cells
 	_cell_pixels = float(side) / cells
 	_dry_time = maxf(dry_time, 0.01)
 	_fader.queue_redraw()
 	clear_ink()
+
+
+## The stencil's side on screen changed (the window was resized or went fullscreen): the ink moves into buffers of
+## the new size, so it stays as sharp as the screen. Takes effect once a frame has copied the old ones.
+func resize(pixels: float) -> void:
+	_wanted_side = _side(pixels)
+	if _move_frame >= 0 or _wanted_side == _cover.size.x:
+		return   # a move in progress picks the latest size up when it ends
+	# the last batch may not have reached the old buffers: draw it into the new ones
+	if not _frame_drawn:
+		_pending = _frame + _pending
+	_frame = []
+	_old_views = [_cover, _wet]
+	for old: SubViewport in _old_views:
+		old.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var side: int = _wanted_side
+	_cover = _buffer("Coverage")
+	_wet = _buffer("Wetness")
+	for i in 2:
+		var view: SubViewport = [_cover, _wet][i]
+		view.size = Vector2i(side, side)
+		var copy: TextureRect = TextureRect.new()
+		copy.name = "Copy"
+		copy.texture = _old_views[i].get_texture()
+		copy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		copy.size = Vector2(side, side)
+		copy.material = ShaderMaterial.new()
+		(copy.material as ShaderMaterial).shader = Shader.new()
+		(copy.material as ShaderMaterial).shader.code = COPY_SHADER
+		view.add_child(copy)
+	_cell_pixels = float(side) / _cells
+	coverage = _cover.get_texture()
+	wetness = _wet.get_texture()
+	_move_frame = Engine.get_frames_drawn()
+	resized.emit()
 
 
 func texel() -> float:
@@ -139,6 +196,8 @@ func set_blocks(blocked: Array[Rect2]) -> void:
 
 
 func clear_ink() -> void:
+	if _move_frame >= 0:
+		_finish_move()
 	_pending.clear()
 	_frame.clear()
 	_cover.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
@@ -147,6 +206,13 @@ func clear_ink() -> void:
 
 func _process(delta: float) -> void:
 	_undrawn_time += delta
+	if _move_frame >= 0:
+		if Engine.get_frames_drawn() <= _move_frame:
+			return   # dabs wait until the copy is drawn
+		_finish_move()
+		if _wanted_side != _cover.size.x:
+			resize(_wanted_side)
+			return
 	var keep: float = exp(-DECAY * _undrawn_time / _dry_time)
 	_fader.modulate = Color(keep, keep, keep).linear_to_srgb()
 	if _frame_drawn:
@@ -165,6 +231,26 @@ func _process(delta: float) -> void:
 func _on_frame_drawn() -> void:
 	_frame_drawn = true
 	_undrawn_time = 0.0
+
+
+## The copy has been drawn: the brushes and the fader go to the new buffers, the old ones are dropped.
+func _finish_move() -> void:
+	_move_frame = -1
+	for view: SubViewport in [_cover, _wet]:
+		var copy: Node = view.get_node("Copy")
+		view.remove_child(copy)
+		copy.queue_free()
+	_cover_brush.reparent(_cover, false)
+	_fader.reparent(_wet, false)
+	_wet_brush.reparent(_wet, false)
+	_fader.queue_redraw()
+	for old: SubViewport in _old_views:
+		old.queue_free()
+	_old_views.clear()
+
+
+func _side(pixels: float) -> int:
+	return clampi(roundi(pixels), 64, MAX_SIZE)
 
 
 func _draw_dabs(brush: Node2D, wet: bool) -> void:
