@@ -6,6 +6,7 @@ extends Node
 ## verdict, goodbye, tidy up while the next one walks in / (3rd) the spirit claims them →
 ## close the studio → night: candles and knife in the basement → lead the chosen one down →
 ## the ritual: their head goes on the wall → "Day N+1" (the level reloads).
+## The basement is reached through the hatch (LevelSwitch): the chosen one travels down along with the player.
 
 const CLIENT_SCENE: PackedScene = preload("res://characters/client/client.tscn")
 const SESSION_SCENE: PackedScene = preload("res://tattoo/tattoo_session.tscn")
@@ -45,7 +46,7 @@ const PREP_COUNT: int = 2
 @export var open_sign: OpenSign
 @export var workstation: Workstation
 @export var seat_point: Marker3D
-@export var back_door: Door
+@export var level_switch: LevelSwitch
 ## Candle spots of the ritual circle.
 @export var ritual_circle: Node3D
 @export var altar_slot: ItemSlot
@@ -143,7 +144,8 @@ func _walk_in(client: Client) -> void:
 	await client.walk_to(_point("Entrance"))
 	await client.walk_to(_point("ReceptionWait"))
 	_use_entrance(false)
-	client.face(_point("ReceptionWait") + Vector3.FORWARD) # towards the desk
+	var desk: Node3D = points.get_node("ReceptionWait")
+	client.face(desk.global_position - desk.global_basis.z) # the marker looks at the desk
 	_arrived[client] = true
 
 
@@ -263,17 +265,18 @@ func _prepare_ritual() -> void:
 		await get_tree().create_timer(0.2).timeout
 
 
-## The chosen one follows the player down the stairs.
+## The chosen one follows the player and goes down through the hatch with them.
 func _lead_down(client: Client) -> void:
-	Events.objective_changed.emit("Ритуал готов. Приведи клиента")
+	Events.objective_changed.emit("Ритуал готов. Поднимись и приведи клиента")
 	client.allow_talk(true, "Повести за собой")
 	await client.talk_requested
 	client.allow_talk(false)
-	back_door.open()
 	client.follow(player)
-	Events.objective_changed.emit("Отведи его в подвал, к алтарю")
-	while client.global_position.y > -2.5:
-		await get_tree().process_frame
+	level_switch.companions.append(client)
+	Events.objective_changed.emit("Отведи его через люк в подвал, к алтарю")
+	while not level_switch.underground:
+		await level_switch.travelled
+	level_switch.companions.erase(client)
 
 
 func _ritual(client: Client) -> void:
@@ -346,7 +349,7 @@ func _nightfall() -> void:
 	day_night.set_night(true)
 	await Transition.fade_in(1.0)
 	player.unlock_controls(&"nightfall")
-	Events.objective_changed.emit("Спустись в подвал и подготовь ритуал")
+	Events.objective_changed.emit("Спустись через люк в подвал и подготовь ритуал")
 
 
 func _use_entrance(using: bool) -> void:

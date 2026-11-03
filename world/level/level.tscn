@@ -15,36 +15,45 @@
 [ext_resource type="PackedScene" path="res://world/basement/basement.tscn" id="4_basement"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="5_player"]
 [ext_resource type="NavigationMesh" path="res://world/level/level_navmesh.tres" id="6_navmesh"]
+[ext_resource type="Environment" path="res://world/level/environment.tres" id="22_environment"]
+[ext_resource type="Script" path="res://world/level/level_switch.gd" id="23_level_switch"]
+[ext_resource type="Script" path="res://interaction/interactable.gd" id="24_interactable"]
 
-[sub_resource type="Environment" id="environment"]
-background_mode = 1
-background_color = Color(0.02, 0.02, 0.03, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.45, 0.45, 0.55, 1)
-ambient_light_energy = 0.25
-tonemap_mode = 2
-ssao_enabled = true
+[sub_resource type="BoxShape3D" id="exit_shape"]
+size = Vector3(1.2, 2.1, 0.3)
 
 [node name="Level" type="Node3D"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("environment")
+environment = ExtResource("22_environment")
 
 [node name="Studio" parent="." instance=ExtResource("3_studio")]
 
 [node name="Basement" parent="." instance=ExtResource("4_basement")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.2, 3.0, -1.5)
 
-[node name="Lighting" type="Node3D" parent="." node_paths=PackedStringArray("sun", "studio_lamps", "street")]
+[node name="BasementExit" type="Area3D" parent="Basement"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 1.05, -3.15)
+script = ExtResource("24_interactable")
+prompt = "Подняться в студию"
+
+[node name="Shape" type="CollisionShape3D" parent="Basement/BasementExit"]
+shape = SubResource("exit_shape")
+
+[node name="Lighting" type="Node3D" parent="." node_paths=PackedStringArray("sun", "studio_lamps")]
 script = ExtResource("2_day_night")
 sun = NodePath("Sun")
-studio_lamps = NodePath("../Studio/Lamps")
-street = NodePath("../Studio/Street")
+studio_lamps = NodePath("../Studio/Lights")
 
 [node name="Sun" type="DirectionalLight3D" parent="Lighting"]
-transform = Transform3D(1, 0, 0, 0, 0.8, 0.6, 0, -0.6, 0.8, 0, 6, 8)
-light_color = Color(1, 0.95, 0.85, 1)
-light_energy = 1.4
+transform = Transform3D(-0.9898387, 0.14217448, 0.0024174128, 0.11474254, 0.7885815, 0.6041304, 0.083985604, 0.59826905, -0.796882, 0.33125532, 2.554284, 1.7492366)
+light_color = Color(0.41406584, 0.41406578, 0.41406578, 1)
+light_energy = 1.599
+light_bake_mode = 1
 shadow_enabled = true
+shadow_normal_bias = 2.204
+shadow_blur = 1.684
+sky_mode = 1
 
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = ExtResource("6_navmesh")
@@ -52,49 +61,65 @@ navigation_mesh = ExtResource("6_navmesh")
 [node name="Points" type="Node3D" parent="."]
 
 [node name="Street" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 5.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0, -2.2)
 
 [node name="Entrance" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 2.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.85, 0, -1.1)
 
 [node name="ReceptionWait" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0, 1.75)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -2.5, 0, 1.3)
 
 [node name="ChairSeat" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, -1.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.7, 0, 2.3)
 
 [node name="BenchWait" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, 2.05)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3, 0, 2.2)
 
 [node name="RitualCenter" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3, -9.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0.0, -10.9)
 
 [node name="Exit" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 5.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0, -2.2)
 
 [node name="BasementStairsTop" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 0, -3.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.2, 3.0, -4.9)
 
 [node name="AltarSpot" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -10.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0.0, -12.3)
+
+[node name="BasementLanding" type="Marker3D" parent="Points"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.2, 0.0, -8.8)
+
+[node name="StudioLanding" type="Marker3D" parent="Points"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.35, 0, 7.4)
 
 [node name="Player" parent="." instance=ExtResource("5_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -3.0, -9.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0.0, -11.3)
 
-[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "back_door", "ritual_circle", "altar_slot", "altar", "altar_glow", "head_wall", "chop_sound")]
+[node name="LevelSwitch" type="Node" parent="." node_paths=PackedStringArray("player", "hatch", "studio", "basement", "basement_landing", "studio_landing", "basement_exit")]
+script = ExtResource("23_level_switch")
+player = NodePath("../Player")
+hatch = NodePath("../Studio/BasementHatch")
+studio = NodePath("../Studio")
+basement = NodePath("../Basement")
+basement_landing = NodePath("../Points/BasementLanding")
+studio_landing = NodePath("../Points/StudioLanding")
+basement_exit = NodePath("../Basement/BasementExit")
+
+[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "level_switch", "ritual_circle", "altar_slot", "altar", "altar_glow", "head_wall", "chop_sound")]
 script = ExtResource("1_day_flow")
 clients = Array[ExtResource("10_client_data")]([ExtResource("7_anton"), ExtResource("8_marina"), ExtResource("9_gleb")])
 player = NodePath("../Player")
 day_night = NodePath("../Lighting")
 points = NodePath("../Points")
-entrance = NodePath("../Studio/EntranceDoor")
-open_sign = NodePath("../Studio/OpenSign")
-workstation = NodePath("../Studio/Workstation")
-seat_point = NodePath("../Studio/TattooChair/SeatPoint")
+entrance = NodePath("../Studio/Gameplay/EntranceDoor")
+open_sign = NodePath("../Studio/Gameplay/OpenSign")
+workstation = NodePath("../Studio/Gameplay/Workstation")
+seat_point = NodePath("../Studio/Gameplay/SeatPoint")
 random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_square")])
 random_greeting = ExtResource("19_hello")
 random_farewell = ExtResource("20_bye")
-back_door = NodePath("../Studio/BackDoor")
+level_switch = NodePath("../LevelSwitch")
 ritual_circle = NodePath("../Basement/Circle")
 altar_slot = NodePath("../Basement/AltarSlot")
 altar = NodePath("../Basement/AltarInteract")

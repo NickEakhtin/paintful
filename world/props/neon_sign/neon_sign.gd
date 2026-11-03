@@ -1,7 +1,9 @@
 @tool
+class_name NeonSign
 extends Node3D
 ## Neon TATTOO sign (put on a tattoo_sign.glb instance): the letters glow hot pink and each one now and then
 ## shorts out on its own schedule: a quick sputter, sometimes a short blackout, then it lights up again.
+## `powered` off: dark tubes and no light (the studio is closed).
 ## Runs in the editor too; everything it changes lives inside the instance, so nothing is written into the scene.
 
 @export var neon_color: Color = Color(1.0, 0.1, 0.6)
@@ -9,6 +11,11 @@ extends Node3D
 @export var mean_interval: float = 7.0          # seconds between glitches of one letter (each letter waits 0.6–2× this)
 @export var wall_light_energy: float = 0.8      # pink light the sign casts around itself
 @export var preview_in_editor: bool = true     # off: the sign stays as modelled in the editor and only glows in the game
+@export var powered: bool = true:
+	set(value):
+		powered = value
+		for i in _mats.size():
+			_set_lit(i, _lit[i])
 
 const LETTERS: Array[String] = ["root_9", "root_8", "root_5", "root_6", "root_7"]  # T, A, TT (one mesh, split below), O, O
 var _mats: Array[StandardMaterial3D] = []
@@ -83,9 +90,10 @@ func _split_vertically(mesh: MeshInstance3D) -> Array[MeshInstance3D]:
 
 func _set_lit(i: int, lit: bool) -> void:
 	_lit[i] = lit
-	_mats[i].emission_energy_multiplier = glow_energy if lit else 0.04
-	_mats[i].albedo_color = neon_color.lerp(Color.WHITE, 0.35) if lit else neon_color.darkened(0.75)
-	_light.light_energy = wall_light_energy * _lit.count(true) / _lit.size()
+	var glowing: bool = lit and powered
+	_mats[i].emission_energy_multiplier = glow_energy if glowing else 0.04
+	_mats[i].albedo_color = neon_color.lerp(Color.WHITE, 0.35) if glowing else neon_color.darkened(0.75)
+	_light.light_energy = wall_light_energy * _lit.count(true) / _lit.size() if powered else 0.0
 
 
 func _wait(seconds: float) -> void:
