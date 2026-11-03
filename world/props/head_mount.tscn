@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://world/props/head_mount.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/characters/gentleman.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://art/characters/gentleman_normal.png" id="3_normal"]
 
 [sub_resource type="BoxMesh" id="plaque_mesh"]
 size = Vector3(0.42, 0.48, 0.04)
@@ -8,15 +10,22 @@ size = Vector3(0.42, 0.48, 0.04)
 [sub_resource type="StandardMaterial3D" id="plaque_material"]
 albedo_color = Color(0.24, 0.15, 0.09, 1)
 
-[sub_resource type="SphereMesh" id="head_mesh"]
-radius = 0.17
-height = 0.34
+[sub_resource type="StandardMaterial3D" id="head_material"]
+transparency = 2
+alpha_scissor_threshold = 0.5
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("2_tex")
+roughness = 0.75
+normal_enabled = true
+normal_scale = 1.3
+normal_texture = ExtResource("3_normal")
+uv1_scale = Vector3(0.3, 0.18, 1)
+uv1_offset = Vector3(0.335, 0, 0)
 
-[sub_resource type="BoxMesh" id="eye_mesh"]
-size = Vector3(0.05, 0.012, 0.01)
-
-[sub_resource type="StandardMaterial3D" id="eye_material"]
-albedo_color = Color(0.05, 0.03, 0.03, 1)
+[sub_resource type="QuadMesh" id="head_mesh"]
+material = SubResource("head_material")
+size = Vector2(0.25, 0.32)
 
 [node name="HeadMount" type="Node3D"]
 script = ExtResource("1_script")
@@ -26,25 +35,6 @@ mesh = SubResource("plaque_mesh")
 surface_material_override/0 = SubResource("plaque_material")
 
 [node name="Head" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.17)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0.03)
+cast_shadow = 0
 mesh = SubResource("head_mesh")
-
-[node name="EyeLeftA" type="MeshInstance3D" parent="Head"]
-transform = Transform3D(0.707, -0.707, 0, 0.707, 0.707, 0, 0, 0, 1, -0.06, 0.03, 0.16)
-mesh = SubResource("eye_mesh")
-surface_material_override/0 = SubResource("eye_material")
-
-[node name="EyeLeftB" type="MeshInstance3D" parent="Head"]
-transform = Transform3D(0.707, 0.707, 0, -0.707, 0.707, 0, 0, 0, 1, -0.06, 0.03, 0.16)
-mesh = SubResource("eye_mesh")
-surface_material_override/0 = SubResource("eye_material")
-
-[node name="EyeRightA" type="MeshInstance3D" parent="Head"]
-transform = Transform3D(0.707, -0.707, 0, 0.707, 0.707, 0, 0, 0, 1, 0.06, 0.03, 0.16)
-mesh = SubResource("eye_mesh")
-surface_material_override/0 = SubResource("eye_material")
-
-[node name="EyeRightB" type="MeshInstance3D" parent="Head"]
-transform = Transform3D(0.707, 0.707, 0, -0.707, 0.707, 0, 0, 0, 1, 0.06, 0.03, 0.16)
-mesh = SubResource("eye_mesh")
-surface_material_override/0 = SubResource("eye_material")

@@ -69,7 +69,7 @@
 [ext_resource type="PackedScene" uid="uid://b0vjeawgi4dx6" path="res://art/models/skull/skull.glb" id="79_skull"]
 [ext_resource type="PackedScene" path="res://world/props/wet_asphalt/wet_asphalt_box.tscn" id="81_wet_asphalt"]
 [ext_resource type="Script" uid="uid://pl1sjeyouac" path="res://world/fx/fireflies/fireflies.gd" id="82_fireflies"]
-[ext_resource type="PackedScene" path="res://cultic/scenes/characters/umbrella_walker.tscn" id="83_umbrella_walker"]
+[ext_resource type="PackedScene" path="res://characters/umbrella_walker/umbrella_walker.tscn" id="83_umbrella_walker"]
 [ext_resource type="PackedScene" path="res://world/props/ruins/wall_breach.tscn" id="84_wallbreach"]
 [ext_resource type="PackedScene" path="res://world/props/ruins/wall_low_long.tscn" id="85_walllowlong"]
 [ext_resource type="PackedScene" path="res://world/props/ruins/wall_low_short.tscn" id="86_walllowshort"]

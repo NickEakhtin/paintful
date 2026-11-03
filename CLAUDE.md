@@ -69,8 +69,8 @@
 - Navigation: `Navigation` (NavigationRegion3D) uses the pre-baked `world/level/level_navmesh.tres`. After changing level geometry re-run `Godot --headless --path . --script res://tools/bake_level_navigation.gd` (it places the studio and basement as `level.tscn` does). The floors are separate navmesh islands joined only by `LevelSwitch`. Doors are excluded from the bake, so code must open the entrance for clients (`DayFlow` counts clients in the doorway).
 
 ## Clients (`characters/client/`)
-- `ClientData` (`data/clients/*.tres`): name, placeholder colour/height, `stencil`, `greeting`, `farewell` dialogues. For now every client (and `random_stencils`) gets the one-part black square (`data/stencils/square/`); the sigil, eye and moon stencils stay on disk for later.
-- `Client` (CharacterBody3D on layer 4 `npc`; player collides with npc, clients don't collide with the player): `await walk_to(point)` on the navmesh, `sit(seat)`, `stand_up(point)`, `face(point)`, `allow_talk(allowed, prompt, enabled)` → `talk_requested`, `set_eyes_glowing()`, `hypnotize()`, `follow(target)`, `kneel()`, `behead()`. Look lives under `Visual` (capsule now, 2D sprite later); `head` (`Visual/Head`) is the dialogue bubble anchor.
+- `ClientData` (`data/clients/*.tres`): name, colour (sprite tint)/height, `stencil`, `greeting`, `farewell` dialogues. For now every client (and `random_stencils`) gets the one-part black square (`data/stencils/square/`); the sigil, eye and moon stencils stay on disk for later.
+- `Client` (CharacterBody3D on layer 4 `npc`; player collides with npc, clients don't collide with the player): `await walk_to(point)` on the navmesh, `sit(seat)`, `stand_up(point)`, `face(point)`, `allow_talk(allowed, prompt, enabled)` → `talk_requested`, `set_eyes_glowing()`, `hypnotize()`, `follow(target)`, `kneel()`, `behead()`. Look lives under `Visual`: the colleague's gentleman drawing (`art/characters/gentleman.png` + normal map) on a Y-billboard quad sized to `ClientData.height`, tinted by `ClientData.color` (`tint_strength`), for every client until each gets their own art; poses are placeholders from that one drawing (sitting: hips on the seat, legs in the chair; kneeling: squashed; beheaded: the drawing below the neck lying face up); glowing eyes are two dots kept turned to the camera; no outline on clients (it would trace the quad). `head` (`Visual/Head`) is the dialogue bubble anchor. A `HeadMount` shows the head cut from the same drawing.
 - Never give two sibling nodes the same name in a `.tscn` — Godot silently drops one (this happened with the chair's `Seat`).
 - `Transition.keep_black()` from a scene's `_ready` keeps `change_scene()` from fading in, so the scene can run its own intro.
 
@@ -135,6 +135,8 @@ At the start a dark spirit contacts them: it must be freed, and for that the art
 ## Locations
 - **Tattoo studio**: small; reception desk, entrance door with an OPEN/CLOSED sign, session chair, workstation with supplies.
 - **Basement**: altar to the spirit, spots for candles and other ritual props.
+
+- `characters/umbrella_walker/`: the colleague's passer-by with an umbrella, four frames with normal maps, walking back and forth on the street.
 
 ## Art direction
 - Characters and animations will be flat 2D sprites in a 3D world (billboards). The user will provide the art later.

@@ -1,19 +1,19 @@
 extends Node3D
 ## A man with an umbrella walking in the rain, as a frame-by-frame silhouette (art/characters/umbrella_walker/,
-## 4 frames cut from art/concepts/characters/umbrella_walk_sheet.png by tools/characters/walk_sheet.gd). Each frame
+## 4 frames cut from art/concepts/characters/umbrella_walk_sheet.png by tools/art/characters/walk_sheet.gd). Each frame
 ## has a normal map, so the flat figure catches the street lights. He walks from `path_from` to `path_to` (in this
 ## node's own space), waits a moment, turns and walks back, for ever. The quad always faces the camera (Y-billboard);
 ## when, on screen, he walks to the left the mirrored frames (frame_N_left, with their own normal maps) are shown.
 
-const FRAMES := "res://art/characters/umbrella_walker/frame_%d%s.png"
-const COUNT := 4
+const FRAMES: String = "res://art/characters/umbrella_walker/frame_%d%s.png"
+const COUNT: int = 4
 
-@export var path_from := Vector3(-5.25, 0, 0)
-@export var path_to := Vector3(5.25, 0, 0)
-@export var speed := 0.9                     # metres per second
-@export var stride := 0.75                   # metres per 4-frame cycle: sets the frame rate to match the speed
-@export var pause_at_ends := Vector2(1.0, 3.0)   # seconds he stands before turning back (random in this range)
-@export var animate := true                  # off: he just stands in the middle of the path, no walking, no frames
+@export var path_from: Vector3 = Vector3(-5.25, 0, 0)
+@export var path_to: Vector3 = Vector3(5.25, 0, 0)
+@export var speed: float = 0.9                     # metres per second
+@export var stride: float = 0.75                   # metres per 4-frame cycle: sets the frame rate to match the speed
+@export var pause_at_ends: Vector2 = Vector2(1.0, 3.0)   # seconds he stands before turning back (random in this range)
+@export var animate: bool = true                  # off: he just stands in the middle of the path, no walking, no frames
 
 @onready var _body: MeshInstance3D = $Body
 @onready var _material: StandardMaterial3D = (_body.mesh as QuadMesh).material.duplicate()
@@ -22,12 +22,12 @@ var _right: Array[Texture2D] = []
 var _right_normal: Array[Texture2D] = []
 var _left: Array[Texture2D] = []
 var _left_normal: Array[Texture2D] = []
-var _t := 0.0                                # 0 at path_from, 1 at path_to
-var _dir := 1.0
-var _wait := 0.0
-var _phase := 0.0                            # frames walked, fractional
-var _frame := -1
-var _facing_left := false
+var _t: float = 0.0                                # 0 at path_from, 1 at path_to
+var _dir: float = 1.0
+var _wait: float = 0.0
+var _phase: float = 0.0                            # frames walked, fractional
+var _frame: int = -1
+var _facing_left: bool = false
 
 
 func _ready() -> void:
@@ -49,17 +49,17 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-	var left := _facing_left
+	var left: bool = _facing_left
 	# frames face right: mirror when, on screen, he is walking to the left
-	var camera := get_viewport().get_camera_3d()
+	var camera: Camera3D = get_viewport().get_camera_3d()
 	if camera:
-		var walk := global_basis * (path_to - path_from).normalized() * _dir
+		var walk: Vector3 = global_basis * (path_to - path_from).normalized() * _dir
 		left = walk.dot(camera.global_basis.x) < 0.0
 	if _wait > 0.0:
 		_wait -= delta
 		_show(0, left)                       # standing: feet apart
 		return
-	var length := path_from.distance_to(path_to)
+	var length: float = path_from.distance_to(path_to)
 	_t += _dir * speed * delta / maxf(length, 0.01)
 	if _t >= 1.0 or _t <= 0.0:
 		_t = clampf(_t, 0.0, 1.0)

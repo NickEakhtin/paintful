@@ -2,22 +2,33 @@
 
 [ext_resource type="Script" path="res://characters/client/client.gd" id="1_script"]
 [ext_resource type="Script" path="res://interaction/interactable.gd" id="2_interactable"]
+[ext_resource type="Texture2D" path="res://art/characters/gentleman.png" id="3_tex"]
+[ext_resource type="Texture2D" path="res://art/characters/gentleman_normal.png" id="4_normal"]
 
 [sub_resource type="CapsuleShape3D" id="body_shape"]
 radius = 0.28
 height = 1.75
 
-[sub_resource type="CapsuleMesh" id="body_mesh"]
-radius = 0.26
-height = 1.35
+[sub_resource type="StandardMaterial3D" id="sprite_material"]
+transparency = 2
+alpha_scissor_threshold = 0.5
+alpha_antialiasing_mode = 0
+cull_mode = 2
+albedo_texture = ExtResource("3_tex")
+roughness = 0.75
+normal_enabled = true
+normal_scale = 1.3
+normal_texture = ExtResource("4_normal")
+billboard_mode = 2
 
-[sub_resource type="SphereMesh" id="head_mesh"]
-radius = 0.17
-height = 0.34
+[sub_resource type="QuadMesh" id="sprite_mesh"]
+material = SubResource("sprite_material")
+size = Vector2(0.8155, 1.75)
+center_offset = Vector3(0, 0.875, 0)
 
 [sub_resource type="SphereMesh" id="eye_mesh"]
-radius = 0.025
-height = 0.05
+radius = 0.012
+height = 0.024
 
 [sub_resource type="StandardMaterial3D" id="eye_material"]
 shading_mode = 0
@@ -37,28 +48,24 @@ shape = SubResource("body_shape")
 [node name="Visual" type="Node3D" parent="."]
 
 [node name="Body" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
-mesh = SubResource("body_mesh")
+cast_shadow = 0
+mesh = SubResource("sprite_mesh")
 
-[node name="HeadMesh" type="MeshInstance3D" parent="Visual"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.53, 0)
-mesh = SubResource("head_mesh")
+[node name="Eyes" type="Node3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.59, 0)
 
-[node name="Eyes" type="Node3D" parent="Visual/HeadMesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.155)
-
-[node name="Left" type="MeshInstance3D" parent="Visual/HeadMesh/Eyes"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0, 0)
+[node name="Left" type="MeshInstance3D" parent="Visual/Eyes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.028, 0, 0.03)
 mesh = SubResource("eye_mesh")
 surface_material_override/0 = SubResource("eye_material")
 
-[node name="Right" type="MeshInstance3D" parent="Visual/HeadMesh/Eyes"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, 0, 0)
+[node name="Right" type="MeshInstance3D" parent="Visual/Eyes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.028, 0, 0.03)
 mesh = SubResource("eye_mesh")
 surface_material_override/0 = SubResource("eye_material")
 
-[node name="Glow" type="OmniLight3D" parent="Visual/HeadMesh/Eyes"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.08)
+[node name="Glow" type="OmniLight3D" parent="Visual/Eyes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1)
 light_color = Color(1, 0.3, 0.1, 1)
 light_energy = 0.6
 omni_range = 0.8
