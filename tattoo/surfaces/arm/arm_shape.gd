@@ -1,0 +1,184 @@
+class_name ArmShape
+extends RefCounted
+## The forearm as math: skin coordinates <-> the picture on screen. Pure logic, no nodes.
+##
+## Skin point = (theta, v): theta is the angle around the arm from its front line (negative to the left),
+## v runs along the arm in pixels (0 = the arm's centre, positive down). The screen point is in pixels
+## from the arm's centre too, seen straight on by an orthographic camera (x right, y down, z toward the camera).
+##
+## Pulling: the left hand grips the skin at `grip_angle` behind one silhouette and drags that grip point Q out
+## past the arm and a little toward the camera. Seen from above, the skin follows the arm to the tangent point T
+## and then runs straight to Q; the arc from T to the grip is stretched evenly over that segment. At rest
+## T = Q and the arm is a plain cylinder. The shape stays convex, so a skin point is visible exactly where it
+## faces the camera. `arm_skin.gdshader` repeats these formulas: keep the two in sync.
+
+## Radius at the arm's centre, in pixels.
+var radius: float = 210.0
+## Radius scale at the top (elbow) and bottom (wrist) end of `length`.
+var taper_top: float = 1.1
+var taper_bottom: float = 0.84
+## Length of the modelled arm, in pixels; longer than the screen so its ends stay off screen.
+var length: float = 1000.0
+## Where the fingers hold the skin, measured from the front line (radians, behind the silhouette).
+var grip_angle: float = deg_to_rad(115.0)
+## How far past the silhouette a full pull drags the grip, in pixels.
+var max_pull: float = 220.0
+## How far toward the camera a full pull brings the grip, in radii.
+var hold_depth: float = 0.25
+## Share of the pull lost at rows far from the hand (the flap bulges where the hand holds it).
+var grip_bulge: float = 0.35
+## How quickly the pull falls off away from the hand's row, in pixels.
+var bulge_spread: float = 300.0
+## Row the hand holds, in pixels from the centre.
+var grip_v: float = 0.0
+## Ink stops landing between these angles of the surface away from the camera.
+var ink_soft_angle: float = deg_to_rad(50.0)
+var ink_max_angle: float = deg_to_rad(62.0)
+
+## Pulled side: -1 left, 1 right, 0 none.
+var side: int = 0
+## How far the pull is, 0..1 of `max_pull`.
+var amount: float = 0.0
+## Vertical drag of the grip at a full-width row, in pixels (negative = up).
+var shear: float = 0.0
+
+
+## Arm radius at row `v`.
+func radius_at(v: float) -> float:
+	var t: float = clampf(v / length + 0.5, 0.0, 1.0)
+	return radius * lerpf(taper_top, taper_bottom, t)
+
+
+## How much of the pull reaches row `v`, 0..1.
+func bulge_at(v: float) -> float:
+	var d: float = (v - grip_v) / bulge_spread
+	return 1.0 - grip_bulge * (1.0 - exp(-0.5 * d * d))
+
+
+## Screen point (x, y, z) of skin point (theta, v), in pixels from the arm's centre.
+func skin_to_screen(theta: float, v: float) -> Vector3:
+	return _place(theta, v)[0]
+
+
+## How squarely the skin at (theta, v) faces the camera: 1 straight on, 0 edge-on, negative = hidden.
+func facing(theta: float, v: float) -> float:
+	return _place(theta, v)[1]
+
+
+## Screen point plus how much ink lands there (0..1), as (x, y, ink).
+func project(theta: float, v: float) -> Vector3:
+	var placed: Array = _place(theta, v)
+	var point: Vector3 = placed[0]
+	return Vector3(point.x, point.y, ink_factor(placed[1]))
+
+
+## 1 where the skin faces the camera squarely enough to take ink, fading to 0 toward the silhouette.
+func ink_factor(face: float) -> float:
+	return smoothstep(cos(ink_max_angle), cos(ink_soft_angle), face)
+
+
+## Skin point (theta, v) under a screen point, or Vector2.INF where there is no skin.
+## The flap is sheared, so the row is found by a few rounds; the ends of the flap are clamped while
+## searching and only the final row decides whether there is skin.
+func screen_to_skin(point: Vector2) -> Vector2:
+	var v: float = point.y
+	var solved: Vector3 = Vector3.ZERO
+	for i in 8:
+		solved = _solve_row(point.x, v)
+		if solved.z < 0.0 and side == 0:
+			return Vector2.INF
+		var next_v: float = point.y - _row_shear(v) * solved.y
+		var done: bool = absf(next_v - v) < 0.01
+		v = next_v
+		if done:
+			break
+	solved = _solve_row(point.x, v)
+	if solved.z < 0.0:
+		return Vector2.INF
+	return Vector2(solved.x, v)
+
+
+## The grip point Q of row `v` in the pulled side's frame (x outward, y = z toward the camera).
+func grip_point(v: float) -> Vector2:
+	var r: float = radius_at(v)
+	var rest: Vector2 = Vector2(sin(grip_angle), cos(grip_angle)) * r
+	var full: Vector2 = Vector2(r + max_pull, hold_depth * r)
+	return rest.lerp(full, amount * bulge_at(v))
+
+
+## Where the grip is on screen (x, y), for the hand. Mirrored to the pulled side.
+func grip_screen() -> Vector2:
+	var q: Vector2 = grip_point(grip_v)
+	return Vector2(q.x * _side_sign(), grip_v + _row_shear(grip_v))
+
+
+## Angle of the tangent point T in row `v` (pulled side's frame); >= grip_angle when nothing is pulled.
+func tangent_angle(v: float) -> float:
+	if side == 0 or amount <= 0.0:
+		return grip_angle
+	var r: float = radius_at(v)
+	var q: Vector2 = grip_point(v)
+	var distance: float = q.length()
+	if distance <= r:
+		return grip_angle
+	return minf(grip_angle, atan2(q.x, q.y) - acos(r / distance))
+
+
+## Copies the shape into an `arm_skin.gdshader` material.
+func apply_to(material: ShaderMaterial) -> void:
+	material.set_shader_parameter("radius", radius)
+	material.set_shader_parameter("taper_top", taper_top)
+	material.set_shader_parameter("taper_bottom", taper_bottom)
+	material.set_shader_parameter("arm_length", length)
+	material.set_shader_parameter("grip_angle", grip_angle)
+	material.set_shader_parameter("max_pull", max_pull)
+	material.set_shader_parameter("hold_depth", hold_depth)
+	material.set_shader_parameter("grip_bulge", grip_bulge)
+	material.set_shader_parameter("bulge_spread", bulge_spread)
+	material.set_shader_parameter("grip_v", grip_v)
+	material.set_shader_parameter("pull_side", float(side))
+	material.set_shader_parameter("pull_amount", amount)
+	material.set_shader_parameter("pull_shear", shear)
+
+
+func _side_sign() -> float:
+	return -1.0 if side < 0 else 1.0
+
+
+func _row_shear(v: float) -> float:
+	return shear * bulge_at(v) if side != 0 else 0.0
+
+
+## [Vector3 screen point, float facing].
+func _place(theta: float, v: float) -> Array:
+	var r: float = radius_at(v)
+	var s: float = _side_sign()
+	var local: float = theta * s # angle in the pulled side's frame
+	var t_angle: float = tangent_angle(v)
+	if side == 0 or local <= t_angle or local > grip_angle:
+		return [Vector3(sin(theta) * r, v, cos(theta) * r), cos(theta)]
+	var tangent: Vector2 = Vector2(sin(t_angle), cos(t_angle)) * r
+	var t: float = (local - t_angle) / (grip_angle - t_angle)
+	var on_flap: Vector2 = tangent.lerp(grip_point(v), t)
+	return [Vector3(on_flap.x * s, v + _row_shear(v) * t, on_flap.y), cos(t_angle)]
+
+
+## In row `v`: (theta, share of the way along the flap, 1 or -1 when there is no skin) under screen x.
+## Past the flap's end the result is clamped to its end, flagged as no skin.
+func _solve_row(x: float, v: float) -> Vector3:
+	var r: float = radius_at(v)
+	var s: float = _side_sign()
+	var t_angle: float = tangent_angle(v)
+	var flap_visible: bool = side != 0 and t_angle < grip_angle and t_angle < PI * 0.5
+	var local_x: float = x * s
+	if flap_visible:
+		var tangent_x: float = sin(t_angle) * r
+		if local_x > tangent_x:
+			var grip_x: float = grip_point(v).x
+			var t: float = (local_x - tangent_x) / maxf(grip_x - tangent_x, 0.0001)
+			var ok: float = 1.0 if t <= 1.0 else -1.0
+			t = minf(t, 1.0)
+			return Vector3((t_angle + t * (grip_angle - t_angle)) * s, t, ok)
+	if absf(x) > r:
+		return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
+	return Vector3(asin(x / r), 0.0, 1.0)
