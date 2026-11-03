@@ -1,10 +1,14 @@
 extends SceneTree
-## Draws the placeholder stencils (sigil, eye, moon, square): one PNG per part in data/stencils/<name>/.
+## Draws the placeholder stencils (sigil, eye, moon, square, arm_band): one PNG per part in data/stencils/<name>/.
+## `arm_band` is the unwrapped forearm skin (`ArmSurface`): x spans -120..120 degrees around the arm,
+## y the middle 700 px of it; its wings sit behind the silhouettes and need the skin pulled.
 ## Run: Godot --headless --path . --script res://tools/generate_placeholder_stencil.gd
 
 const SIZE: int = 512
 const OUT_DIR: String = "res://data/stencils/"
 const CENTER: Vector2 = Vector2(SIZE / 2.0, SIZE / 2.0)
+const ARM_SIZE: Vector2i = Vector2i(880, 700)
+const ARM_CENTER: Vector2 = Vector2(440.0, 350.0)
 
 
 func _init() -> void:
@@ -23,14 +27,25 @@ func _init() -> void:
 	_save("moon", "dot_ring", func(p: Vector2) -> bool: return _near_any(p, _circle_points(12, 232.0, 0.0), 10.0))
 
 	_save("square", "square", func(p: Vector2) -> bool: return absf(p.x - CENTER.x) <= 150.0 and absf(p.y - CENTER.y) <= 150.0)
+
+	_save("arm_band", "seal", func(p: Vector2) -> bool:
+		return _ring(p, ARM_CENTER, 70.0, 92.0) or p.distance_to(ARM_CENTER) <= 30.0, ARM_SIZE)
+	_save("arm_band", "left_wing", func(p: Vector2) -> bool:
+		return _near_segment(p, Vector2(185, 220), Vector2(75, 350), 15.0) \
+				or _near_segment(p, Vector2(75, 350), Vector2(185, 480), 15.0), ARM_SIZE)
+	_save("arm_band", "right_wing", func(p: Vector2) -> bool:
+		return _near_segment(p, Vector2(695, 220), Vector2(805, 350), 15.0) \
+				or _near_segment(p, Vector2(805, 350), Vector2(695, 480), 15.0), ARM_SIZE)
+	_save("arm_band", "ribbon", func(p: Vector2) -> bool:
+		return _near_segment(p, Vector2(480, 545), Vector2(770, 190), 12.0), ARM_SIZE)
 	quit()
 
 
-func _save(stencil: String, part_name: String, inside: Callable) -> void:
+func _save(stencil: String, part_name: String, inside: Callable, size: Vector2i = Vector2i(SIZE, SIZE)) -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR + stencil)
-	var image: Image = Image.create_empty(SIZE, SIZE, false, Image.FORMAT_RGBA8)
-	for y in SIZE:
-		for x in SIZE:
+	var image: Image = Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+	for y in size.y:
+		for x in size.x:
 			if inside.call(Vector2(x + 0.5, y + 0.5)):
 				image.set_pixel(x, y, Color.WHITE)
 	image.save_png("%s%s/%s.png" % [OUT_DIR, stencil, part_name])

@@ -9,7 +9,9 @@ extends RefCounted
 ## Pulling: the left hand grips the skin at `grip_angle` behind one silhouette and drags that grip point Q out
 ## past the arm and a little toward the camera. Seen from above, the skin follows the arm to the tangent point T
 ## and then runs straight to Q; the arc from T to the grip is stretched evenly over that segment. At rest
-## T = Q and the arm is a plain cylinder. The shape stays convex, so a skin point is visible exactly where it
+## T = Q and the arm is a plain cylinder. The stretch eases in along the flap (none right at T, more toward
+## the fingers) and the vertical drag grows with the square of the way out, so the flap joins the arm
+## without a crease in the light. The shape stays convex, so a skin point is visible exactly where it
 ## faces the camera. `arm_skin.gdshader` repeats these formulas: keep the two in sync.
 
 ## Radius at the arm's centre, in pixels.
@@ -87,7 +89,7 @@ func screen_to_skin(point: Vector2) -> Vector2:
 		solved = _solve_row(point.x, v)
 		if solved.z < 0.0 and side == 0:
 			return Vector2.INF
-		var next_v: float = point.y - _row_shear(v) * solved.y
+		var next_v: float = point.y - _row_shear(v) * solved.y * solved.y
 		var done: bool = absf(next_v - v) < 0.01
 		v = next_v
 		if done:
@@ -158,9 +160,30 @@ func _place(theta: float, v: float) -> Array:
 	if side == 0 or local <= t_angle or local > grip_angle:
 		return [Vector3(sin(theta) * r, v, cos(theta) * r), cos(theta)]
 	var tangent: Vector2 = Vector2(sin(t_angle), cos(t_angle)) * r
-	var t: float = (local - t_angle) / (grip_angle - t_angle)
+	var t: float = _ease_out(t_angle, v, (local - t_angle) / (grip_angle - t_angle))
 	var on_flap: Vector2 = tangent.lerp(grip_point(v), t)
-	return [Vector3(on_flap.x * s, v + _row_shear(v) * t, on_flap.y), cos(t_angle)]
+	return [Vector3(on_flap.x * s, v + _row_shear(v) * t * t, on_flap.y), cos(t_angle)]
+
+
+## Skin taken off the arm at T starts unstretched: the first bit of arc covers as much screen as it did
+## on the arm, the rest stretches more. Share of the arc `share` -> share of the flap's length.
+func _ease_out(t_angle: float, v: float, share: float) -> float:
+	var k: float = _start_density(t_angle, v)
+	return k * share + (1.0 - k) * share * share
+
+
+func _ease_back(t_angle: float, v: float, t: float) -> float:
+	var k: float = _start_density(t_angle, v)
+	if absf(1.0 - k) < 0.0001:
+		return t
+	return (-k + sqrt(maxf(0.0, k * k + 4.0 * (1.0 - k) * t))) / (2.0 * (1.0 - k))
+
+
+## Arc length over flap length, kept where the easing stays monotonic.
+func _start_density(t_angle: float, v: float) -> float:
+	var r: float = radius_at(v)
+	var flap: float = (grip_point(v) - Vector2(sin(t_angle), cos(t_angle)) * r).length()
+	return clampf(r * (grip_angle - t_angle) / maxf(flap, 0.0001), 0.2, 2.0)
 
 
 ## In row `v`: (theta, share of the way along the flap, 1 or -1 when there is no skin) under screen x.
@@ -178,7 +201,8 @@ func _solve_row(x: float, v: float) -> Vector3:
 			var t: float = (local_x - tangent_x) / maxf(grip_x - tangent_x, 0.0001)
 			var ok: float = 1.0 if t <= 1.0 else -1.0
 			t = minf(t, 1.0)
-			return Vector3((t_angle + t * (grip_angle - t_angle)) * s, t, ok)
+			var share: float = _ease_back(t_angle, v, t)
+			return Vector3((t_angle + share * (grip_angle - t_angle)) * s, t, ok)
 	if absf(x) > r:
 		return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
 	return Vector3(asin(x / r), 0.0, 1.0)

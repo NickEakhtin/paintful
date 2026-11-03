@@ -48,6 +48,11 @@ func supports_tasks() -> bool:
 	return false
 
 
+## Controls this skin adds to the HUD line, or "".
+func hint() -> String:
+	return ""
+
+
 ## Per frame, from the session. `active`: the player may use the free hand on the skin now.
 func update_surface(_delta: float, _active: bool) -> void:
 	pass

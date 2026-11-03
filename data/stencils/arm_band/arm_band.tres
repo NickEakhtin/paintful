@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="StencilData" format=3]
+
+[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" path="res://data/stencils/arm_band/seal.png" id="3_seal"]
+[ext_resource type="Texture2D" path="res://data/stencils/arm_band/left_wing.png" id="4_left"]
+[ext_resource type="Texture2D" path="res://data/stencils/arm_band/right_wing.png" id="5_right"]
+[ext_resource type="Texture2D" path="res://data/stencils/arm_band/ribbon.png" id="6_ribbon"]
+
+[sub_resource type="Resource" id="part_seal"]
+script = ExtResource("2_part")
+display_name = "Печать"
+texture = ExtResource("3_seal")
+
+[sub_resource type="Resource" id="part_left"]
+script = ExtResource("2_part")
+display_name = "Левое крыло"
+texture = ExtResource("4_left")
+
+[sub_resource type="Resource" id="part_right"]
+script = ExtResource("2_part")
+display_name = "Правое крыло"
+texture = ExtResource("5_right")
+
+[sub_resource type="Resource" id="part_ribbon"]
+script = ExtResource("2_part")
+display_name = "Лента"
+texture = ExtResource("6_ribbon")
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Браслет-печать"
+parts = Array[ExtResource("2_part")]([SubResource("part_seal"), SubResource("part_left"), SubResource("part_right"), SubResource("part_ribbon")])
+surface = &"arm"
+grid_size = Vector2i(352, 280)

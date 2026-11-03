@@ -214,6 +214,8 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		_surface.stencil_layer().add_child(rect)
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud.setup(part_names, MECHANICS.ink_supply)
+	if not _surface.hint().is_empty():
+		_hud.add_hint(_surface.hint())
 	_setup_skin_heat()
 	_setup_skin_press()
 	_hud.show_progress(canvas)
