@@ -392,10 +392,12 @@ func _update_needle(delta: float) -> void:
 	var desired: Vector2 = _machine.pointer
 	var pointer_cell: Vector2 = _to_cell(_machine.pointer)
 	var target: Vector2 = Vector2.INF
-	if MECHANICS.magnet and _surface.supports_tasks():
-		target = canvas.find_unfilled_near(pointer_cell, magnet_radius)
+	# `magnet_radius` is in cells of the flat panel; other skins get the same reach on screen.
+	var radius: float = magnet_radius * _canvas_rect.pixels_per_cell() / _surface.pixels_per_cell()
+	if MECHANICS.magnet and pointer_cell.is_finite():
+		target = canvas.find_unfilled_near(pointer_cell, radius, null if _surface == _canvas_rect else _surface)
 	if target.is_finite():
-		var distance: float = pointer_cell.distance_to(target) / magnet_radius
+		var distance: float = pointer_cell.distance_to(target) / radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
 	_steady_needle = _steady_needle.lerp(desired, 1.0 - exp(-needle_follow * delta))

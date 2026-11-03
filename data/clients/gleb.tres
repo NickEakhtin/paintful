@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="ClientData" format=3]
 
 [ext_resource type="Script" path="res://characters/client/client_data.gd" id="1_script"]
-[ext_resource type="Resource" path="res://data/stencils/square/square.tres" id="2_stencil"]
+[ext_resource type="Resource" path="res://data/stencils/arm_band/arm_band.tres" id="2_stencil"]
 [ext_resource type="Resource" path="res://data/dialogues/gleb_hello.tres" id="3_hello"]
 [ext_resource type="Resource" path="res://data/dialogues/gleb_bye.tres" id="4_bye"]
 

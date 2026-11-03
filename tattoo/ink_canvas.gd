@@ -121,7 +121,8 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, radius_px: floa
 
 
 ## Centre of the nearest stencil cell that still needs ink, or Vector2.INF if none within `radius`.
-func find_unfilled_near(center: Vector2, radius: float) -> Vector2:
+## With a `surface`, only cells that take ink there now count (not hidden or turned away).
+func find_unfilled_near(center: Vector2, radius: float, surface: SkinSurface = null) -> Vector2:
 	var best: Vector2 = Vector2.INF
 	var best_d2: float = radius * radius
 	var r: int = ceili(radius)
@@ -134,7 +135,7 @@ func find_unfilled_near(center: Vector2, radius: float) -> Vector2:
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
 			var d2: float = point.distance_squared_to(center)
-			if d2 < best_d2 and not _is_blocked(point):
+			if d2 < best_d2 and not _is_blocked(point) and (surface == null or surface.project(point).z >= 0.5):
 				best_d2 = d2
 				best = point
 	return best
