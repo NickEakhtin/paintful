@@ -4,7 +4,7 @@ from PIL import Image,ImageDraw,ImageFont
 Image.MAX_IMAGE_PIXELS=None
 proj,outp=sys.argv[1],sys.argv[2]
 scn=open(f'{proj}/scenes/main.tscn').read()
-res={m[1]:m[0] for m in re.findall(r'path="res://cultic/([^"]+\.glb)" id="([^"]+)"',scn)}
+res={m[1]:m[0] for m in re.findall(r'path="res://([^"]+\.glb)" id="([^"]+)"',scn)}
 groups={g.group(1):[float(x) for x in g.group(2).split(',')][9:] for g in re.finditer(r'\[node name="(\w+)" type="Node3D" parent="\."\]\ntransform = Transform3D\(([^)]+)\)',scn)}
 items=[]
 for blk in re.split(r'\n(?=\[node )',scn):

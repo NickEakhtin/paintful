@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://world/fx/sky/overcast_sky.gdshader" id="1_sky"]
+[ext_resource type="Script" path="res://world/fx/sky/sky_sphere.gd" id="2_script"]
+
+[sub_resource type="ShaderMaterial" id="mat"]
+render_priority = -128
+shader = ExtResource("1_sky")
+
+[sub_resource type="SphereMesh" id="sphere"]
+material = SubResource("mat")
+radius = 400.0
+height = 800.0
+radial_segments = 48
+rings = 24
+flip_faces = true
+
+[node name="SkySphere" type="MeshInstance3D"]
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("sphere")
+script = ExtResource("2_script")

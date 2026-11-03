@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/props/mesh_collision.gd" id="1_bf6wj"]
+[ext_resource type="ArrayMesh" path="res://art/models/ruins/wall_low_long.res" id="2_hwccq"]
+
+[node name="WallLowLong" type="Node3D" unique_id=1276813474]
+script = ExtResource("1_bf6wj")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1601164246]
+mesh = ExtResource("2_hwccq")

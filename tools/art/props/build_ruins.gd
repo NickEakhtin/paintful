@@ -12,7 +12,7 @@ extends SceneTree
 
 const SEED := 1701
 const MESH_DIR := "res://art/models/ruins/"
-const SCENE_DIR := "res://cultic/scenes/props/ruins/"
+const SCENE_DIR := "res://world/props/ruins/"
 const MAT_DIR := "res://art/materials/stone/"
 const GAP := 0.008                     # gap around loose / damaged stones, metres
 const JOINT := 0.014                   # width of the bevelled rim that draws the mortar joint on a clean block
@@ -454,7 +454,7 @@ func _build(name: String, layout: Callable, cells: int) -> void:
 
 	var root := Node3D.new()
 	root.name = name.to_pascal_case()
-	root.set_script(load("res://cultic/scripts/mesh_collision.gd"))
+	root.set_script(load("res://world/props/mesh_collision.gd"))
 	var mi := MeshInstance3D.new()
 	mi.name = "Mesh"
 	mi.mesh = load(MESH_DIR + name + ".res")

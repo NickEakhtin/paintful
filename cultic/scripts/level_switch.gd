@@ -30,6 +30,8 @@ var _busy := false
 
 func _ready() -> void:
 	add_to_group("level_switch")
+	for hatch in get_tree().get_nodes_in_group("hatch"):
+		hatch.descend_requested.connect(go_down)
 	var target := StaticBody3D.new()
 	target.set_meta("outline_contour", preload("res://art/models/ground/basement_exit_reveal.res"))
 	target.collision_layer = 4             # LMB sees it, the player walks through it
@@ -144,6 +146,7 @@ func _kept(node: Node, scene: Node) -> bool:
 func _show(basement: bool) -> void:
 	get_viewport().scaling_3d_scale = minf(upstairs_render_scale, basement_render_scale) if basement else upstairs_render_scale
 	in_basement = basement
+	Events.underground_changed.emit(basement)
 	for node in _hidden:
 		if is_instance_valid(node):
 			node.visible = true

@@ -38,7 +38,7 @@ func _ready() -> void:
 	var shine := QuadMesh.new()          # glare streaks just in front of the glass
 	shine.size = size
 	var shine_material := ShaderMaterial.new()
-	shine_material.shader = load("res://cultic/scripts/glass_shine.gdshader")
+	shine_material.shader = load("res://world/props/window_glass/glass_shine.gdshader")
 	shine.material = shine_material
 	_add(shine, Vector3(0, 0, 0.004))
 	if reflection_box != Vector3.ZERO:

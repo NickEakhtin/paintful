@@ -41,6 +41,7 @@ var _has_yellow_paint := false
 
 
 func _ready() -> void:
+	add_to_group("player")
 	add_child(_outline)
 	_head_rest = _head.position
 	_camera.make_current()

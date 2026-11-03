@@ -1,6 +1,6 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://b7fdncaewx8dw"]
 
-[ext_resource type="Shader" uid="uid://ol1f81i3lbxr" path="res://cultic/scripts/wet_soil.gdshader" id="1_q86mn"]
+[ext_resource type="Shader" uid="uid://ol1f81i3lbxr" path="res://world/props/ground/wet_soil.gdshader" id="1_q86mn"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_rkw3n"]
 noise_type = 2

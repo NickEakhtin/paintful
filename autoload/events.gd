@@ -17,3 +17,7 @@ signal studio_opened
 ## The sign was turned back to CLOSED: no more clients today.
 @warning_ignore("unused_signal")
 signal studio_closed
+
+## The player went down to the basement (true) or came back up (false).
+@warning_ignore("unused_signal")
+signal underground_changed(underground: bool)

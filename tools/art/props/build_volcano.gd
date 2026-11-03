@@ -8,7 +8,7 @@ extends SceneTree
 
 const SEED := 913
 const MESH_DIR := "res://art/models/ground/"
-const SCENE := "res://cultic/scenes/props/volcano.tscn"
+const SCENE := "res://world/props/volcano/volcano.tscn"
 const MATERIAL := "res://art/materials/ground/wet_soil_volcano.tres"
 const SEGMENTS := 28
 

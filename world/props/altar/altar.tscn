@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://cyk13w63cm13c"]
+
+[ext_resource type="Material" path="res://art/materials/altar_green.tres" id="green"]
+[ext_resource type="Script" uid="uid://8mol4lk6kpsm" path="res://world/props/mesh_collision.gd" id="1_coll"]
+[ext_resource type="PackedScene" uid="uid://cuje3s6yfg158" path="res://art/models/altar/altar.glb" id="2_model"]
+
+[node name="Altar" type="Node3D" unique_id=1387134465]
+script = ExtResource("1_coll")
+
+[node name="Model" parent="." unique_id=956647321 instance=ExtResource("2_model")]
+
+[node name="Glow" type="OmniLight3D" parent="." unique_id=472881715]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.68696535, 0)
+light_color = Color(0.0648, 0.7647, 0.12, 1)
+light_energy = 13.6
+light_indirect_energy = 0.429
+light_volumetric_fog_energy = 3.459
+light_specular = 2.378
+omni_range = 4.0
+omni_attenuation = 1.6
+
+[node name="altar" parent="Model" index="0"]
+material_override = ExtResource("green")
+
+[editable path="Model"]

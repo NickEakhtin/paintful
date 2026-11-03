@@ -1,9 +1,0 @@
-[gd_scene load_steps=3 format=3]
-
-[ext_resource type="PackedScene" path="res://art/models/station_cart/station_cart.glb" id="1_cart"]
-[ext_resource type="Script" path="res://cultic/scripts/cabinet.gd" id="2_script"]
-
-[node name="StationCart" instance=ExtResource("1_cart")]
-script = ExtResource("2_script")
-drawer_travel = 0.24
-drawer_names = PackedStringArray("drawer")

@@ -8,9 +8,9 @@ extends SceneTree
 
 const SEED := 4242
 const GROUND_MESH := "res://art/models/ground/"
-const GROUND_SCENE := "res://cultic/scenes/props/ground/"
+const GROUND_SCENE := "res://world/props/ground/"
 const ROOT_MESH := "res://art/models/roots/"
-const ROOT_SCENE := "res://cultic/scenes/props/roots/"
+const ROOT_SCENE := "res://world/props/roots/"
 const MAT_DIR := "res://art/materials/ground/"
 
 var rng := RandomNumberGenerator.new()
@@ -57,7 +57,7 @@ func _noise_tex(kind: int, freq: float, octaves: int, normal: bool, bump := 4.0)
 
 func _materials() -> void:
 	soil = ShaderMaterial.new()
-	soil.shader = load("res://cultic/scripts/wet_soil.gdshader")
+	soil.shader = load("res://world/props/ground/wet_soil.gdshader")
 	soil.set_shader_parameter("pattern", _noise_tex(FastNoiseLite.TYPE_SIMPLEX_SMOOTH, 0.012, 4, false))
 	soil.set_shader_parameter("grain", _noise_tex(FastNoiseLite.TYPE_CELLULAR, 0.05, 3, true, 6.0))
 	ResourceSaver.save(soil, MAT_DIR + "wet_soil.tres")
@@ -306,7 +306,7 @@ func _save(mesh: ArrayMesh, mesh_dir: String, scene_dir: String, name: String, w
 	var root := Node3D.new()
 	root.name = name.to_pascal_case()
 	if walkable:
-		root.set_script(load("res://cultic/scripts/mesh_collision.gd"))
+		root.set_script(load("res://world/props/mesh_collision.gd"))
 	var mi := MeshInstance3D.new()
 	mi.name = "Mesh"
 	mi.mesh = load(mesh_dir + name + ".res")

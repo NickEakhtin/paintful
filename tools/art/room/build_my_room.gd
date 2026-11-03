@@ -101,7 +101,7 @@ func _init() -> void:
 		inst(F, "CoatRack", M + "coat_rack.glb", Vector3(-4.5, 0, 0.7))          # left of the door
 		# work zone (east half, in the window light)
 		inst(F, "TattooChair", M + "recliner.glb", Vector3(2.4, 0, 2.6), -90)
-		inst(F, "Cabinet", "res://cultic/scenes/cabinet.tscn", Vector3(XR - 0.1, 0, 3.6), -90)   # in front of the wainscot
+		inst(F, "Cabinet", "res://world/props/cabinet/cabinet.tscn", Vector3(XR - 0.1, 0, 3.6), -90)   # in front of the wainscot
 		inst(F, "Plant", M + "plant.glb", Vector3(4.55, 0, 0.85), -30)
 
 	# --- step 5: lamps and lights ------------------------------------------------------------------------------

@@ -33,5 +33,5 @@ func _process(_delta: float) -> bool:
 	window.set_script(null)
 	var scene := PackedScene.new()
 	scene.pack(window)
-	print("saved: ", ResourceSaver.save(scene, "res://cultic/scenes/window_glass.tscn"), ", parts: ", parts.size())
+	print("saved: ", ResourceSaver.save(scene, "res://world/props/window_glass/window_glass.tscn"), ", parts: ", parts.size())
 	return true

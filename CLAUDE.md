@@ -25,13 +25,13 @@
 - Feature folders: a scene and its script sit side by side (`main/`, `player/`, `items/`, `world/sandbox/`...).
 - Systems talk through the `Events` signal bus, not through absolute node paths into other scenes.
 - Autoloads (`autoload/`):
-  - `Events` — global signal bus; add signals when a feature needs them (mark each `@warning_ignore("unused_signal")`). Now: `interaction_prompt_changed(text)`, `objective_changed(text)`.
+  - `Events` — global signal bus; add signals when a feature needs them (mark each `@warning_ignore("unused_signal")`). Now: `interaction_prompt_changed(text)`, `objective_changed(text)`, `studio_opened`, `studio_closed`, `underground_changed(underground)` (the sky stops lightning below ground).
   - `GameState` — playthrough progress that survives level reloads (`day`, `client_index`, `trophies`).
   - `Transition` — black overlay: `await Transition.change_scene(path)`, `fade_out()`, `fade_in()`, `show_title(text)` (leaves the screen black; call `fade_in()` after), `flash(color)` (instant colour that fades, non-blocking).
   - `Dialogue` — comic-style dialogues, see below.
 - Mechanic switches: `data/mechanics.tres` (`Mechanics`, `tattoo/mechanics.gd`), preloaded by `TattooSession` and `DayFlow`: `spirit_tasks` (roulette + tasks; the level skips the spirit's roulette line), `skin_heat`, `ink_supply` (off: endless ink, no gauge, no Q hints), `magnet`, `machine_inertia` (off: needle exactly at the hand, the top still swings), `table_prep`, `table_cleanup`, `skin_press`, `flow`. Script defaults are all on; the `.tres` currently switches everything but the press and flow off, to work on the bare inking feel. A new mechanic that can get in the way gets a switch here.
 - Input actions: `move_forward/back/left/right` (WASD), `interact` (E), `use` (LMB), `highlight` (RMB), `turn_to_ink` (Q, tattoo session), `hand_up/down/left/right` (WASD) + `hand_wave` (Space) for the left hand in a session, `pause` (Esc). Keys are physical, so they work on any keyboard layout.
-- Physics layers: 1 `world`, 2 `player`, 3 `interactable` (bit value 4).
+- Physics layers: 1 `world`, 2 `player`, 3 `interactable` (bit value 4), 4 `npc`, 5 `player_blocker` (bit value 16: stops the player but not the interaction ray, e.g. the volcano rim, a cabinet you reach into).
 - Commit the `.uid` files Godot creates next to scripts.
 
 # Building blocks
@@ -44,6 +44,12 @@
 - `items/item_slot.tscn` (`ItemSlot`): `accepts` filters by `item_id` (empty = any); signals `item_placed(item)`, `item_removed(item)`.
 - Stairs: visual steps without collision plus an invisible ramp `StaticBody3D` — `CharacterBody3D` doesn't climb steps.
 - Scenes: `main/main.tscn` is the start screen and leads to the level; `world/sandbox/sandbox.tscn` is a test ground (shelf with items, table with slots, stairs, day sign, tattoo chair).
+
+## Art from the colleague (CULTIC) — merge in progress, see `docs/plan_visual_merge.md`
+- The art is his (Hyper3D Rodin models through his pipeline in `tools/art/`); binaries live in Git LFS (`git lfs install` once per clone).
+- `art/models/<name>/`: one folder per model with its textures. `art/materials/`, `art/characters/`, `art/paintings/`, `art/props/`; `art/concepts/` is ignored by Godot.
+- `world/props/<name>/` and `world/fx/<name>/`: his props and effects as our scenes. Interactive ones use our `Interactable` (cabinets, wall cabinet and station cart build theirs from the models' bounds on start; the basement hatch emits `descend_requested(player)` when someone listens, otherwise it just opens and closes). Outline hints stay as metas (`outline_mesh`, `outline_front_sign`) on the Interactables for the player's outline (stage 7).
+- `cultic/` is his project still waiting to be taken apart: `cultic/scenes/CULTIC_ROOM_MAIN_SCENE.tscn` is the reference room (his player walks it, but only his own leftovers react to it there: doors, skull, altar lift, basement exit). Each merge stage takes its part out; the last one deletes the folder.
 
 ## Level (`world/`)
 - `world/level/level.tscn` is the game: `Studio` + `Basement` scenes (authored in level coordinates), `Lighting` (`DayNight`), `Points`, `Player`, `DayFlow`.

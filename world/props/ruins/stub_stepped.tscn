@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/props/mesh_collision.gd" id="1_04y7e"]
+[ext_resource type="ArrayMesh" path="res://art/models/ruins/stub_stepped.res" id="2_t4dxt"]
+
+[node name="StubStepped" type="Node3D" unique_id=206091574]
+script = ExtResource("1_04y7e")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1481132539]
+mesh = ExtResource("2_t4dxt")
