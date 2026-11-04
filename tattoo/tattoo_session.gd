@@ -28,7 +28,7 @@ const SURFACE_SCENES: Dictionary = {
 @export var fixed_tasks: Array[ModifierData] = []
 
 @export_group("Tuning")
-## Needle radius on screen, in pixels.
+## Needle radius on screen, in pixels: the flat brush's half length.
 @export var brush_radius: float = 14.3
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
@@ -41,6 +41,31 @@ const SURFACE_SCENES: Dictionary = {
 @export var needle_follow: float = 42.0
 ## Seconds fresh ink takes to dry from wet gloss to matte.
 @export var ink_dry_time: float = 6.0
+
+@export_group("Brush")
+## The flat brush's half thickness as a share of `brush_radius` (1: round). Off with `Mechanics.flat_brush`.
+@export_range(0.05, 1.0) var brush_thickness: float = 0.25
+## The brush turns across the needle's motion; off, it always keeps `brush_rest_angle` (like calligraphy).
+@export var brush_follows_motion: bool = true
+## Angle of the brush before it has moved, in degrees from the screen's x axis (negative: up to the right).
+@export var brush_rest_angle: float = -10.0
+## How fast the brush turns to the motion's direction; higher is quicker.
+@export var brush_turn_rate: float = 12.0
+## Slower than this (pixels per second) the brush keeps its angle.
+@export var brush_min_speed: float = 30.0
+## Dots the brush drops per second of inking.
+@export var dots_per_second: float = 700.0
+## Dots thin out towards the brush's ends as (1 - s^2)^this.
+@export var dot_concentration: float = 2.0
+## Dot radius in the brush's middle and at its ends, in pixels.
+@export var dot_size_center: float = 2.4
+@export var dot_size_edge: float = 1.1
+## Dot radius varies by this share either way.
+@export_range(0.0, 0.9) var dot_size_jitter: float = 0.3
+## Some dots are stretched along the brush, up to this much.
+@export var dot_stretch_max: float = 2.0
+## Share of full ink where the smooth film starts closing the gaps between the dots.
+@export_range(0.0, 0.95) var film_from: float = 0.5
 
 @export_group("Feel")
 ## Radius of the dent under the working needle, in pixels.
@@ -143,6 +168,11 @@ var _press: float = 0.0
 var _flow: InkFlow
 ## The skin being inked: the flat panel or a surface scene picked by the stencil.
 var _surface: SkinSurface
+## The needle's brush; `_update_brush()` turns it across the motion.
+var _brush: InkBrush = InkBrush.new()
+## The brush's angle, doubled, in radians: a brush is the same either way along, so turning it by the doubled
+## angle never flips it end over end.
+var _brush_angle2: float = 0.0
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
@@ -227,6 +257,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	add_child(_paint_view)
 	_paint_view.setup(_ink_pixels(), canvas.size, ink_dry_time)
 	_paint_view.resized.connect(_bind_paint)
+	_setup_brush()
 	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
 	var part_names: PackedStringArray = PackedStringArray()
@@ -235,6 +266,9 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = INK_SHADER
 		material.set_shader_parameter("dry_time", ink_dry_time)
+		if MECHANICS.flat_brush:
+			material.set_shader_parameter("film_from", film_from)
+			material.set_shader_parameter("first_pass", 0.0)   # below the dots the film fades in from nothing
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
 		rect.texture = part.texture
@@ -278,6 +312,7 @@ func _process(delta: float) -> void:
 	_surface.update_surface(delta, not _turning)
 	_update_ink_blocks()
 	_update_needle(delta)
+	_update_brush(delta)
 	_paint(delta)
 	_heat.cool(delta, cool_delay, cool_rate)
 	_heat.flush()
@@ -466,18 +501,60 @@ func _paint(delta: float) -> void:
 	_machine.working = inking
 	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
 	if inking and _ink_left > 0.0 and on_skin:
-		var radius: float = brush_radius * (1.0 + flow_brush_bonus * _flow.strength())
+		_brush.radius_px = brush_radius * (1.0 + flow_brush_bonus * _flow.strength())
 		var laid: float
 		if _was_inking:
-			laid = canvas.stroke_on(_surface, _last_cell, cell, radius, ink_rate * delta)
+			laid = canvas.stroke_on(_surface, _last_cell, cell, _brush, ink_rate * delta)
 		else:
-			laid = canvas.stamp_on(_surface, cell, radius, ink_rate * delta)
+			laid = canvas.stamp_on(_surface, cell, _brush, ink_rate * delta)
 		if MECHANICS.ink_supply:
 			_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
 	# Off the skin the stroke breaks, so it never joins two far-apart points.
 	_was_inking = inking and on_skin
 	_heat_skin(inking, delta)
+
+
+## The brush's shape and the dots' look, from the exports (`Mechanics.flat_brush` off: the old round brush).
+func _setup_brush() -> void:
+	var flat: bool = MECHANICS.flat_brush
+	_brush.thickness = brush_thickness if flat else 1.0
+	_paint_view.dots_per_dose = dots_per_second / maxf(ink_rate, 0.001) if flat else 0.0
+	_paint_view.dot_concentration = dot_concentration
+	_paint_view.dot_size_center = dot_size_center
+	_paint_view.dot_size_edge = dot_size_edge
+	_paint_view.dot_size_jitter = dot_size_jitter
+	_paint_view.dot_stretch_max = dot_stretch_max
+	_reset_brush()
+
+
+func _reset_brush() -> void:
+	_brush_angle2 = deg_to_rad(brush_rest_angle) * 2.0
+	_set_brush_axis()
+
+
+## Turns the brush across the needle's motion, smoothly; standing or slow, it keeps its angle.
+func _update_brush(delta: float) -> void:
+	if not brush_follows_motion or _turning:
+		_set_brush_axis()
+		return
+	var velocity: Vector2 = _machine.velocity
+	var speed: float = velocity.length()
+	if speed > brush_min_speed:
+		var wanted: float = velocity.orthogonal().angle() * 2.0
+		# just above the threshold it turns gently, so a creeping needle doesn't wobble it
+		var eagerness: float = clampf((speed - brush_min_speed) / brush_min_speed, 0.0, 1.0)
+		_brush_angle2 = wrapf(_brush_angle2 + angle_difference(_brush_angle2, wanted)
+				* (1.0 - exp(-brush_turn_rate * delta)) * eagerness, -PI, PI)
+	_set_brush_axis()
+
+
+func _set_brush_axis() -> void:
+	_brush.axis = Vector2.from_angle(_brush_angle2 * 0.5)
+	if not brush_follows_motion:
+		_brush.axis = Vector2.from_angle(deg_to_rad(brush_rest_angle))
+	_machine.brush_axis = _brush.axis
+	_machine.brush_size = Vector2(_brush.radius_px, _brush.half_thickness())
 
 
 ## `stroking`: the needle inks over the stencil right now. Flow builds while it also moves.
@@ -636,6 +713,7 @@ func _restart() -> void:
 	_add_modifiers(_tasks)
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
+	_reset_brush()
 	# The click that closed the spirit's line may still be held.
 	_wait_for_release = true
 	_update_ink_display()

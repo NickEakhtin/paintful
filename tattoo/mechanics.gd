@@ -21,3 +21,5 @@ extends Resource
 @export var skin_press: bool = true
 ## Long, steady strokes over the stencil raise the hum, widen the trail and make the needle glow.
 @export var flow: bool = true
+## The needle paints with a flat brush of dots across its motion. Off: the old round brush and smooth trail.
+@export var flat_brush: bool = true

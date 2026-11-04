@@ -81,6 +81,9 @@ var show_gauge: bool = true:
 var inertia: bool = true
 ## Flow strength, 0..1 (the session's `InkFlow`): higher hum, glow at the tip.
 var flow: float = 0.0
+## The session's brush on screen: the spray comes off along it (`brush_size`: half length, half thickness).
+var brush_axis: Vector2 = Vector2.RIGHT
+var brush_size: Vector2 = Vector2.ZERO
 ## How fast the needle really moves, in pixels per second. Zero right after a teleport.
 var velocity: Vector2:
 	get:
@@ -128,6 +131,10 @@ func _process(delta: float) -> void:
 	var dry: bool = ink_level <= 0.0
 	_spray.emitting = working and not dry
 	_spray.initial_velocity_max = _spray_speed * (1.0 + 0.6 * flow)
+	if brush_size != Vector2.ZERO:
+		_spray.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		_spray.emission_rect_extents = brush_size
+		_spray.rotation = brush_axis.angle()
 	_hum.pitch_scale = 0.8 if dry else 1.0 + flow_pitch * flow # a dry machine sounds hollow
 	_hum.volume_db = _hum_volume_db + flow_volume_db * flow
 	_update_glow()

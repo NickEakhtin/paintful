@@ -13,11 +13,14 @@ var texture: ImageTexture
 var time: float = 0.0
 ## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
 var blocked: Array[Rect2] = []
-## Every stamp since the look last took them, as [centre: Vector2, reach: Vector2, amount: float] in cells (`reach`:
-## the brush's half size along x and y; on stretched skin a screen circle is an ellipse in cells). InkPaint redraws
-## them at the screen's resolution. A stroke is kept as one segment in `strokes` instead. The look clears both.
+## Every stamp since the look last took them, as [centre: Vector2, basis: Transform2D, amount: float] in cells,
+## plus [radius_px, thickness] of the `InkBrush` for stamps made on a surface
+## (`basis`: the brush in cells, x = along it times its half length, y = across it times its half thickness; on
+## curved or stretched skin it is skewed). InkPaint redraws them at the screen's resolution. A stroke is kept as
+## one segment in `strokes` instead. The look clears both.
 var dabs: Array[Array] = []
-## Strokes since the look last took them: [from: Vector2, to: Vector2, reach: Vector2, amount: float], in cells.
+## Strokes since the look last took them: [from: Vector2, to: Vector2, basis: Transform2D, amount: float], in cells
+## (+ [radius_px, thickness] as for `dabs`).
 var strokes: Array[Array] = []
 var _in_stroke: bool = false
 ## Set when ink was taken off; the look wipes itself and clears this.
@@ -56,7 +59,7 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var r2: float = radius * radius
 	var laid: float = 0.0
 	if not _in_stroke:
-		dabs.append([center, Vector2(radius, radius), amount])
+		dabs.append([center, Transform2D(Vector2(radius, 0.0), Vector2(0.0, radius), Vector2.ZERO), amount])
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * size.x + x
@@ -74,7 +77,7 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * 0.5)))
 	var laid: float = 0.0
-	strokes.append([from, to, Vector2(radius, radius), amount])
+	strokes.append([from, to, Transform2D(Vector2(radius, 0.0), Vector2(0.0, radius), Vector2.ZERO), amount])
 	_in_stroke = true
 	for i in steps:
 		laid += stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
@@ -82,21 +85,21 @@ func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	return laid
 
 
-## Like stamp(), but the brush is a circle of `radius_px` on screen and the skin may be curved or stretched:
+## Like stamp(), but with the needle's `brush` (a flat ellipse on screen) on skin that may be curved or stretched:
 ## every stencil cell near `center` (a cell) is placed on screen by `surface.project()`, which also says how
 ## much ink that skin takes (0 where it is hidden or turned away). Returns the ink laid down.
-func stamp_on(surface: SkinSurface, center: Vector2, radius_px: float, amount: float) -> float:
+func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: float) -> float:
 	var middle: Vector3 = surface.project(center)
-	var reach: Vector2 = surface.cells_within(center, radius_px)
+	var reach: Vector2 = surface.cells_within(center, brush.radius_px)   # the ellipse lies inside this circle
 	var x0: int = maxi(0, floori(center.x - reach.x))
 	var x1: int = mini(size.x - 1, ceili(center.x + reach.x))
 	var y0: int = maxi(0, floori(center.y - reach.y))
 	var y1: int = mini(size.y - 1, ceili(center.y + reach.y))
 	var tip: Vector2 = Vector2(middle.x, middle.y)
-	var r2: float = radius_px * radius_px
+	var dose: float = amount * brush.dose_scale()
 	var laid: float = 0.0
 	if not _in_stroke and middle.z > 0.0:
-		dabs.append([center, surface.ink_reach(center, radius_px), amount * middle.z])
+		dabs.append([center, _brush_basis(surface, center, brush), amount * middle.z, brush.radius_px, brush.thickness])
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * size.x + x
@@ -106,24 +109,24 @@ func stamp_on(surface: SkinSurface, center: Vector2, radius_px: float, amount: f
 			var placed: Vector3 = surface.project(point)
 			if placed.z <= 0.0:
 				continue
-			var d2: float = Vector2(placed.x, placed.y).distance_squared_to(tip)
-			if d2 <= r2 and not _is_blocked(point):
-				laid += _add_ink(cell, amount * placed.z * (1.0 - 0.5 * d2 / r2))
+			var share: float = brush.weight(Vector2(placed.x, placed.y) - tip)
+			if share > 0.0 and not _is_blocked(point):
+				laid += _add_ink(cell, dose * placed.z * share)
 	return laid
 
 
 ## stroke() for stamp_on(): from one skin cell to another, so ink follows the skin when it slides
-## under a still needle too.
-func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, radius_px: float, amount: float) -> float:
-	var radius_cells: float = maxf(0.5, radius_px / surface.pixels_per_cell())
-	var steps: int = mini(64, maxi(1, ceili(from.distance_to(to) / (radius_cells * 0.5))))
+## under a still needle too. Steps half the brush's thickness, so a thin brush leaves no gaps.
+func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush, amount: float) -> float:
+	var step_cells: float = maxf(0.5, brush.half_thickness() / surface.pixels_per_cell()) * 0.5
+	var steps: int = mini(128, maxi(1, ceili(from.distance_to(to) / step_cells)))
 	var laid: float = 0.0
 	var facing: float = surface.project(to).z
 	if facing > 0.0:
-		strokes.append([from, to, surface.ink_reach(to, radius_px), amount * facing])
+		strokes.append([from, to, _brush_basis(surface, to, brush), amount * facing, brush.radius_px, brush.thickness])
 	_in_stroke = true
 	for i in steps:
-		laid += stamp_on(surface, from.lerp(to, float(i + 1) / steps), radius_px, amount / steps)
+		laid += stamp_on(surface, from.lerp(to, float(i + 1) / steps), brush, amount / steps)
 	_in_stroke = false
 	return laid
 
@@ -212,6 +215,11 @@ func clear_part(index: int) -> void:
 		_set_ink(cell, 0.0)
 	_part_filled[index] = 0
 	_part_done[index] = 0
+
+
+## The brush at `cell` in cells, for the look.
+func _brush_basis(surface: SkinSurface, cell: Vector2, brush: InkBrush) -> Transform2D:
+	return surface.brush_basis(cell, brush.axis * brush.radius_px, brush.across() * brush.half_thickness())
 
 
 func _is_blocked(point: Vector2) -> bool:

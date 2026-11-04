@@ -2,9 +2,13 @@ class_name InkPaint
 extends Node
 ## The look of the ink at the screen's own resolution. InkCanvas counts ink on a coarse grid (progress, the 97%,
 ## the magnet, the tasks' blocks), which shows steps and blotches stretched over a big monitor. Two half-float
-## buffers, as big as the stencil is drawn in real pixels, get the same stamps drawn as smooth dabs of the same
-## shape (full at the centre, half at the edge, a crisp rim; an ellipse where the skin is curved or stretched):
-## - `coverage`: the dabs add up, like the ink in the logic;
+## buffers, as big as the stencil is drawn in real pixels, get the same stamps drawn at that resolution:
+## - `coverage` R, the film: every stamp as a smooth dab of the brush's shape (full at the centre, half at the
+##   edge; the brush's flat ellipse, skewed where the skin is curved or stretched), adding up like the ink in
+##   the logic;
+## - `coverage` G, the dots: a flat brush (`dots_per_dose` > 0) also drops round dots inside its ellipse, as many
+##   as the dose, thick and big in the middle, sparse and small towards its ends. The ink shader shows them black
+##   at once and lets the film close the gaps as the dose builds up;
 ## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
 ## `resize()` (the window changed size mid-session) moves the ink into buffers of the new size; `resized` then
@@ -52,12 +56,27 @@ void fragment() {
 var coverage: Texture2D
 var wetness: Texture2D
 
+## Dots per unit of a stamp's dose (InkCanvas amounts); 0: no dots, the film only (the round brush).
+var dots_per_dose: float = 0.0
+## Dots along the brush thin out as (1 - s^2)^this, s = -1..1 from end to end.
+var dot_concentration: float = 2.0
+## Dot radius in screen pixels in the brush's middle and at its ends.
+var dot_size_center: float = 2.4
+var dot_size_edge: float = 1.1
+## Dot radius varies by this share either way.
+var dot_size_jitter: float = 0.3
+## Dots are stretched along the brush up to this much (most stay round).
+var dot_stretch_max: float = 2.0
+## Smallest dot radius in buffer pixels, so a dot never falls between them.
+const MIN_DOT_PIXELS: float = 0.75
+
 var _cover: SubViewport
 var _wet: SubViewport
 var _cover_brush: Node2D = Node2D.new()
 var _wet_brush: Node2D = Node2D.new()
 var _fader: Node2D = Node2D.new()
-## Dabs to draw, each [centre: Vector2, reach: Vector2, amount: float] in cells.
+## Dabs to draw, each [centre: Vector2, basis: Transform2D, amount: float, dot: bool] in cells: a film dab, or
+## a dot (its own small basis, a full dose).
 var _pending: Array[Array] = []
 var _frame: Array[Array] = []
 var _cell_pixels: Vector2 = Vector2.ONE
@@ -68,6 +87,8 @@ var _move_frame: int = -1
 var _wanted_size: Vector2i = Vector2i.ZERO
 var _dry_time: float = 6.0
 var _dab: GradientTexture2D = GradientTexture2D.new()
+var _dot: GradientTexture2D = GradientTexture2D.new()
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _brush_materials: Array[ShaderMaterial] = []
 var _drew_last_frame: bool = false
 ## The engine skips drawing while the window can't be seen (minimised, covered on macOS): dabs stay queued and
@@ -88,6 +109,17 @@ func _init() -> void:
 	_dab.fill_to = Vector2(1.0, 0.5)
 	_dab.width = 256
 	_dab.height = 256
+	# a dot is solid with a soft rim; the ink shader makes its edge crisp
+	var disc: Gradient = Gradient.new()
+	disc.offsets = PackedFloat32Array([0.0, 0.8, 1.0])
+	disc.colors = PackedColorArray([Color(1, 1, 1, 1.0), Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.0)])
+	_dot.gradient = disc
+	_dot.fill = GradientTexture2D.FILL_RADIAL
+	_dot.fill_from = Vector2(0.5, 0.5)
+	_dot.fill_to = Vector2(1.0, 0.5)
+	_dot.width = 64
+	_dot.height = 64
+	_rng.randomize()
 	_cover = _buffer("Coverage")
 	_wet = _buffer("Wetness")
 	coverage = _cover.get_texture()
@@ -173,15 +205,44 @@ func texel() -> Vector2:
 
 ## Queues stamps and strokes (in cells, as InkCanvas keeps them) to be drawn this frame.
 func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
-	_pending.append_array(dabs)
+	for dab: Array in dabs:
+		var basis: Transform2D = dab[1]
+		_pending.append([dab[0], basis, dab[2], false])
+		_add_dots(dab[0], dab[0], basis, dab[2], dab[3] if dab.size() > 4 else 0.0, dab[4] if dab.size() > 4 else 1.0)
 	for stroke: Array in strokes:
 		var from: Vector2 = stroke[0]
 		var to: Vector2 = stroke[1]
-		var reach: Vector2 = stroke[2]
-		var spacing: float = maxf(minf(reach.x, reach.y) * STROKE_SPACING, 0.01)
+		var basis: Transform2D = stroke[2]
+		var spacing: float = maxf(minf(basis.x.length(), basis.y.length()) * STROKE_SPACING, 0.01)
 		var steps: int = clampi(ceili(from.distance_to(to) / spacing), 1, 512)
 		for i in steps:
-			_pending.append([from.lerp(to, float(i + 1) / steps), reach, float(stroke[3]) / steps])
+			_pending.append([from.lerp(to, float(i + 1) / steps), basis, float(stroke[3]) / steps, false])
+		_add_dots(from, to, basis, stroke[3], stroke[4] if stroke.size() > 5 else 0.0, stroke[5] if stroke.size() > 5 else 1.0)
+
+
+## Drops `amount * dots_per_dose` dots (rounded at random) at random spots of a segment, inside the brush.
+## `radius_px`: the brush's half length on screen (0: no dots), `thickness` as in `InkBrush`.
+func _add_dots(from: Vector2, to: Vector2, basis: Transform2D, amount: float, radius_px: float,
+		thickness: float) -> void:
+	if dots_per_dose <= 0.0 or radius_px <= 0.0 or amount <= 0.0:
+		return
+	var wanted: float = amount * dots_per_dose
+	var count: int = floori(wanted) + (1 if _rng.randf() < wanted - floorf(wanted) else 0)
+	# the brush's unit across is its half thickness: a dot of radius r screen px is r / radius_px along it and
+	# r / (thickness * radius_px) across it in brush units
+	thickness = maxf(thickness, 0.001)
+	for i in count:
+		var s: float = _rng.randf_range(-1.0, 1.0)
+		while _rng.randf() > pow(1.0 - s * s, dot_concentration):
+			s = _rng.randf_range(-1.0, 1.0)
+		var t: float = _rng.randf_range(-1.0, 1.0) * sqrt(1.0 - s * s)
+		var centre: Vector2 = from.lerp(to, _rng.randf()) + basis.x * s + basis.y * t
+		var size: float = lerpf(dot_size_center, dot_size_edge, absf(s)) \
+				* (1.0 + _rng.randf_range(-dot_size_jitter, dot_size_jitter))
+		var stretch: float = 1.0 + pow(_rng.randf(), 3.0) * (dot_stretch_max - 1.0)
+		var along: Vector2 = basis.x * (size * stretch / radius_px)
+		var across: Vector2 = basis.y * (size / (radius_px * thickness))
+		_pending.append([centre, Transform2D(along, across, Vector2.ZERO), 1.0, true])
 
 
 ## Ellipses (inscribed in rects, in cells) where new dabs don't land, like InkCanvas.blocked.
@@ -260,15 +321,25 @@ func _buffer_size(pixels: Vector2) -> Vector2i:
 
 func _draw_dabs(brush: Node2D, wet: bool) -> void:
 	for dab: Array in _frame:
-		var centre: Vector2 = (dab[0] as Vector2) * _cell_pixels
-		var reach: Vector2 = (dab[1] as Vector2) * _cell_pixels
-		var rect: Rect2 = Rect2(centre - reach, reach * 2.0)
+		var dot: bool = dab[3]
+		if wet and dot:
+			continue   # the film's dab already wets the whole brush
+		var basis: Transform2D = dab[1]
+		var along: Vector2 = basis.x * _cell_pixels
+		var across: Vector2 = basis.y * _cell_pixels
+		if dot:
+			along = along.normalized() * maxf(along.length(), MIN_DOT_PIXELS)
+			across = across.normalized() * maxf(across.length(), MIN_DOT_PIXELS)
+		brush.draw_set_transform_matrix(Transform2D(along, across, (dab[0] as Vector2) * _cell_pixels))
+		var rect: Rect2 = Rect2(-1.0, -1.0, 2.0, 2.0)
 		if wet:
 			brush.draw_texture_rect(_dab, rect, false, Color.WHITE)
 		else:
 			# an HDR buffer takes colours as sRGB and blends in linear: encode the dose so it lands as is
 			var dose: float = dab[2]
-			brush.draw_texture_rect(_dab, rect, false, Color(Color(dose, dose, dose).linear_to_srgb(), 1.0))
+			var channels: Color = Color(0.0, dose, 0.0) if dot else Color(dose, 0.0, 0.0)
+			brush.draw_texture_rect(_dot if dot else _dab, rect, false, Color(channels.linear_to_srgb(), 1.0))
+	brush.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 func _buffer(buffer_name: String) -> SubViewport:

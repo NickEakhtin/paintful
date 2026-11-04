@@ -38,10 +38,12 @@ func cells_within(_cell: Vector2, radius_px: float) -> Vector2:
 	return Vector2.ONE * (radius_px / pixels_per_cell())
 
 
-## Half size along x and y, in cells, of what a brush circle of `radius_px` on screen covers around `cell`
-## (an ellipse on stretched or curved skin). The ink look draws each dab this big.
-func ink_reach(_cell: Vector2, radius_px: float) -> Vector2:
-	return Vector2.ONE * (radius_px / pixels_per_cell())
+## Two screen vectors at `cell` (the brush's half length and half thickness, `InkBrush`) in cells: the
+## columns of the result, origin unused. On curved or stretched skin the brush's ellipse is skewed there.
+## The ink look draws each dab through it.
+func brush_basis(_cell: Vector2, along_px: Vector2, across_px: Vector2) -> Transform2D:
+	var scale: float = 1.0 / pixels_per_cell()
+	return Transform2D(along_px * scale, across_px * scale, Vector2.ZERO)
 
 
 ## How big the stencil's ink look should be drawn, in real screen pixels (window pixels, not layout ones).

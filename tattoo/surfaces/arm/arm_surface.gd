@@ -123,18 +123,22 @@ func cells_within(cell: Vector2, radius_px: float) -> Vector2:
 	return (Vector2(u_row.length(), v_row.length()) * radius_px + Vector2.ONE).min(limit)
 
 
-## The brush's screen circle on the skin, through the local Jacobian (shear ignored).
-func ink_reach(cell: Vector2, radius_px: float) -> Vector2:
+## The brush's screen vectors on the skin, through the local inverse Jacobian (so it skews where the skin is
+## stretched); each kept within a few brush lengths where the skin turns edge-on.
+func brush_basis(cell: Vector2, along_px: Vector2, across_px: Vector2) -> Transform2D:
 	var here: Vector3 = project(cell)
 	var du: Vector3 = project(cell + Vector2(1.0, 0.0)) - here
 	var dv: Vector3 = project(cell + Vector2(0.0, 1.0)) - here
 	var det: float = du.x * dv.y - dv.x * du.y
-	var limit: Vector2 = Vector2.ONE * 3.0 * radius_px / pixels_per_cell()
+	var limit: float = 3.0 * along_px.length() / pixels_per_cell()
 	if absf(det) < 0.0001:
-		return limit
+		return Transform2D(Vector2(limit, 0.0), Vector2(0.0, limit * across_px.length() / maxf(along_px.length(), 0.001)), Vector2.ZERO)
+	# Rows of the inverse Jacobian: how much u and v change per screen pixel.
 	var u_row: Vector2 = Vector2(dv.y, -dv.x) / det
 	var v_row: Vector2 = Vector2(-du.y, du.x) / det
-	return (Vector2(u_row.length(), v_row.length()) * radius_px).min(limit)
+	var along: Vector2 = Vector2(u_row.dot(along_px), v_row.dot(along_px)).limit_length(limit)
+	var across: Vector2 = Vector2(u_row.dot(across_px), v_row.dot(across_px)).limit_length(limit)
+	return Transform2D(along, across, Vector2.ZERO)
 
 
 ## The ink is drawn into the skin's own layer, as big as the stencil image.
