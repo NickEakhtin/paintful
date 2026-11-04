@@ -1,0 +1,57 @@
+[gd_scene load_steps=9 format=3]
+
+[sub_resource type="StandardMaterial3D" id="tube_yellow"]
+albedo_color = Color(1, 0.69, 0.015, 1)
+metallic = 0.04
+roughness = 0.46
+
+[sub_resource type="StandardMaterial3D" id="tube_cap"]
+albedo_color = Color(0.72, 0.39, 0.015, 1)
+metallic = 0.18
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="tube_label"]
+albedo_color = Color(1, 0.91, 0.59, 1)
+roughness = 0.78
+
+[sub_resource type="CylinderMesh" id="tube_body_mesh"]
+material = SubResource("tube_yellow")
+top_radius = 0.045
+bottom_radius = 0.018
+height = 0.34
+radial_segments = 20
+rings = 3
+
+[sub_resource type="CylinderMesh" id="tube_cap_mesh"]
+material = SubResource("tube_cap")
+top_radius = 0.024
+bottom_radius = 0.024
+height = 0.06
+radial_segments = 16
+rings = 2
+
+[sub_resource type="BoxMesh" id="tube_crimp_mesh"]
+material = SubResource("tube_cap")
+size = Vector3(0.08, 0.018, 0.014)
+
+[sub_resource type="QuadMesh" id="tube_label_mesh"]
+material = SubResource("tube_label")
+size = Vector2(0.055, 0.13)
+
+[node name="YellowPaintModel" type="Node3D"]
+
+[node name="TubeBody" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.19, 0)
+mesh = SubResource("tube_body_mesh")
+
+[node name="TubeCap" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.03, 0)
+mesh = SubResource("tube_cap_mesh")
+
+[node name="TubeCrimp" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.37, 0)
+mesh = SubResource("tube_crimp_mesh")
+
+[node name="TubeLabel" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.2, 0.041)
+mesh = SubResource("tube_label_mesh")

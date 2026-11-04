@@ -123,6 +123,25 @@ func cells_within(cell: Vector2, radius_px: float) -> Vector2:
 	return (Vector2(u_row.length(), v_row.length()) * radius_px + Vector2.ONE).min(limit)
 
 
+## The brush's screen circle on the skin, through the local Jacobian (shear ignored).
+func ink_reach(cell: Vector2, radius_px: float) -> Vector2:
+	var here: Vector3 = project(cell)
+	var du: Vector3 = project(cell + Vector2(1.0, 0.0)) - here
+	var dv: Vector3 = project(cell + Vector2(0.0, 1.0)) - here
+	var det: float = du.x * dv.y - dv.x * du.y
+	var limit: Vector2 = Vector2.ONE * 3.0 * radius_px / pixels_per_cell()
+	if absf(det) < 0.0001:
+		return limit
+	var u_row: Vector2 = Vector2(dv.y, -dv.x) / det
+	var v_row: Vector2 = Vector2(-du.y, du.x) / det
+	return (Vector2(u_row.length(), v_row.length()) * radius_px).min(limit)
+
+
+## The ink is drawn into the skin's own layer, as big as the stencil image.
+func ink_pixels() -> Vector2:
+	return Vector2(_ink_layer.size)
+
+
 func supports_tasks() -> bool:
 	return false
 

@@ -1,0 +1,41 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://b7fdncaewx8dw"]
+
+[ext_resource type="Shader" uid="uid://ol1f81i3lbxr" path="res://world/props/ground/wet_soil.gdshader" id="1_q86mn"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_rkw3n"]
+noise_type = 2
+seed = 4259
+frequency = 0.05
+fractal_octaves = 3
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_y8b3n"]
+noise = SubResource("FastNoiseLite_rkw3n")
+seamless = true
+as_normal_map = true
+bump_strength = 6.0
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_bmd4u"]
+seed = 4253
+frequency = 0.012
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3c6ja"]
+noise = SubResource("FastNoiseLite_bmd4u")
+seamless = true
+bump_strength = 4.0
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_q86mn")
+shader_parameter/pattern = SubResource("NoiseTexture2D_3c6ja")
+shader_parameter/grain = SubResource("NoiseTexture2D_y8b3n")
+shader_parameter/dark_soil = Color(0.085, 0.058, 0.04, 1)
+shader_parameter/light_soil = Color(0.17, 0.115, 0.075, 1)
+shader_parameter/uv_scale = 0.8
+shader_parameter/dampness = 0.35
+shader_parameter/wet_darken = 0.55
+shader_parameter/wet_roughness = 0.45
+shader_parameter/dry_roughness = 0.85
+shader_parameter/grain_depth = 1.0
+shader_parameter/ignore_hole = true
+shader_parameter/hole = Vector3(0, 0, 0)

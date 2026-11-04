@@ -3,29 +3,11 @@
 [ext_resource type="Script" path="res://world/props/open_sign.gd" id="1_script"]
 [ext_resource type="Script" path="res://interaction/interactable.gd" id="2_interactable"]
 
-[sub_resource type="BoxMesh" id="board_mesh"]
-size = Vector3(0.7, 0.32, 0.04)
-
-[sub_resource type="StandardMaterial3D" id="board_material"]
-albedo_color = Color(0.08, 0.07, 0.09, 1)
-
 [sub_resource type="BoxShape3D" id="interact_shape"]
-size = Vector3(0.8, 0.42, 0.2)
+size = Vector3(1.9, 2.3, 0.12)
 
 [node name="OpenSign" type="Node3D"]
 script = ExtResource("1_script")
-
-[node name="Board" type="MeshInstance3D" parent="."]
-mesh = SubResource("board_mesh")
-surface_material_override/0 = SubResource("board_material")
-
-[node name="Label" type="Label3D" parent="Board"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.025)
-pixel_size = 0.0025
-modulate = Color(1, 0.35, 0.3, 1)
-outline_size = 0
-text = "ЗАКРЫТО"
-font_size = 64
 
 [node name="Interactable" type="Area3D" parent="."]
 script = ExtResource("2_interactable")

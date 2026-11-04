@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://art/props/rain_frames/rain_1.png" id="1_rain1"]
+[ext_resource type="Texture2D" path="res://art/props/rain_frames/rain_2.png" id="2_rain2"]
+[ext_resource type="Texture2D" path="res://art/props/rain_frames/rain_3.png" id="3_rain3"]
+
+[sub_resource type="SpriteFrames" id="rain_frames"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_rain1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_rain2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_rain3")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[node name="RainSheet" type="AnimatedSprite3D"]
+offset = Vector2(0, 640)
+pixel_size = 0.002
+shaded = false
+double_sided = true
+alpha_cut = 0
+cast_shadow = 0
+sprite_frames = SubResource("rain_frames")
+autoplay = "default"

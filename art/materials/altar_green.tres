@@ -1,0 +1,22 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://art/models/altar/altar_root_0_albedo.jpg" id="1_7f1pr"]
+[ext_resource type="Texture2D" path="res://art/materials/altar_green_emission.jpg" id="2_hihqg"]
+[ext_resource type="Texture2D" path="res://art/models/altar/altar_root_0_orm.jpg" id="3_67xuw"]
+[ext_resource type="Texture2D" path="res://art/models/altar/altar_root_0_normal.jpg" id="4_36sqg"]
+
+[resource]
+resource_name = "root_0"
+albedo_texture = ExtResource("1_7f1pr")
+metallic_texture = ExtResource("3_67xuw")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("3_67xuw")
+roughness_texture_channel = 1
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+emission_energy_multiplier = 1.4
+emission_operator = 1
+emission_texture = ExtResource("2_hihqg")
+normal_enabled = true
+normal_texture = ExtResource("4_36sqg")
+metadata/_gltf_primary_texture_coord = 0

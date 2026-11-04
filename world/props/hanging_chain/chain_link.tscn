@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://art/materials/chain_iron.tres" id="iron"]
+
+[sub_resource type="TorusMesh" id="ring"]
+material = ExtResource("iron")
+inner_radius = 0.039
+outer_radius = 0.057
+rings = 12
+ring_segments = 4
+
+[sub_resource type="CapsuleShape3D" id="contact"]
+radius = 0.05
+height = 0.186
+
+[node name="Link" type="RigidBody3D"]
+mass = 1.8
+linear_damp = 1.35
+angular_damp = 3.0
+collision_layer = 32
+collision_mask = 35
+continuous_cd = true
+
+[node name="Iron" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1.65, 0, 1, 0, 0, 0, 0)
+mesh = SubResource("ring")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("contact")

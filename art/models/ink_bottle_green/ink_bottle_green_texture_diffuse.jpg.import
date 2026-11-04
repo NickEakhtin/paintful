@@ -1,0 +1,45 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://c7unw2so7fkpw"
+path.s3tc="res://.godot/imported/ink_bottle_green_texture_diffuse.jpg-a4564d038493fcae588537b454469929.s3tc.ctex"
+path.etc2="res://.godot/imported/ink_bottle_green_texture_diffuse.jpg-a4564d038493fcae588537b454469929.etc2.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "1d56d9af6ed4a5dfb13448efb9762c5b"
+}
+
+[deps]
+
+source_file="res://art/models/ink_bottle_green/ink_bottle_green_texture_diffuse.jpg"
+dest_files=["res://.godot/imported/ink_bottle_green_texture_diffuse.jpg-a4564d038493fcae588537b454469929.s3tc.ctex", "res://.godot/imported/ink_bottle_green_texture_diffuse.jpg-a4564d038493fcae588537b454469929.etc2.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=0

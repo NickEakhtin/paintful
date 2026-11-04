@@ -38,6 +38,17 @@ func cells_within(_cell: Vector2, radius_px: float) -> Vector2:
 	return Vector2.ONE * (radius_px / pixels_per_cell())
 
 
+## Half size along x and y, in cells, of what a brush circle of `radius_px` on screen covers around `cell`
+## (an ellipse on stretched or curved skin). The ink look draws each dab this big.
+func ink_reach(_cell: Vector2, radius_px: float) -> Vector2:
+	return Vector2.ONE * (radius_px / pixels_per_cell())
+
+
+## How big the stencil's ink look should be drawn, in real screen pixels (window pixels, not layout ones).
+func ink_pixels() -> Vector2:
+	return size * get_viewport().get_final_transform().get_scale()
+
+
 ## Whether a screen point is on the skin.
 func is_on_skin(screen_point: Vector2) -> bool:
 	return to_cell(screen_point).is_finite()

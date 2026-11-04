@@ -99,6 +99,7 @@ var _spray_speed: float = 0.0
 @onready var _hum: AudioStreamPlayer = $Hum
 @onready var _glow: Sprite2D = $Glow
 @onready var _view: SubViewport = $Model
+@onready var _sprite: Sprite2D = $Sprite
 @onready var _camera: Camera3D = $Model/Camera3D
 @onready var _model: Node3D = $Model/TattooMachineModel
 
@@ -178,16 +179,25 @@ func _spring(offset: Vector2, velocity: Vector2, frequency: float, damping: floa
 
 ## Where the top end of the machine (`TOP`) is on screen, in viewport pixels.
 func top_position() -> Vector2:
-	return _camera.unproject_position(_model.global_transform * TOP)
+	return _camera.unproject_position(_model.global_transform * TOP) / _pixel_scale()
+
+
+## Window pixels per viewport pixel (2 on a 1440p screen, 3 on 4K): the model is rendered at the window's own
+## resolution, so it stays sharp on any monitor, and its sprite is drawn back at viewport size.
+func _pixel_scale() -> float:
+	return maxf(1.0, get_viewport().get_final_transform().get_scale().x)
 
 
 ## Puts the model so its needle tip touches the skin plane right under `screen_point`.
 func _place_model(screen_point: Vector2) -> void:
-	var screen_size: Vector2i = Vector2i(get_viewport().get_visible_rect().size)
-	if _view.size != screen_size:
-		_view.size = screen_size
-	var from: Vector3 = _camera.project_ray_origin(screen_point)
-	var direction: Vector3 = _camera.project_ray_normal(screen_point)
+	var screen_size: Vector2 = get_viewport().get_visible_rect().size
+	var pixel_scale: float = _pixel_scale()
+	var render_size: Vector2i = Vector2i((screen_size * pixel_scale).round())
+	if _view.size != render_size:
+		_view.size = render_size
+		_sprite.scale = Vector2.ONE / pixel_scale
+	var from: Vector3 = _camera.project_ray_origin(screen_point * pixel_scale)
+	var direction: Vector3 = _camera.project_ray_normal(screen_point * pixel_scale)
 	var touch: Vector3 = from + direction * (-from.z / direction.z)
 	var hold: Basis = _hold_basis(screen_point.x / screen_size.x)
 	_model.global_transform = Transform3D(hold, touch - hold * NEEDLE_TIP)

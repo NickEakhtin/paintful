@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/props/mesh_collision.gd" id="1_vy3ky"]
+[ext_resource type="ArrayMesh" path="res://art/models/ground/ground_patch_3.res" id="2_g5eis"]
+
+[node name="GroundPatch3" type="Node3D" unique_id=674716617]
+script = ExtResource("1_vy3ky")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1734333889]
+mesh = ExtResource("2_g5eis")

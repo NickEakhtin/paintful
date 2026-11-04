@@ -28,5 +28,9 @@ func cells_within(_cell: Vector2, radius_px: float) -> Vector2:
 	return Vector2(radius_px, radius_px) / (size / Vector2(grid))
 
 
+func ink_reach(_cell: Vector2, radius_px: float) -> Vector2:
+	return Vector2(radius_px, radius_px) / (size / Vector2(grid))
+
+
 func supports_tasks() -> bool:
 	return true

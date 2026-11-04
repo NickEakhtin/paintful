@@ -8,6 +8,9 @@ extends Interactable
 ## Placeholder look; the collision box is sized to fit the mesh.
 @export var mesh: Mesh
 @export var color: Color = Color.WHITE
+## A real model instead of the placeholder mesh; it is set on its bottom and the box fits it the same way.
+@export var model: PackedScene
+@export var model_scale: float = 1.0
 
 ## Slot the item lies in, null while carried.
 var slot: ItemSlot = null
@@ -19,19 +22,46 @@ var home: ItemSlot = null
 
 
 func _ready() -> void:
-	if mesh != null:
-		_mesh_instance.mesh = mesh
-	var material: StandardMaterial3D = StandardMaterial3D.new()
-	material.albedo_color = color
-	_mesh_instance.material_override = material
-
-	# Origin sits at the bottom of the mesh so the item rests on the slot surface.
-	var bounds: AABB = _mesh_instance.get_aabb()
-	_mesh_instance.position = Vector3(0.0, -bounds.position.y, 0.0)
+	var bounds: AABB = AABB()
+	set_meta(&"outline_mesh", _mesh_instance)   # the player's outline traces it
+	if model != null:
+		_mesh_instance.visible = false
+		var visual: Node3D = model.instantiate()
+		visual.scale = Vector3.ONE * model_scale
+		add_child(visual)
+		var first: bool = true
+		for part: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
+			if first:
+				set_meta(&"outline_mesh", part)
+			var box_part: AABB = (visual.transform * _local_to(visual, part)) * part.get_aabb()
+			bounds = box_part if first else bounds.merge(box_part)
+			first = false
+		visual.position.y -= bounds.position.y
+		bounds.position.y = 0.0
+	else:
+		if mesh != null:
+			_mesh_instance.mesh = mesh
+		var material: StandardMaterial3D = StandardMaterial3D.new()
+		material.albedo_color = color
+		_mesh_instance.material_override = material
+		# Origin sits at the bottom of the mesh so the item rests on the slot surface.
+		bounds = _mesh_instance.get_aabb()
+		_mesh_instance.position = Vector3(0.0, -bounds.position.y, 0.0)
+		bounds.position += _mesh_instance.position
 	var box: BoxShape3D = BoxShape3D.new()
 	box.size = bounds.size + Vector3.ONE * 0.06 # a bit bigger so small items are easy to aim at
 	_shape.shape = box
-	_shape.position = _mesh_instance.position + bounds.get_center()
+	_shape.position = bounds.get_center()
+
+
+## Transform of `node` relative to its ancestor `ancestor`.
+func _local_to(ancestor: Node3D, node: Node3D) -> Transform3D:
+	var result: Transform3D = Transform3D.IDENTITY
+	var n: Node3D = node
+	while n != ancestor:
+		result = n.transform * result
+		n = n.get_parent_node_3d()
+	return result
 
 
 func get_prompt(player: Player) -> String:

@@ -1,17 +1,21 @@
 shader_type canvas_item;
 // Draws one stencil part: the faint transfer turns into ink where coverage grows.
-// Edges come from the full-resolution part texture, so they stay crisp
-// while the low-resolution coverage grid fills in softly.
+// Edges come from the full-resolution part texture, the ink's shape and its wetness from InkPaint (`paint`,
+// `wet`: the logic's stamps drawn at the screen's resolution), so strokes stay crisp on any monitor.
 // Fresh ink is wet: deep black with a glossy sheen (a window reflection plus a bright rim
 // where it beads at the edges); over `dry_time` it dries to flat, slightly grey matte.
 
-uniform sampler2D coverage : filter_linear, repeat_disable, hint_default_black;
-// When each cell last took ink, in the same clock as `now` (InkCanvas.inked_at_texture).
-uniform sampler2D inked_at : filter_linear, repeat_disable, hint_default_black;
+uniform sampler2D paint : filter_linear, repeat_disable, hint_default_black;
+// 1 where ink just landed, decaying as exp(-3 * age / dry_time) (InkPaint.DECAY).
+uniform sampler2D wet_map : filter_linear, repeat_disable, hint_default_black;
+// One texel of `paint`, in UV (the buffer may be any rectangle).
+uniform vec2 paint_texel = vec2(0.00390625);
+// How dark the first touch of the needle shows: ink appears with a crisp edge at once and darkens with every
+// pass until the spot is full (the logic still counts only full ink).
+uniform float first_pass = 0.35;
+// The session clock; only the ripple of wet ink moves with it.
 uniform float now = 0.0;
 uniform float dry_time = 6.0;
-// 1.5 coverage cells in UV, for the slope of the ink surface (the session sets it from the grid size).
-uniform vec2 cell_step = vec2(0.00586, 0.00586);
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
 // Dried ink.
 uniform vec4 ink_color : source_color = vec4(0.11, 0.1, 0.14, 1.0);
@@ -43,25 +47,35 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// Ink at `uv`, from the screen-resolution dabs.
+float ink_amount(vec2 uv) {
+	float laid = texture(paint, uv).r;
+	// the rim of the ink, anti-aliased over one screen pixel whatever the dose: a fixed threshold made it a
+	// hard, stepped edge on a curve
+	float presence = smoothstep(0.0, max(fwidth(laid) * 1.5, 1e-4), laid);
+	return max(presence * mix(first_pass, 1.0, smoothstep(0.0, 1.0, min(laid, 1.0))), done);
+}
+
 // Ink times the part's shape at `uv`; `shape` is the part texture's alpha there
 // (TEXTURE can't be passed into a function in canvas shaders).
 float wetness(vec2 uv) {
-	return 1.0 - smoothstep(0.0, dry_time, now - texture(inked_at, uv).r);
+	float age = -log(max(texture(wet_map, uv).r, 1e-6)) / 3.0;   // in dry times
+	return 1.0 - smoothstep(0.0, 1.0, age);
 }
 
 // Height of the ink surface: wet ink sits on top of dry ink as its own layer.
 float ink_at(float shape, vec2 uv) {
-	return max(texture(coverage, uv).r, done) * shape * (1.0 + wet_height * wetness(uv));
+	return ink_amount(uv) * shape * (1.0 + wet_height * wetness(uv));
 }
 
 void fragment() {
 	float shape = texture(TEXTURE, UV).a;
-	float ink = max(texture(coverage, UV).r, done);
+	float ink = ink_amount(UV);
 	float wet = wetness(UV) * smoothstep(0.3, 1.0, ink);
 
 	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
-	vec2 dx = vec2(cell_step.x, 0.0);
-	vec2 dy = vec2(0.0, cell_step.y);
+	vec2 dx = vec2(1.5 * paint_texel.x, 0.0);
+	vec2 dy = vec2(0.0, 1.5 * paint_texel.y);
 	vec2 slope = vec2(ink_at(texture(TEXTURE, UV + dx).a, UV + dx) - ink_at(texture(TEXTURE, UV - dx).a, UV - dx),
 			ink_at(texture(TEXTURE, UV + dy).a, UV + dy) - ink_at(texture(TEXTURE, UV - dy).a, UV - dy));
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;
@@ -79,10 +93,14 @@ void fragment() {
 	float sheen = (specular + window * 0.4) * wet * gloss_strength;
 
 	// Dry ink is flat and a little grainy; wet ink is deeper.
-	vec3 dry = ink_color.rgb * (0.9 + 0.2 * noise(UV * 180.0));
+	// grain at the screen's own pixels (paint_texel is one), so it stays fine on any monitor instead of
+	// showing its cells as squares on a big one
+	vec2 grain_uv = UV / paint_texel;
+	float grain = 0.65 * noise(grain_uv / 1.3) + 0.35 * noise(grain_uv / 0.6 + 31.7);
+	vec3 dry = ink_color.rgb * (0.9 + 0.2 * grain);
 	vec3 inked = mix(dry, wet_ink_color.rgb, wet) + gloss_color.rgb * sheen;
 
-	vec4 color = mix(stencil_color, vec4(inked, ink_color.a), smoothstep(0.0, 1.0, ink));
+	vec4 color = mix(stencil_color, vec4(inked, ink_color.a), ink);
 	color = mix(color, highlight_color, highlight * (1.0 - ink));
 	color.rgb = mix(color.rgb, flash_color.rgb, flash);
 	COLOR = vec4(color.rgb, color.a * shape);

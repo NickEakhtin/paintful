@@ -1,27 +1,30 @@
 class_name InkCanvas
 extends RefCounted
 ## Ink coverage of a stencil on a grid of `size` cells (`StencilData.grid_size`). Pure logic: no nodes, no input.
-## Ink only lands inside the stencil. `texture` holds coverage (red channel, 0..1),
-## `inked_at_texture` when each cell last took ink (in `time` seconds, for the wet gloss);
-## call flush() once per frame to upload changes.
+## Ink only lands inside the stencil. `texture` holds coverage (red channel, 0..1);
+## call flush() once per frame to upload changes. What the player sees is drawn by InkPaint from `dabs` and `strokes`.
 
 signal part_completed(index: int)
-
-## `inked_at` of cells that never took ink: long dry.
-const NEVER: float = -10000.0
 
 ## Grid size in cells.
 var size: Vector2i = Vector2i(256, 256)
 var texture: ImageTexture
-var inked_at_texture: ImageTexture
-## Clock stamped on fresh ink; the session advances it.
+## The session's clock (seconds); the ink shader's ripple moves with it.
 var time: float = 0.0
 ## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
 var blocked: Array[Rect2] = []
+## Every stamp since the look last took them, as [centre: Vector2, reach: Vector2, amount: float] in cells (`reach`:
+## the brush's half size along x and y; on stretched skin a screen circle is an ellipse in cells). InkPaint redraws
+## them at the screen's resolution. A stroke is kept as one segment in `strokes` instead. The look clears both.
+var dabs: Array[Array] = []
+## Strokes since the look last took them: [from: Vector2, to: Vector2, reach: Vector2, amount: float], in cells.
+var strokes: Array[Array] = []
+var _in_stroke: bool = false
+## Set when ink was taken off; the look wipes itself and clears this.
+var cleared: bool = false
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
-var _inked_at: PackedFloat32Array = PackedFloat32Array()
 ## Part index per cell, -1 outside the stencil.
 var _part_of: PackedInt32Array = PackedInt32Array()
 var _part_cells: Array[PackedInt32Array] = []
@@ -30,7 +33,6 @@ var _part_done: PackedByteArray = PackedByteArray()
 var _pixels: PackedByteArray = PackedByteArray()
 var _image: Image
 var _dirty: bool = false
-var _inked_at_dirty: bool = false
 
 
 func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
@@ -41,14 +43,10 @@ func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 	_pixels.resize(size.x * size.y)
 	_image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_R8, _pixels)
 	texture = ImageTexture.create_from_image(_image)
-	_inked_at.resize(size.x * size.y)
-	_inked_at.fill(NEVER)
-	inked_at_texture = ImageTexture.create_from_image(_inked_at_image())
 
 
 ## Adds ink in a soft circle: full `amount` at the centre, half at the edge.
 ## `center` and `radius` are in cells. Cells outside the stencil are skipped.
-## Every stencil cell under the needle turns wet again, already full ones too: fresh ink lies over old.
 ## Returns the ink actually laid down, in filled-cell units.
 func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var x0: int = maxi(0, floori(center.x - radius))
@@ -57,6 +55,8 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var y1: int = mini(size.y - 1, ceili(center.y + radius))
 	var r2: float = radius * radius
 	var laid: float = 0.0
+	if not _in_stroke:
+		dabs.append([center, Vector2(radius, radius), amount])
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * size.x + x
@@ -66,7 +66,6 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 			var d2: float = point.distance_squared_to(center)
 			if d2 <= r2 and not _is_blocked(point):
 				laid += _add_ink(cell, amount * (1.0 - 0.5 * d2 / r2))
-				_mark_inked(cell)
 	return laid
 
 
@@ -75,8 +74,11 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * 0.5)))
 	var laid: float = 0.0
+	strokes.append([from, to, Vector2(radius, radius), amount])
+	_in_stroke = true
 	for i in steps:
 		laid += stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
+	_in_stroke = false
 	return laid
 
 
@@ -93,6 +95,8 @@ func stamp_on(surface: SkinSurface, center: Vector2, radius_px: float, amount: f
 	var tip: Vector2 = Vector2(middle.x, middle.y)
 	var r2: float = radius_px * radius_px
 	var laid: float = 0.0
+	if not _in_stroke and middle.z > 0.0:
+		dabs.append([center, surface.ink_reach(center, radius_px), amount * middle.z])
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			var cell: int = y * size.x + x
@@ -105,7 +109,6 @@ func stamp_on(surface: SkinSurface, center: Vector2, radius_px: float, amount: f
 			var d2: float = Vector2(placed.x, placed.y).distance_squared_to(tip)
 			if d2 <= r2 and not _is_blocked(point):
 				laid += _add_ink(cell, amount * placed.z * (1.0 - 0.5 * d2 / r2))
-				_mark_inked(cell)
 	return laid
 
 
@@ -115,8 +118,13 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, radius_px: floa
 	var radius_cells: float = maxf(0.5, radius_px / surface.pixels_per_cell())
 	var steps: int = mini(64, maxi(1, ceili(from.distance_to(to) / (radius_cells * 0.5))))
 	var laid: float = 0.0
+	var facing: float = surface.project(to).z
+	if facing > 0.0:
+		strokes.append([from, to, surface.ink_reach(to, radius_px), amount * facing])
+	_in_stroke = true
 	for i in steps:
 		laid += stamp_on(surface, from.lerp(to, float(i + 1) / steps), radius_px, amount / steps)
+	_in_stroke = false
 	return laid
 
 
@@ -147,9 +155,6 @@ func flush() -> void:
 		_image.set_data(size.x, size.y, false, Image.FORMAT_R8, _pixels)
 		texture.update(_image)
 		_dirty = false
-	if _inked_at_dirty:
-		inked_at_texture.update(_inked_at_image())
-		_inked_at_dirty = false
 
 
 func part_count() -> int:
@@ -202,10 +207,9 @@ func clear() -> void:
 
 ## Takes all ink off a part, done or not.
 func clear_part(index: int) -> void:
+	cleared = true
 	for cell in _part_cells[index]:
 		_set_ink(cell, 0.0)
-		_inked_at[cell] = NEVER
-	_inked_at_dirty = true
 	_part_filled[index] = 0
 	_part_done[index] = 0
 
@@ -237,18 +241,6 @@ func _set_ink(cell: int, value: float) -> void:
 	_dirty = true
 
 
-func _mark_inked(cell: int) -> void:
-	_inked_at[cell] = time
-	_inked_at_dirty = true
-
-
-## Half floats filter on every GPU and are precise enough for a session-long clock.
-func _inked_at_image() -> Image:
-	var image: Image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_RF, _inked_at.to_byte_array())
-	image.convert(Image.FORMAT_RH)
-	return image
-
-
 func _check_part(part: int) -> void:
 	if _part_done[part] == 1 or part_progress(part) < _threshold:
 		return
@@ -257,7 +249,6 @@ func _check_part(part: int) -> void:
 	for cell in _part_cells[part]:
 		if _ink[cell] < 1.0:
 			_set_ink(cell, 1.0)
-			_mark_inked(cell)
 	_part_filled[part] = _part_cells[part].size()
 	part_completed.emit(part)
 

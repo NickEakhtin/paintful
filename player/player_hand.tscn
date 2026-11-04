@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://art/models/player_glove/player_glove.glb" id="1_glove"]
+[ext_resource type="Script" path="res://player/player_hand.gd" id="2_follow"]
+
+[node name="PlayerHand" type="Node3D"]
+script = ExtResource("2_follow")
+
+[node name="GloveModel" parent="." instance=ExtResource("1_glove")]
+scale = Vector3(0.8, 0.8, 0.8)

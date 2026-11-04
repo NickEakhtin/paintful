@@ -1,0 +1,23 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://d4cafbi0o01ah"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_n2fra"]
+seed = 1702
+frequency = 0.05
+fractal_octaves = 6
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ormak"]
+noise = SubResource("FastNoiseLite_n2fra")
+seamless = true
+as_normal_map = true
+bump_strength = 5.0
+
+[resource]
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.09, 0.09, 0.095, 1)
+roughness = 0.93
+normal_enabled = true
+normal_scale = 0.9
+normal_texture = SubResource("NoiseTexture2D_ormak")
+uv1_scale = Vector3(1.4, 1.4, 1.4)
+uv1_triplanar = true
+uv1_triplanar_sharpness = 4.0

@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://world/fx/retro_post/retro_post.gdshader" id="1_shader"]
+[ext_resource type="Script" path="res://world/fx/retro_post/retro_post.gd" id="2_script"]
+
+[sub_resource type="ShaderMaterial" id="mat"]
+shader = ExtResource("1_shader")
+
+[node name="RetroPost" type="CanvasLayer"]
+script = ExtResource("2_script")
+layer = -1
+
+[node name="Screen" type="ColorRect" parent="."]
+material = SubResource("mat")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

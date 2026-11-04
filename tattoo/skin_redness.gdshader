@@ -34,7 +34,8 @@ float inside_skin(vec2 uv) {
 	vec2 p = (uv - 0.5) * size;
 	vec2 q = abs(p) - (size * 0.5 - corner_radius);
 	float distance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner_radius;
-	return clamp(0.5 - distance, 0.0, 1.0);
+	// a screen pixel of soft edge on any monitor (`size` is in layout pixels, 2-3 screen pixels on 1440p/4K)
+	return clamp(0.5 - distance / max(fwidth(distance), 1e-4), 0.0, 1.0);
 }
 
 void fragment() {

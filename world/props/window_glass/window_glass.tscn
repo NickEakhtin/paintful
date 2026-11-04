@@ -1,0 +1,94 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://world/props/window_glass/glass_shine.gdshader" id="1_ku0s4"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rnckj"]
+transparency = 1
+blend_mode = 4
+cull_mode = 2
+albedo_color = Color(0.55, 0.62, 0.68, 0.18)
+metallic = 0.6
+metallic_specular = 1.0
+roughness = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_l3wft"]
+material = SubResource("StandardMaterial3D_rnckj")
+size = Vector2(1.78, 2.06)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4ic8q"]
+render_priority = 0
+shader = ExtResource("1_ku0s4")
+
+[sub_resource type="QuadMesh" id="QuadMesh_7njxw"]
+material = SubResource("ShaderMaterial_4ic8q")
+size = Vector2(1.78, 2.06)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_n8eav"]
+albedo_color = Color(0.07, 0.055, 0.05, 1)
+metallic = 0.2
+roughness = 0.55
+
+[sub_resource type="BoxMesh" id="BoxMesh_nqpju"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(1.78, 0.07, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_43pal"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(1.78, 0.07, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_18n60"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(0.07, 2.06, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4inen"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(0.07, 2.06, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gjslb"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(0.045, 1.92, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_owmr0"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(1.64, 0.045, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_f1160"]
+material = SubResource("StandardMaterial3D_n8eav")
+size = Vector3(1.64, 0.045, 0.06)
+
+[node name="WindowGlass" type="Node3D" unique_id=1594740668]
+
+[node name="Glass" type="MeshInstance3D" parent="." unique_id=327644788]
+mesh = SubResource("QuadMesh_l3wft")
+
+[node name="Shine" type="MeshInstance3D" parent="." unique_id=426951197]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.004)
+visible = false
+mesh = SubResource("QuadMesh_7njxw")
+
+[node name="Bar1" type="MeshInstance3D" parent="." unique_id=736700250]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.99499995, 0)
+mesh = SubResource("BoxMesh_nqpju")
+
+[node name="Bar2" type="MeshInstance3D" parent="." unique_id=424668055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.99499995, 0)
+mesh = SubResource("BoxMesh_43pal")
+
+[node name="Bar3" type="MeshInstance3D" parent="." unique_id=541904509]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85499996, 0, 0)
+mesh = SubResource("BoxMesh_18n60")
+
+[node name="Bar4" type="MeshInstance3D" parent="." unique_id=387655692]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85499996, 0, 0)
+mesh = SubResource("BoxMesh_4inen")
+
+[node name="Bar5" type="MeshInstance3D" parent="." unique_id=1833529597]
+mesh = SubResource("BoxMesh_gjslb")
+
+[node name="Bar6" type="MeshInstance3D" parent="." unique_id=1816503043]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.32, 0)
+mesh = SubResource("BoxMesh_owmr0")
+
+[node name="Bar7" type="MeshInstance3D" parent="." unique_id=1832259552]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+mesh = SubResource("BoxMesh_f1160")

@@ -1,0 +1,58 @@
+[gd_scene format=3]
+
+[sub_resource type="Gradient" id="fade"]
+offsets = PackedFloat32Array(0, 0.16, 0.8, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="fade_texture"]
+gradient = SubResource("fade")
+
+[sub_resource type="ParticleProcessMaterial" id="drift"]
+emission_shape = 3
+emission_box_extents = Vector3(5.65, 2.55, 7.8)
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 0.035
+initial_velocity_max = 0.11
+gravity = Vector3(0, 0.008, 0)
+turbulence_enabled = true
+turbulence_noise_strength = 0.09
+turbulence_noise_scale = 1.5
+turbulence_noise_speed = Vector3(0.1, 0.15, 0.1)
+turbulence_influence_min = 0.05
+turbulence_influence_max = 0.15
+color_ramp = SubResource("fade_texture")
+
+[sub_resource type="Shader" id="scattering"]
+code = "shader_type spatial;
+render_mode blend_add, ambient_light_disabled, fog_disabled;
+void vertex() {
+	POINT_SIZE = clamp(8.0 / max(0.8, -(MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).z), 1.5, 4.0);
+}
+void fragment() {
+	float radius = length(POINT_COORD * 2.0 - 1.0);
+	ALBEDO = vec3(0.85);
+	ALPHA = (1.0 - smoothstep(0.18, 1.0, radius)) * COLOR.a * 0.78;
+}
+void light() {
+	// A tiny grain scatters incident light from every direction.
+	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION / PI;
+}"
+
+[sub_resource type="ShaderMaterial" id="dust_surface"]
+shader = SubResource("scattering")
+
+[sub_resource type="PointMesh" id="speck"]
+material = SubResource("dust_surface")
+
+[node name="RoomDust" type="GPUParticles3D"]
+cast_shadow = 0
+amount = 3200
+lifetime = 6.0
+preprocess = 6.0
+randomness = 0.35
+local_coords = true
+fixed_fps = 24
+visibility_aabb = AABB(-6.9, -3.7, -9.1, 13.8, 7.4, 18.2)
+process_material = SubResource("drift")
+draw_pass_1 = SubResource("speck")

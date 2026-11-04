@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://art/models/roots/roots_spread.res" id="1_r4eho"]
+
+[node name="RootsSpread" type="Node3D" unique_id=2105384519]
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=209520032]
+mesh = ExtResource("1_r4eho")

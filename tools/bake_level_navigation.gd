@@ -1,12 +1,14 @@
 extends SceneTree
-## Bakes the level's navigation mesh from the static collision of the studio and basement
-## and saves it into world/level/level_navmesh.tres (which also holds the bake settings).
+## Bakes the level's navigation mesh from the static collision of the studio and basement, placed where
+## world/level/level.tscn puts them, and saves it into world/level/level_navmesh.tres (which also holds the
+## bake settings). The studio builds its collision on start (world/studio/studio_collision.gd).
 ## Doors are left out (AnimatableBody3D), so doorways stay walkable whether open or shut.
 ## Re-run after changing level geometry:
 ##   Godot --headless --path . --script res://tools/bake_level_navigation.gd
 
 const NAVMESH_PATH: String = "res://world/level/level_navmesh.tres"
-const SCENES: Array[String] = ["res://world/studio/studio.tscn", "res://world/basement/basement.tscn"]
+const LEVEL: String = "res://world/level/level.tscn"
+const PARTS: Array[StringName] = [&"Studio", &"Basement"]
 const GROUP: StringName = &"navigation_source"
 
 
@@ -17,8 +19,15 @@ func _initialize() -> void:
 func _bake() -> void:
 	var holder: Node3D = Node3D.new()
 	root.add_child(holder)
-	for path in SCENES:
-		holder.add_child(load(path).instantiate())
+	var state: SceneState = (load(LEVEL) as PackedScene).get_state()
+	for i: int in state.get_node_count():
+		if not state.get_node_name(i) in PARTS or state.get_node_instance(i) == null:
+			continue
+		var part: Node3D = state.get_node_instance(i).instantiate()
+		for p: int in state.get_node_property_count(i):
+			if state.get_node_property_name(i, p) == &"transform":
+				part.transform = state.get_node_property_value(i, p)
+		holder.add_child(part)
 	for node in holder.find_children("*", "CSGShape3D", true, false):
 		var shape: CSGShape3D = node
 		if shape.use_collision and shape.is_root_shape():

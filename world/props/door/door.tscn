@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/props/door/door.gd" id="1_script"]
+[ext_resource type="Script" path="res://interaction/interactable.gd" id="2_interactable"]
+[ext_resource type="PackedScene" path="res://art/models/door/door.glb" id="3_model"]
+
+[sub_resource type="BoxShape3D" id="panel_shape"]
+size = Vector3(1.34, 2.88, 0.08)
+
+[sub_resource type="BoxShape3D" id="interact_shape"]
+size = Vector3(1.34, 2.88, 0.3)
+
+[node name="Door" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Hinge" type="Node3D" parent="."]
+
+[node name="Panel" type="AnimatableBody3D" parent="Hinge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.672, 1.44, 0)
+sync_to_physics = false
+
+[node name="Model" parent="Hinge/Panel" instance=ExtResource("3_model")]
+transform = Transform3D(1.68, 0, 0, 0, 1.44, 0, 0, 0, 1, 0.672, -1.44, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="Hinge/Panel"]
+shape = SubResource("panel_shape")
+
+[node name="Interactable" type="Area3D" parent="Hinge/Panel"]
+script = ExtResource("2_interactable")
+
+[node name="Shape" type="CollisionShape3D" parent="Hinge/Panel/Interactable"]
+shape = SubResource("interact_shape")
