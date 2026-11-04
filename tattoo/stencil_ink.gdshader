@@ -22,16 +22,15 @@ uniform float now = 0.0;
 uniform float dry_time = 6.0;
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
 // Dried ink.
-uniform vec4 ink_color : source_color = vec4(0.12, 0.11, 0.145, 1.0);
-uniform vec4 wet_ink_color : source_color = vec4(0.06, 0.055, 0.077, 1.0);
+uniform vec4 ink_color : source_color = vec4(0.11, 0.1, 0.14, 1.0);
+uniform vec4 wet_ink_color : source_color = vec4(0.02, 0.015, 0.04, 1.0);
 uniform vec4 gloss_color : source_color = vec4(0.85, 0.9, 1.0, 1.0);
-uniform float gloss_strength = 0.35;
-// How much the ink surface bulges at its edges and ripples, for the highlights.
-uniform float bump = 0.45;
-// A lone dot stands this high next to the film: tiny dots with a full bead are all highlight and read grey.
-uniform float dot_relief = 0.3;
+uniform float gloss_strength = 0.85;
+// How much the ink surface bulges and ripples, for the highlights. The surface comes from the smooth film only
+// (not the dots or the crisp rim), so wet ink lies as one even glossy layer instead of bubbling.
+uniform float bump = 0.5;
 // Wet ink stands this much above dry ink, so a fresh stroke over old ink shows a glossy rim.
-uniform float wet_height = 0.25;
+uniform float wet_height = 0.3;
 uniform vec4 highlight_color : source_color = vec4(1.0, 0.72, 0.2, 1.0);
 // 1 once the part is complete: covers soft coverage at the edges.
 uniform float done = 0.0;
@@ -78,10 +77,11 @@ float wetness(vec2 uv) {
 	return 1.0 - smoothstep(0.0, 1.0, age);
 }
 
-// Height of the ink surface: wet ink sits on top of dry ink as its own layer.
+// Height of the ink surface: the film's smooth dose (dots and the crisp rim would each bead up into a bubble),
+// wet ink a little higher than dry as its own layer.
 float ink_at(float shape, vec2 uv) {
-	vec2 layers = ink_layers(uv);
-	return max(layers.x, layers.y * dot_relief) * shape * (1.0 + wet_height * wetness(uv));
+	float film = max(smoothstep(0.0, 1.0, min(texture(paint, uv).r, 1.0)), done);
+	return film * shape * (1.0 + wet_height * wetness(uv));
 }
 
 void fragment() {
@@ -89,9 +89,10 @@ void fragment() {
 	float ink = ink_amount(UV);
 	float wet = wetness(UV) * smoothstep(0.3, 1.0, ink);
 
-	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
-	vec2 dx = vec2(1.5 * paint_texel.x, 0.0);
-	vec2 dy = vec2(0.0, 1.5 * paint_texel.y);
+	// Surface: a gentle slope where the ink ends, plus a slow ripple of the liquid; read over a few pixels, so
+	// the normal is smooth and the gloss lies evenly.
+	vec2 dx = vec2(4.0 * paint_texel.x, 0.0);
+	vec2 dy = vec2(0.0, 4.0 * paint_texel.y);
 	vec2 slope = vec2(ink_at(texture(TEXTURE, UV + dx).a, UV + dx) - ink_at(texture(TEXTURE, UV - dx).a, UV - dx),
 			ink_at(texture(TEXTURE, UV + dy).a, UV + dy) - ink_at(texture(TEXTURE, UV - dy).a, UV - dy));
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;
