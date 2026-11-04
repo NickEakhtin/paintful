@@ -22,8 +22,8 @@ uniform float now = 0.0;
 uniform float dry_time = 6.0;
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
 // Dried ink.
-uniform vec4 ink_color : source_color = vec4(0.14, 0.13, 0.17, 1.0);
-uniform vec4 wet_ink_color : source_color = vec4(0.07, 0.065, 0.09, 1.0);
+uniform vec4 ink_color : source_color = vec4(0.12, 0.11, 0.145, 1.0);
+uniform vec4 wet_ink_color : source_color = vec4(0.06, 0.055, 0.077, 1.0);
 uniform vec4 gloss_color : source_color = vec4(0.85, 0.9, 1.0, 1.0);
 uniform float gloss_strength = 0.35;
 // How much the ink surface bulges at its edges and ripples, for the highlights.
