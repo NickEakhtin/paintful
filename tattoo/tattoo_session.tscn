@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://tattoo/tattoo_session.gd" id="1_script"]
 [ext_resource type="Script" path="res://tattoo/surfaces/flat/flat_surface.gd" id="30_flat"]
-[ext_resource type="Resource" path="res://data/stencils/arm_band/arm_band.tres" id="2_stencil"]
+[ext_resource type="Resource" path="res://data/stencils/arm_square/arm_square.tres" id="2_stencil"]
 [ext_resource type="PackedScene" path="res://tattoo/tattoo_machine.tscn" id="3_machine"]
 [ext_resource type="PackedScene" path="res://tattoo/session_hud.tscn" id="4_hud"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/ding.wav" id="5_ding"]

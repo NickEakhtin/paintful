@@ -1,7 +1,8 @@
 extends SceneTree
-## Draws the placeholder stencils (sigil, eye, moon, square, arm_band): one PNG per part in data/stencils/<name>/.
-## `arm_band` is the unwrapped forearm skin (`ArmSurface`): x spans -120..120 degrees around the arm,
-## y the middle 700 px of it; its wings sit behind the silhouettes and need the skin pulled.
+## Draws the placeholder stencils (sigil, eye, moon, square, arm_square, arm_band): one PNG per part in
+## data/stencils/<name>/. The arm stencils are the unwrapped forearm skin (`ArmSurface`): x spans -120..120
+## degrees around the arm, y the middle 700 px of it. `arm_square` is a plain filled square whose sides go
+## a little round the curve (±65°); `arm_band`'s wings sit behind the silhouettes and need the skin pulled.
 ## Run: Godot --headless --path . --script res://tools/generate_placeholder_stencil.gd
 
 const SIZE: int = 512
@@ -28,6 +29,8 @@ func _init() -> void:
 
 	_save("square", "square", func(p: Vector2) -> bool: return absf(p.x - CENTER.x) <= 150.0 and absf(p.y - CENTER.y) <= 150.0)
 
+	_save("arm_square", "square", func(p: Vector2) -> bool:
+		return absf(p.x - ARM_CENTER.x) <= 240.0 and absf(p.y - ARM_CENTER.y) <= 240.0, ARM_SIZE)
 	_save("arm_band", "seal", func(p: Vector2) -> bool:
 		return _ring(p, ARM_CENTER, 70.0, 92.0) or p.distance_to(ARM_CENTER) <= 30.0, ARM_SIZE)
 	_save("arm_band", "left_wing", func(p: Vector2) -> bool:
