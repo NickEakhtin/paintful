@@ -37,6 +37,18 @@ fill_to = Vector2(1, 0.5)
 [sub_resource type="CanvasItemMaterial" id="glow_material"]
 blend_mode = 1
 
+[sub_resource type="Gradient" id="drop_gradient"]
+offsets = PackedFloat32Array(0, 0.7, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="drop_texture"]
+gradient = SubResource("drop_gradient")
+width = 32
+height = 32
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
 [sub_resource type="ViewportTexture" id="model_texture"]
 resource_local_to_scene = true
 viewport_path = NodePath("Model")
@@ -78,14 +90,15 @@ centered = false
 [node name="Spray" type="CPUParticles2D" parent="."]
 emitting = false
 amount = 12
+texture = SubResource("drop_texture")
 lifetime = 0.25
 direction = Vector2(0, -1)
 spread = 180.0
 gravity = Vector2(0, 0)
 initial_velocity_min = 20.0
 initial_velocity_max = 50.0
-scale_amount_min = 1.5
-scale_amount_max = 3.0
+scale_amount_min = 0.06
+scale_amount_max = 0.12
 color = Color(0.1, 0.08, 0.14, 1)
 
 [node name="Hum" type="AudioStreamPlayer" parent="."]
