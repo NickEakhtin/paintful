@@ -1,9 +1,9 @@
 class_name InkPaint
 extends Node
-## The look of the ink at the screen's own resolution. InkCanvas counts ink on a 256-cell grid (progress, the 97%,
+## The look of the ink at the screen's own resolution. InkCanvas counts ink on a coarse grid (progress, the 97%,
 ## the magnet, the tasks' blocks), which shows steps and blotches stretched over a big monitor. Two half-float
-## buffers, as big as the stencil is on screen in real pixels, get the same stamps drawn as smooth dabs of the same
-## shape (full at the centre, half at the edge, a crisp rim):
+## buffers, as big as the stencil is drawn in real pixels, get the same stamps drawn as smooth dabs of the same
+## shape (full at the centre, half at the edge, a crisp rim; an ellipse where the skin is curved or stretched):
 ## - `coverage`: the dabs add up, like the ink in the logic;
 ## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
@@ -12,7 +12,7 @@ extends Node
 
 signal resized
 
-## Largest side of the buffers, in pixels.
+## Largest side of the buffers, in pixels (the aspect is kept).
 const MAX_SIZE: int = 2048
 ## A stroke is drawn as dabs this far apart, in radii (the logic steps half a radius): no scallops at its edges.
 const STROKE_SPACING: float = 0.15
@@ -57,14 +57,15 @@ var _wet: SubViewport
 var _cover_brush: Node2D = Node2D.new()
 var _wet_brush: Node2D = Node2D.new()
 var _fader: Node2D = Node2D.new()
-var _pending: Array[Vector4] = []
-var _frame: Array[Vector4] = []
-var _cell_pixels: float = 1.0
-var _cells: int = 256
+## Dabs to draw, each [centre: Vector2, reach: Vector2, amount: float] in cells.
+var _pending: Array[Array] = []
+var _frame: Array[Array] = []
+var _cell_pixels: Vector2 = Vector2.ONE
+var _cells: Vector2i = Vector2i(256, 256)
 ## While the ink moves to new buffers: the old ones (frozen) and the frame that copies them.
 var _old_views: Array[SubViewport] = []
 var _move_frame: int = -1
-var _wanted_side: int = 0
+var _wanted_size: Vector2i = Vector2i.ZERO
 var _dry_time: float = 6.0
 var _dab: GradientTexture2D = GradientTexture2D.new()
 var _brush_materials: Array[ShaderMaterial] = []
@@ -117,13 +118,13 @@ func _enter_tree() -> void:
 		RenderingServer.frame_post_draw.connect(_on_frame_drawn)
 
 
-## `pixels`: the stencil's side on screen in real pixels; `cells`: the logic grid's side.
-func setup(pixels: float, cells: int, dry_time: float) -> void:
-	var side: int = _side(pixels)
-	_cover.size = Vector2i(side, side)
-	_wet.size = Vector2i(side, side)
+## `pixels`: the stencil's size as drawn, in real pixels; `cells`: the logic grid's size.
+func setup(pixels: Vector2, cells: Vector2i, dry_time: float) -> void:
+	var buffer: Vector2i = _buffer_size(pixels)
+	_cover.size = buffer
+	_wet.size = buffer
 	_cells = cells
-	_cell_pixels = float(side) / cells
+	_cell_pixels = Vector2(buffer) / Vector2(cells)
 	_dry_time = maxf(dry_time, 0.01)
 	_fader.queue_redraw()
 	clear_ink()
@@ -131,54 +132,56 @@ func setup(pixels: float, cells: int, dry_time: float) -> void:
 
 ## The stencil's side on screen changed (the window was resized or went fullscreen): the ink moves into buffers of
 ## the new size, so it stays as sharp as the screen. Takes effect once a frame has copied the old ones.
-func resize(pixels: float) -> void:
-	_wanted_side = _side(pixels)
-	if _move_frame >= 0 or _wanted_side == _cover.size.x:
+func resize(pixels: Vector2) -> void:
+	_wanted_size = _buffer_size(pixels)
+	if _move_frame >= 0 or _wanted_size == _cover.size:
 		return   # a move in progress picks the latest size up when it ends
 	# the last batch may not have reached the old buffers: draw it into the new ones
 	if not _frame_drawn:
-		_pending = _frame + _pending
+		_frame.append_array(_pending)
+		_pending = _frame
 	_frame = []
 	_old_views = [_cover, _wet]
 	for old: SubViewport in _old_views:
 		old.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	var side: int = _wanted_side
+	var buffer: Vector2i = _wanted_size
 	_cover = _buffer("Coverage")
 	_wet = _buffer("Wetness")
 	for i in 2:
 		var view: SubViewport = [_cover, _wet][i]
-		view.size = Vector2i(side, side)
+		view.size = buffer
 		var copy: TextureRect = TextureRect.new()
 		copy.name = "Copy"
 		copy.texture = _old_views[i].get_texture()
 		copy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		copy.size = Vector2(side, side)
+		copy.size = Vector2(buffer)
 		copy.material = ShaderMaterial.new()
 		(copy.material as ShaderMaterial).shader = Shader.new()
 		(copy.material as ShaderMaterial).shader.code = COPY_SHADER
 		view.add_child(copy)
-	_cell_pixels = float(side) / _cells
+	_cell_pixels = Vector2(buffer) / Vector2(_cells)
 	coverage = _cover.get_texture()
 	wetness = _wet.get_texture()
 	_move_frame = Engine.get_frames_drawn()
 	resized.emit()
 
 
-func texel() -> float:
-	return 1.0 / _cover.size.x
+## One buffer pixel in UV, per axis.
+func texel() -> Vector2:
+	return Vector2.ONE / Vector2(_cover.size)
 
 
 ## Queues stamps and strokes (in cells, as InkCanvas keeps them) to be drawn this frame.
-func add_ink(dabs: Array[Vector4], strokes: Array[Array]) -> void:
+func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
 	_pending.append_array(dabs)
 	for stroke: Array in strokes:
 		var from: Vector2 = stroke[0]
 		var to: Vector2 = stroke[1]
-		var radius: float = stroke[2]
-		var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * STROKE_SPACING)))
+		var reach: Vector2 = stroke[2]
+		var spacing: float = maxf(minf(reach.x, reach.y) * STROKE_SPACING, 0.01)
+		var steps: int = clampi(ceili(from.distance_to(to) / spacing), 1, 512)
 		for i in steps:
-			var at: Vector2 = from.lerp(to, float(i + 1) / steps)
-			_pending.append(Vector4(at.x, at.y, radius, float(stroke[3]) / steps))
+			_pending.append([from.lerp(to, float(i + 1) / steps), reach, float(stroke[3]) / steps])
 
 
 ## Ellipses (inscribed in rects, in cells) where new dabs don't land, like InkCanvas.blocked.
@@ -210,8 +213,8 @@ func _process(delta: float) -> void:
 		if Engine.get_frames_drawn() <= _move_frame:
 			return   # dabs wait until the copy is drawn
 		_finish_move()
-		if _wanted_side != _cover.size.x:
-			resize(_wanted_side)
+		if _wanted_size != _cover.size:
+			resize(Vector2(_wanted_size))
 			return
 	var keep: float = exp(-DECAY * _undrawn_time / _dry_time)
 	_fader.modulate = Color(keep, keep, keep).linear_to_srgb()
@@ -249,19 +252,23 @@ func _finish_move() -> void:
 	_old_views.clear()
 
 
-func _side(pixels: float) -> int:
-	return clampi(roundi(pixels), 64, MAX_SIZE)
+## The buffer for a stencil drawn `pixels` big: as big, the longer side at most MAX_SIZE.
+func _buffer_size(pixels: Vector2) -> Vector2i:
+	var fit: float = minf(1.0, MAX_SIZE / maxf(maxf(pixels.x, pixels.y), 1.0))
+	return Vector2i((pixels * fit).round()).max(Vector2i(16, 16))
 
 
 func _draw_dabs(brush: Node2D, wet: bool) -> void:
-	for dab: Vector4 in _frame:
-		var radius: float = dab.z * _cell_pixels
-		var rect: Rect2 = Rect2(Vector2(dab.x, dab.y) * _cell_pixels - Vector2.ONE * radius, Vector2.ONE * radius * 2.0)
+	for dab: Array in _frame:
+		var centre: Vector2 = (dab[0] as Vector2) * _cell_pixels
+		var reach: Vector2 = (dab[1] as Vector2) * _cell_pixels
+		var rect: Rect2 = Rect2(centre - reach, reach * 2.0)
 		if wet:
 			brush.draw_texture_rect(_dab, rect, false, Color.WHITE)
 		else:
 			# an HDR buffer takes colours as sRGB and blends in linear: encode the dose so it lands as is
-			brush.draw_texture_rect(_dab, rect, false, Color(Color(dab.w, dab.w, dab.w).linear_to_srgb(), 1.0))
+			var dose: float = dab[2]
+			brush.draw_texture_rect(_dab, rect, false, Color(Color(dose, dose, dose).linear_to_srgb(), 1.0))
 
 
 func _buffer(buffer_name: String) -> SubViewport:

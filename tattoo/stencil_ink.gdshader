@@ -8,8 +8,8 @@ shader_type canvas_item;
 uniform sampler2D paint : filter_linear, repeat_disable, hint_default_black;
 // 1 where ink just landed, decaying as exp(-3 * age / dry_time) (InkPaint.DECAY).
 uniform sampler2D wet_map : filter_linear, repeat_disable, hint_default_black;
-// One texel of `paint`, in UV.
-uniform float paint_texel = 0.00390625;
+// One texel of `paint`, in UV (the buffer may be any rectangle).
+uniform vec2 paint_texel = vec2(0.00390625);
 // How dark the first touch of the needle shows: ink appears with a crisp edge at once and darkens with every
 // pass until the spot is full (the logic still counts only full ink).
 uniform float first_pass = 0.35;
@@ -74,9 +74,8 @@ void fragment() {
 	float wet = wetness(UV) * smoothstep(0.3, 1.0, ink);
 
 	// Surface: ink beads up where it ends, plus a slow ripple of the liquid.
-	float step_uv = 1.5 * paint_texel;
-	vec2 dx = vec2(step_uv, 0.0);
-	vec2 dy = vec2(0.0, step_uv);
+	vec2 dx = vec2(1.5 * paint_texel.x, 0.0);
+	vec2 dy = vec2(0.0, 1.5 * paint_texel.y);
 	vec2 slope = vec2(ink_at(texture(TEXTURE, UV + dx).a, UV + dx) - ink_at(texture(TEXTURE, UV - dx).a, UV - dx),
 			ink_at(texture(TEXTURE, UV + dy).a, UV + dy) - ink_at(texture(TEXTURE, UV - dy).a, UV - dy));
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;

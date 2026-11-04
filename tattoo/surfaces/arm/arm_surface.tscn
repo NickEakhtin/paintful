@@ -1,0 +1,110 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tattoo/surfaces/arm/arm_surface.gd" id="1_script"]
+[ext_resource type="Shader" path="res://tattoo/surfaces/arm/arm_skin.gdshader" id="2_skin"]
+[ext_resource type="Shader" path="res://tattoo/surfaces/arm/studio_bokeh.gdshader" id="3_bokeh"]
+[ext_resource type="Script" path="res://tattoo/left_hand_visual.gd" id="4_hand"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/skin_stretch.wav" id="5_stretch"]
+[ext_resource type="AudioStream" path="res://placeholders/sounds/skin_release.wav" id="6_release"]
+
+[sub_resource type="ShaderMaterial" id="bokeh_material"]
+shader = ExtResource("3_bokeh")
+
+[sub_resource type="ShaderMaterial" id="skin_material"]
+render_priority = 0
+shader = ExtResource("2_skin")
+
+[sub_resource type="Environment" id="environment"]
+background_mode = 1
+background_color = Color(0, 0, 0, 0)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.5, 0.45, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+
+[node name="ArmSurface" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+material = SubResource("bokeh_material")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="View3D" type="SubViewportContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+
+[node name="Viewport" type="SubViewport" parent="View3D"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+msaa_3d = 2
+size = Vector2i(1280, 720)
+render_target_update_mode = 4
+
+[node name="Environment" type="WorldEnvironment" parent="View3D/Viewport"]
+environment = SubResource("environment")
+
+[node name="Camera" type="Camera3D" parent="View3D/Viewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2000)
+projection = 1
+size = 720.0
+near = 10.0
+far = 4000.0
+
+[node name="Key" type="DirectionalLight3D" parent="View3D/Viewport"]
+light_color = Color(1, 0.94, 0.86, 1)
+light_energy = 1.6
+
+[node name="Fill" type="DirectionalLight3D" parent="View3D/Viewport"]
+light_color = Color(1, 0.78, 0.6, 1)
+light_energy = 0.3
+
+[node name="Arm" type="MeshInstance3D" parent="View3D/Viewport"]
+material_override = SubResource("skin_material")
+
+[node name="InkLayer" type="SubViewport" parent="."]
+disable_3d = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(880, 700)
+render_target_update_mode = 4
+
+[node name="Stencil" type="Control" parent="InkLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Hand" type="Node2D" parent="."]
+scale = Vector2(0.9, 0.9)
+script = ExtResource("4_hand")
+
+[node name="StretchSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_stretch")
+volume_db = -4.0
+
+[node name="ReleaseSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_release")
+volume_db = -6.0

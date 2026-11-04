@@ -12,6 +12,10 @@ signal finished(result: SessionResult)
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
+## Skin scenes by `StencilData.surface`; anything else uses the flat panel already in the scene.
+const SURFACE_SCENES: Dictionary = {
+	&"arm": "res://tattoo/surfaces/arm/arm_surface.tscn",
+}
 
 @export var stencil: StencilData
 ## Testing shortcut: F3 finishes the tattoo and closes the session at once. Turn off for release.
@@ -24,8 +28,8 @@ const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 @export var fixed_tasks: Array[ModifierData] = []
 
 @export_group("Tuning")
-## Needle size in grid cells; the grid is InkCanvas.SIZE cells wide.
-@export var brush_radius: float = 6.3
+## Needle radius on screen, in pixels.
+@export var brush_radius: float = 14.3
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
 @export_range(0.5, 1.0) var completion_threshold: float = 0.97
@@ -137,11 +141,12 @@ var _last_overheat_line: DialogueData = null
 ## How hard the needle presses into the skin right now, 0..1 (the look only).
 var _press: float = 0.0
 var _flow: InkFlow
+## The skin being inked: the flat panel or a surface scene picked by the stencil.
+var _surface: SkinSurface
 
 @onready var _view: Control = $View
 @onready var _body: Control = $View/Body
-@onready var _canvas_rect: Control = $View/Body/Canvas
-@onready var _stencil_layer: Control = $View/Body/Canvas/Stencil
+@onready var _canvas_rect: FlatSurface = $View/Body/Canvas
 @onready var _redness: ColorRect = $View/Body/Redness
 @onready var _press_rect: ColorRect = $View/Body/Press
 @onready var _modifier_layer: Node2D = $View/Body/Modifiers
@@ -173,10 +178,9 @@ func _start_if_main_scene() -> void:
 			start(stencil, fixed_tasks)
 
 
-## The stencil's larger side on screen, in real pixels (window pixels, not layout ones).
-func _stencil_screen_pixels() -> float:
-	var pixels: Vector2 = _canvas_rect.get_global_rect().size * get_viewport().get_final_transform().get_scale()
-	return maxf(pixels.x, pixels.y)
+## How big the skin draws the stencil, in real pixels: the ink look is drawn that big.
+func _ink_pixels() -> Vector2:
+	return _surface.ink_pixels()
 
 
 ## The ink look of every stencil part reads the InkPaint buffers (again after they're resized).
@@ -195,7 +199,7 @@ func _on_window_resized() -> void:
 
 func _resize_paint() -> void:
 	if _paint_view != null:
-		_paint_view.resize(_stencil_screen_pixels())
+		_paint_view.resize(_ink_pixels())
 
 
 ## Lets the spirit spin the roulette over the bare skin, then starts with what came up.
@@ -214,13 +218,14 @@ func roll_and_start(new_stencil: StencilData) -> void:
 ## `tasks` are the spirit tasks for this session, each once.
 func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
+	_setup_surface()
 	canvas = InkCanvas.new(stencil, completion_threshold)
 	canvas.part_completed.connect(_on_part_completed)
 	if _paint_view != null:
 		_paint_view.queue_free()
 	_paint_view = InkPaint.new()
 	add_child(_paint_view)
-	_paint_view.setup(_stencil_screen_pixels(), InkCanvas.SIZE, ink_dry_time)
+	_paint_view.setup(_ink_pixels(), canvas.size, ink_dry_time)
 	_paint_view.resized.connect(_bind_paint)
 	_flow = InkFlow.new(flow_build_time, flow_fade_time, flow_grace)
 
@@ -237,15 +242,17 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # big stencils stay clean on small screens
 		rect.material = material
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_stencil_layer.add_child(rect)
+		_surface.stencil_layer().add_child(rect)
 		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_bind_paint()
 	_hud.setup(part_names, MECHANICS.ink_supply)
+	if not _surface.hint().is_empty():
+		_hud.add_hint(_surface.hint())
 	_setup_skin_heat()
 	_setup_skin_press()
 	_hud.show_progress(canvas)
 	_tasks = tasks
-	if not MECHANICS.spirit_tasks:
+	if not MECHANICS.spirit_tasks or not _surface.supports_tasks():
 		_tasks = []
 	_add_modifiers(_tasks)
 	_hud.setup_tasks(_modifiers)
@@ -268,6 +275,7 @@ func _process(delta: float) -> void:
 	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
+	_surface.update_surface(delta, not _turning)
 	_update_ink_blocks()
 	_update_needle(delta)
 	_paint(delta)
@@ -323,7 +331,7 @@ func skip() -> void:
 	for part in canvas.part_count():
 		for cell in canvas._part_cells[part]:
 			@warning_ignore("integer_division")
-			canvas.stamp(Vector2(cell % InkCanvas.SIZE + 0.5, cell / InkCanvas.SIZE + 0.5), 0.5, 1.0)
+			canvas.stamp(Vector2(cell % canvas.size.x + 0.5, cell / canvas.size.x + 0.5), 0.5, 1.0)
 	canvas.dabs.clear()   # every part is done now, and done parts show full anyway
 	canvas.strokes.clear()
 	_flush_ink()
@@ -418,10 +426,12 @@ func _update_needle(delta: float) -> void:
 	var desired: Vector2 = _machine.pointer
 	var pointer_cell: Vector2 = _to_cell(_machine.pointer)
 	var target: Vector2 = Vector2.INF
-	if MECHANICS.magnet:
-		target = canvas.find_unfilled_near(pointer_cell, magnet_radius)
+	# `magnet_radius` is in cells of the flat panel; other skins get the same reach on screen.
+	var radius: float = magnet_radius * _canvas_rect.pixels_per_cell() / _surface.pixels_per_cell()
+	if MECHANICS.magnet and pointer_cell.is_finite():
+		target = canvas.find_unfilled_near(pointer_cell, radius, null if _surface == _canvas_rect else _surface)
 	if target.is_finite():
-		var distance: float = pointer_cell.distance_to(target) / magnet_radius
+		var distance: float = pointer_cell.distance_to(target) / radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
 	_steady_needle = _steady_needle.lerp(desired, 1.0 - exp(-needle_follow * delta))
@@ -447,24 +457,26 @@ func _paint(delta: float) -> void:
 		_wait_for_release = pressing
 		pressing = false
 		clicked = false
-	var cell: Vector2 = _to_cell(_machine.needle)
+	var cell: Vector2 = _surface.to_cell(_machine.needle)
+	var on_skin: bool = cell.is_finite()
 	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
 	if clicked and over_cap:
 		_dip()
 	var inking: bool = pressing and not over_cap and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
-	_update_flow(delta, inking and _ink_left > 0.0 and canvas.is_stencil(cell))
-	if inking and _ink_left > 0.0:
+	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
+	if inking and _ink_left > 0.0 and on_skin:
 		var radius: float = brush_radius * (1.0 + flow_brush_bonus * _flow.strength())
 		var laid: float
 		if _was_inking:
-			laid = canvas.stroke(_last_cell, cell, radius, ink_rate * delta)
+			laid = canvas.stroke_on(_surface, _last_cell, cell, radius, ink_rate * delta)
 		else:
-			laid = canvas.stamp(cell, radius, ink_rate * delta)
+			laid = canvas.stamp_on(_surface, cell, radius, ink_rate * delta)
 		if MECHANICS.ink_supply:
 			_ink_left = maxf(0.0, _ink_left - laid)
 	_last_cell = cell
-	_was_inking = inking
+	# Off the skin the stroke breaks, so it never joins two far-apart points.
+	_was_inking = inking and on_skin
 	_heat_skin(inking, delta)
 
 
@@ -494,6 +506,11 @@ func _setup_skin_press() -> void:
 	material.set_shader_parameter("tint", press_tint)
 	material.set_shader_parameter("size", skin.size)
 	material.set_shader_parameter("corner_radius", _skin_corner_radius())
+	if _surface != _canvas_rect:
+		# Not the panel: the dent may show anywhere on the screen.
+		_press_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		material.set_shader_parameter("size", _body.size)
+		material.set_shader_parameter("corner_radius", 0.0)
 
 
 ## The needle dents the skin while it works, and the picture trembles with the buzz.
@@ -503,7 +520,7 @@ func _update_skin_press(delta: float) -> void:
 	if _turning:
 		_calm_press()
 		return
-	var working: bool = MECHANICS.skin_press and _machine.working
+	var working: bool = MECHANICS.skin_press and _machine.working and _surface.is_on_skin(_machine.needle)
 	var time: float = press_in_time if working else press_out_time
 	_press = move_toward(_press, 1.0 if working else 0.0, delta / maxf(time, 0.001))
 	_press_rect.visible = _press > 0.0
@@ -524,7 +541,7 @@ func _calm_press() -> void:
 ## The working needle heats the skin under it, ink or no ink.
 func _heat_skin(working: bool, delta: float) -> void:
 	var point: Vector2 = _machine.needle - skin.get_global_rect().position
-	var heating: bool = MECHANICS.skin_heat and working and _is_on_skin(point)
+	var heating: bool = MECHANICS.skin_heat and _surface.supports_tasks() and working and _is_on_skin(point)
 	if heating:
 		_heat.heat(_last_heat_point if _was_heating else point, point, heat_radius, heat_rate * delta)
 	_last_heat_point = point
@@ -574,6 +591,7 @@ func _update_redness(delta: float) -> void:
 func _overheat() -> void:
 	_running = false
 	_machine.working = false
+	_surface.release()
 	_was_inking = false
 	_calm_skin()
 	_calm_press()
@@ -720,13 +738,30 @@ func _flush_ink() -> void:
 
 
 func _to_cell(screen_position: Vector2) -> Vector2:
-	var rect: Rect2 = _canvas_rect.get_global_rect()
-	return (screen_position - rect.position) / rect.size * InkCanvas.SIZE
+	return _surface.to_cell(screen_position)
 
 
 func _to_screen(cell: Vector2) -> Vector2:
-	var rect: Rect2 = _canvas_rect.get_global_rect()
-	return rect.position + cell / InkCanvas.SIZE * rect.size
+	var placed: Vector3 = _surface.project(cell)
+	return Vector2(placed.x, placed.y)
+
+
+## The stencil picks its skin. Another surface takes the place of the flat panel and its redness.
+func _setup_surface() -> void:
+	if _surface != null:
+		return
+	var path: String = SURFACE_SCENES.get(stencil.surface, "")
+	if path.is_empty():
+		_surface = _canvas_rect
+	else:
+		_surface = (load(path) as PackedScene).instantiate()
+		_body.add_child(_surface)
+		_body.move_child(_surface, 0)
+		_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		skin.visible = false
+		_canvas_rect.visible = false
+		_redness.visible = false
+	_surface.setup(stencil)
 
 
 ## PowerWash "ping": what still needs ink glows once and fades.
@@ -741,6 +776,8 @@ func _ping_highlight() -> void:
 func _set_highlight(value: float) -> void:
 	for material in _materials:
 		material.set_shader_parameter("highlight", value)
+	if _surface != null and canvas != null:
+		_surface.set_highlight(value, canvas)
 
 
 func _on_part_completed(index: int) -> void:
@@ -762,6 +799,7 @@ func _flash(material: ShaderMaterial, color: Color = Color.WHITE) -> void:
 func _finish() -> void:
 	_running = false
 	_machine.working = false
+	_surface.release()
 	_calm_skin()
 	_calm_press()
 	_flow.clear()

@@ -31,6 +31,11 @@ func setup(part_names: PackedStringArray, ink_supply: bool = true) -> void:
 	_done_panel.visible = false
 
 
+## Puts `text` in front of the controls line (a skin's own controls).
+func add_hint(text: String) -> void:
+	_hint.text = text + " · " + _hint.text
+
+
 func show_progress(canvas: InkCanvas) -> void:
 	_progress.value = canvas.total_progress() * 100.0
 	for i in _part_labels.size():

@@ -1,22 +1,23 @@
 class_name InkCanvas
 extends RefCounted
-## Ink coverage of a stencil on a square grid. Pure logic: no nodes, no input.
+## Ink coverage of a stencil on a grid of `size` cells (`StencilData.grid_size`). Pure logic: no nodes, no input.
 ## Ink only lands inside the stencil. `texture` holds coverage (red channel, 0..1);
 ## call flush() once per frame to upload changes. What the player sees is drawn by InkPaint from `dabs` and `strokes`.
 
 signal part_completed(index: int)
 
-const SIZE: int = 256
-
+## Grid size in cells.
+var size: Vector2i = Vector2i(256, 256)
 var texture: ImageTexture
 ## The session's clock (seconds); the ink shader's ripple moves with it.
 var time: float = 0.0
 ## Ellipses where ink can't land and the magnet doesn't pull, each inscribed in a rect, in cells.
 var blocked: Array[Rect2] = []
-## Every stamp since the look last took them, as (centre x, centre y, radius, amount) in cells: InkPaint redraws
+## Every stamp since the look last took them, as [centre: Vector2, reach: Vector2, amount: float] in cells (`reach`:
+## the brush's half size along x and y; on stretched skin a screen circle is an ellipse in cells). InkPaint redraws
 ## them at the screen's resolution. A stroke is kept as one segment in `strokes` instead. The look clears both.
-var dabs: Array[Vector4] = []
-## Strokes since the look last took them: [from (cells), to (cells), radius, amount].
+var dabs: Array[Array] = []
+## Strokes since the look last took them: [from: Vector2, to: Vector2, reach: Vector2, amount: float], in cells.
 var strokes: Array[Array] = []
 var _in_stroke: bool = false
 ## Set when ink was taken off; the look wipes itself and clears this.
@@ -36,10 +37,11 @@ var _dirty: bool = false
 
 func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 	_threshold = completion_threshold
+	size = stencil.grid_size
 	_build_parts(stencil)
-	_ink.resize(SIZE * SIZE)
-	_pixels.resize(SIZE * SIZE)
-	_image = Image.create_from_data(SIZE, SIZE, false, Image.FORMAT_R8, _pixels)
+	_ink.resize(size.x * size.y)
+	_pixels.resize(size.x * size.y)
+	_image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_R8, _pixels)
 	texture = ImageTexture.create_from_image(_image)
 
 
@@ -48,16 +50,16 @@ func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 ## Returns the ink actually laid down, in filled-cell units.
 func stamp(center: Vector2, radius: float, amount: float) -> float:
 	var x0: int = maxi(0, floori(center.x - radius))
-	var x1: int = mini(SIZE - 1, ceili(center.x + radius))
+	var x1: int = mini(size.x - 1, ceili(center.x + radius))
 	var y0: int = maxi(0, floori(center.y - radius))
-	var y1: int = mini(SIZE - 1, ceili(center.y + radius))
+	var y1: int = mini(size.y - 1, ceili(center.y + radius))
 	var r2: float = radius * radius
 	var laid: float = 0.0
 	if not _in_stroke:
-		dabs.append(Vector4(center.x, center.y, radius, amount))
+		dabs.append([center, Vector2(radius, radius), amount])
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
-			var cell: int = y * SIZE + x
+			var cell: int = y * size.x + x
 			if _part_of[cell] < 0:
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
@@ -72,7 +74,7 @@ func stamp(center: Vector2, radius: float, amount: float) -> float:
 func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	var steps: int = maxi(1, ceili(from.distance_to(to) / (radius * 0.5)))
 	var laid: float = 0.0
-	strokes.append([from, to, radius, amount])
+	strokes.append([from, to, Vector2(radius, radius), amount])
 	_in_stroke = true
 	for i in steps:
 		laid += stamp(from.lerp(to, float(i + 1) / steps), radius, amount / steps)
@@ -80,21 +82,68 @@ func stroke(from: Vector2, to: Vector2, radius: float, amount: float) -> float:
 	return laid
 
 
+## Like stamp(), but the brush is a circle of `radius_px` on screen and the skin may be curved or stretched:
+## every stencil cell near `center` (a cell) is placed on screen by `surface.project()`, which also says how
+## much ink that skin takes (0 where it is hidden or turned away). Returns the ink laid down.
+func stamp_on(surface: SkinSurface, center: Vector2, radius_px: float, amount: float) -> float:
+	var middle: Vector3 = surface.project(center)
+	var reach: Vector2 = surface.cells_within(center, radius_px)
+	var x0: int = maxi(0, floori(center.x - reach.x))
+	var x1: int = mini(size.x - 1, ceili(center.x + reach.x))
+	var y0: int = maxi(0, floori(center.y - reach.y))
+	var y1: int = mini(size.y - 1, ceili(center.y + reach.y))
+	var tip: Vector2 = Vector2(middle.x, middle.y)
+	var r2: float = radius_px * radius_px
+	var laid: float = 0.0
+	if not _in_stroke and middle.z > 0.0:
+		dabs.append([center, surface.ink_reach(center, radius_px), amount * middle.z])
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var cell: int = y * size.x + x
+			if _part_of[cell] < 0:
+				continue
+			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
+			var placed: Vector3 = surface.project(point)
+			if placed.z <= 0.0:
+				continue
+			var d2: float = Vector2(placed.x, placed.y).distance_squared_to(tip)
+			if d2 <= r2 and not _is_blocked(point):
+				laid += _add_ink(cell, amount * placed.z * (1.0 - 0.5 * d2 / r2))
+	return laid
+
+
+## stroke() for stamp_on(): from one skin cell to another, so ink follows the skin when it slides
+## under a still needle too.
+func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, radius_px: float, amount: float) -> float:
+	var radius_cells: float = maxf(0.5, radius_px / surface.pixels_per_cell())
+	var steps: int = mini(64, maxi(1, ceili(from.distance_to(to) / (radius_cells * 0.5))))
+	var laid: float = 0.0
+	var facing: float = surface.project(to).z
+	if facing > 0.0:
+		strokes.append([from, to, surface.ink_reach(to, radius_px), amount * facing])
+	_in_stroke = true
+	for i in steps:
+		laid += stamp_on(surface, from.lerp(to, float(i + 1) / steps), radius_px, amount / steps)
+	_in_stroke = false
+	return laid
+
+
 ## Centre of the nearest stencil cell that still needs ink, or Vector2.INF if none within `radius`.
-func find_unfilled_near(center: Vector2, radius: float) -> Vector2:
+## With a `surface`, only cells that take ink there now count (not hidden or turned away).
+func find_unfilled_near(center: Vector2, radius: float, surface: SkinSurface = null) -> Vector2:
 	var best: Vector2 = Vector2.INF
 	var best_d2: float = radius * radius
 	var r: int = ceili(radius)
 	var cx: int = floori(center.x)
 	var cy: int = floori(center.y)
-	for y in range(maxi(0, cy - r), mini(SIZE, cy + r + 1)):
-		for x in range(maxi(0, cx - r), mini(SIZE, cx + r + 1)):
-			var cell: int = y * SIZE + x
+	for y in range(maxi(0, cy - r), mini(size.y, cy + r + 1)):
+		for x in range(maxi(0, cx - r), mini(size.x, cx + r + 1)):
+			var cell: int = y * size.x + x
 			if _part_of[cell] < 0 or _ink[cell] >= 1.0:
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
 			var d2: float = point.distance_squared_to(center)
-			if d2 < best_d2 and not _is_blocked(point):
+			if d2 < best_d2 and not _is_blocked(point) and (surface == null or surface.project(point).z >= 0.5):
 				best_d2 = d2
 				best = point
 	return best
@@ -103,7 +152,7 @@ func find_unfilled_near(center: Vector2, radius: float) -> Vector2:
 ## Uploads changed cells to `texture`.
 func flush() -> void:
 	if _dirty:
-		_image.set_data(SIZE, SIZE, false, Image.FORMAT_R8, _pixels)
+		_image.set_data(size.x, size.y, false, Image.FORMAT_R8, _pixels)
 		texture.update(_image)
 		_dirty = false
 
@@ -129,6 +178,16 @@ func total_progress() -> float:
 	return float(filled) / maxi(1, total)
 
 
+## Grid indices (y * size.x + x) of a part's cells.
+func part_cells(index: int) -> PackedInt32Array:
+	return _part_cells[index]
+
+
+## Ink in one cell (grid index), 0..1.
+func cell_ink(cell: int) -> float:
+	return _ink[cell]
+
+
 func is_complete() -> bool:
 	return not _part_done.has(0)
 
@@ -137,7 +196,7 @@ func is_complete() -> bool:
 func is_stencil(cell: Vector2) -> bool:
 	var x: int = floori(cell.x)
 	var y: int = floori(cell.y)
-	return x >= 0 and y >= 0 and x < SIZE and y < SIZE and _part_of[y * SIZE + x] >= 0
+	return x >= 0 and y >= 0 and x < size.x and y < size.y and _part_of[y * size.x + x] >= 0
 
 
 ## Takes all ink off every part.
@@ -195,21 +254,21 @@ func _check_part(part: int) -> void:
 
 
 func _build_parts(stencil: StencilData) -> void:
-	_part_of.resize(SIZE * SIZE)
+	_part_of.resize(size.x * size.y)
 	_part_of.fill(-1)
 	for index in stencil.parts.size():
 		var image: Image = stencil.parts[index].texture.get_image()
 		if image.is_compressed():
 			image.decompress()
-		image.resize(SIZE, SIZE, Image.INTERPOLATE_BILINEAR)
-		for y in SIZE:
-			for x in SIZE:
+		image.resize(size.x, size.y, Image.INTERPOLATE_BILINEAR)
+		for y in size.y:
+			for x in size.x:
 				if image.get_pixel(x, y).a > 0.5:
-					_part_of[y * SIZE + x] = index # later parts win where parts overlap
+					_part_of[y * size.x + x] = index # later parts win where parts overlap
 
 	for index in stencil.parts.size():
 		var cells: PackedInt32Array = PackedInt32Array()
-		for cell in SIZE * SIZE:
+		for cell in size.x * size.y:
 			if _part_of[cell] == index:
 				cells.append(cell)
 		_part_cells.append(cells)
