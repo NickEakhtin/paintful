@@ -54,18 +54,18 @@ const SURFACE_SCENES: Dictionary = {
 ## Slower than this (pixels per second) the brush keeps its angle.
 @export var brush_min_speed: float = 30.0
 ## Dots the brush drops per second of inking.
-@export var dots_per_second: float = 700.0
+@export var dots_per_second: float = 260.0
 ## Dots thin out towards the brush's ends as (1 - s^2)^this.
 @export var dot_concentration: float = 2.0
 ## Dot radius in the brush's middle and at its ends, in pixels.
-@export var dot_size_center: float = 2.4
-@export var dot_size_edge: float = 1.1
+@export var dot_size_center: float = 2.0
+@export var dot_size_edge: float = 1.0
 ## Dot radius varies by this share either way.
 @export_range(0.0, 0.9) var dot_size_jitter: float = 0.3
 ## Some dots are stretched along the brush, up to this much.
 @export var dot_stretch_max: float = 2.0
 ## Share of full ink where the smooth film starts closing the gaps between the dots.
-@export_range(0.0, 0.95) var film_from: float = 0.5
+@export_range(0.0, 0.95) var film_from: float = 0.65
 
 @export_group("Feel")
 ## Radius of the dent under the working needle, in pixels.

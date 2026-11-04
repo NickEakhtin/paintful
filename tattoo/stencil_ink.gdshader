@@ -22,16 +22,16 @@ uniform float now = 0.0;
 uniform float dry_time = 6.0;
 uniform vec4 stencil_color : source_color = vec4(0.55, 0.3, 0.75, 0.5);
 // Dried ink.
-uniform vec4 ink_color : source_color = vec4(0.11, 0.1, 0.14, 1.0);
-uniform vec4 wet_ink_color : source_color = vec4(0.02, 0.015, 0.04, 1.0);
+uniform vec4 ink_color : source_color = vec4(0.14, 0.13, 0.17, 1.0);
+uniform vec4 wet_ink_color : source_color = vec4(0.07, 0.065, 0.09, 1.0);
 uniform vec4 gloss_color : source_color = vec4(0.85, 0.9, 1.0, 1.0);
-uniform float gloss_strength = 1.0;
+uniform float gloss_strength = 0.35;
 // How much the ink surface bulges at its edges and ripples, for the highlights.
-uniform float bump = 0.9;
+uniform float bump = 0.45;
 // A lone dot stands this high next to the film: tiny dots with a full bead are all highlight and read grey.
 uniform float dot_relief = 0.3;
 // Wet ink stands this much above dry ink, so a fresh stroke over old ink shows a glossy rim.
-uniform float wet_height = 0.6;
+uniform float wet_height = 0.25;
 uniform vec4 highlight_color : source_color = vec4(1.0, 0.72, 0.2, 1.0);
 // 1 once the part is complete: covers soft coverage at the edges.
 uniform float done = 0.0;
