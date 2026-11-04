@@ -29,7 +29,7 @@ const SURFACE_SCENES: Dictionary = {
 
 @export_group("Tuning")
 ## Needle radius on screen, in pixels: the flat brush's half length.
-@export var brush_radius: float = 14.3
+@export var brush_radius: float = 10.0
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
 @export_range(0.5, 1.0) var completion_threshold: float = 0.97
