@@ -408,6 +408,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
 	_needle_lead = _machine.pointer
+	_machine.reset_heading()
 	_show_turn_hints()
 	_ink_left = ink_capacity
 	_update_ink_display()

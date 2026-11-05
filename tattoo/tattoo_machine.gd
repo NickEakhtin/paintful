@@ -6,7 +6,8 @@ extends Node2D
 ## The look is the 3D model in a full-screen perspective `Model` SubViewport, drawn by `Sprite`:
 ## the camera looks down at the skin plane (z = 0) and the needle tip touches it under `needle`.
 ## The artist is right-handed: the machine stands upright at the left edge of the screen and
-## lies lower towards the right. Its top swings behind the motion.
+## lies lower towards the right. It turns round the needle to trail behind the stroke, and its top swings behind
+## the motion, both on springs.
 
 ## Needle tip in the model's mesh coordinates (the leftmost point of IGLA_RL).
 const NEEDLE_TIP: Vector3 = Vector3(-5.1824, 1.4684, 0.0325)
@@ -25,8 +26,15 @@ const MAX_STEP: float = 1.0 / 120.0
 @export_range(0.0, 90.0) var angle_at_left: float = 60.0
 ## Angle to the skin at the right edge of the screen, in degrees.
 @export_range(0.0, 90.0) var angle_at_right: float = 30.0
-## Which way the top of the machine points over the skin (x right, y up on screen).
+## Which way the top of the machine points over the skin (x right, y up on screen) at the start.
 @export var hold_heading: Vector2 = Vector2(0.65, 0.75)
+## The machine turns round its needle so the needle leads the stroke and the body trails behind it; standing or
+## slower than `turn_min_speed` it keeps its heading. Off: always `hold_heading`.
+@export var turn_to_stroke: bool = true
+@export var turn_min_speed: float = 80.0
+## The turn's own spring (the machine's weight slows it like the rest): lower is a heavier, lazier turn.
+@export var turn_frequency: float = 3.0
+@export_range(0.0, 2.0) var turn_damping: float = 0.85
 
 @export_group("Flow")
 ## Hum pitch added at full flow (0.12 is about two semitones).
@@ -107,6 +115,9 @@ var _velocity: Vector2 = Vector2.ZERO
 ## How far the top leans from the hold direction (screen axes), and how fast it's swinging.
 var _lean: Vector2 = Vector2.ZERO
 var _lean_velocity: Vector2 = Vector2.ZERO
+## Where the top points over the skin (radians, screen axes with y up) and how fast it turns.
+var _heading: float = 0.0
+var _heading_velocity: float = 0.0
 var _hum_volume_db: float = 0.0
 var _spray_speed: float = 0.0
 
@@ -124,6 +135,7 @@ func _ready() -> void:
 	_target = pointer
 	_position = pointer
 	_hum_volume_db = _hum.volume_db
+	reset_heading()
 	_spray_speed = _spray.initial_velocity_max
 
 
@@ -192,9 +204,34 @@ func _step(delta: float) -> void:
 		_velocity += _spring(_target - _position, _velocity, follow_frequency * heavy, follow_damping) * delta
 		_position += _velocity * delta
 
+	_turn(delta, heavy)
 	var lean_target: Vector2 = (-_velocity * lean_per_speed).limit_length(max_lean)
 	_lean_velocity += _spring(lean_target - _lean, _lean_velocity, swing_frequency * heavy, swing_damping) * delta
 	_lean += _lean_velocity * delta
+
+
+## Back to `hold_heading` at once (a new session).
+func reset_heading() -> void:
+	_heading = Vector2(hold_heading.x, hold_heading.y).angle()
+	_heading_velocity = 0.0
+
+
+## The top turns to trail behind the motion (the needle points where the stroke goes), on its own spring.
+func _turn(delta: float, heavy: float) -> void:
+	if not turn_to_stroke:
+		reset_heading()
+		return
+	var target: float = _heading
+	var speed: float = _velocity.length()
+	if speed > turn_min_speed:
+		# behind the motion, in screen axes with y up; just above the threshold it pulls gently
+		var behind: float = Vector2(-_velocity.x, _velocity.y).angle()
+		var eagerness: float = clampf((speed - turn_min_speed) / turn_min_speed, 0.0, 1.0)
+		target = _heading + angle_difference(_heading, behind) * eagerness
+	var frequency: float = turn_frequency * heavy
+	_heading_velocity += (angle_difference(_heading, target) * frequency * frequency
+			- _heading_velocity * 2.0 * turn_damping * frequency) * delta
+	_heading = wrapf(_heading + _heading_velocity * delta, -PI, PI)
 
 
 func _spring(offset: Vector2, velocity: Vector2, frequency: float, damping: float) -> Vector2:
@@ -247,7 +284,7 @@ func _place_model(screen_point: Vector2) -> void:
 ## as the tilt allows. `across` is 0 at the left edge of the screen and 1 at the right.
 func _hold_basis(across: float) -> Basis:
 	var angle: float = deg_to_rad(lerpf(angle_at_left, angle_at_right, clampf(across, 0.0, 1.0)))
-	var heading: Vector3 = Vector3(hold_heading.x, hold_heading.y, 0.0).normalized()
+	var heading: Vector3 = Vector3(cos(_heading), sin(_heading), 0.0)
 	# Screen y points down, the view's y up.
 	var along: Vector3 = (heading * cos(angle) + Vector3.BACK * sin(angle) + Vector3(_lean.x, -_lean.y, 0.0)).normalized()
 	var side: Vector3 = Vector3.BACK * cos(angle) - heading * sin(angle) # well defined even when upright
