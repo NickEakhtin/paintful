@@ -3,6 +3,8 @@ extends Node
 ## Cmd+Ctrl+F switch between fullscreen and a window. The choice is kept in `user://settings.cfg`.
 ## `--windowed` / `--fullscreen` after `--` on the command line win over the saved choice (tests take screenshots
 ## in a window): `Godot --path . res://_test/x.tscn -- --windowed`. Godot keeps its own `--windowed` to itself.
+## Low resolution (on by default, F10 switches, saved too): the whole game renders at its base size (1280x720,
+## widened to the screen's shape) and is stretched to the window, instead of at the window's own pixels.
 
 const SETTINGS_PATH: String = "user://settings.cfg"
 ## The layout's base size: the window never gets smaller than this (unless the screen is).
@@ -11,6 +13,8 @@ const MIN_SIZE: Vector2i = Vector2i(1280, 720)
 const WINDOWED_SHARE: float = 0.75
 
 var fullscreen: bool = true
+## The game renders at the base size and is stretched to the window (`set_low_resolution()`).
+var low_resolution: bool = true
 
 
 func _ready() -> void:
@@ -21,12 +25,14 @@ func _ready() -> void:
 	window.min_size = MIN_SIZE.min(DisplayServer.screen_get_usable_rect(window.current_screen).size)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.has("--windowed") or args.has("--fullscreen"):
+		set_low_resolution(not args.has("--full-resolution"), false)
 		fullscreen = args.has("--fullscreen")
 		if fullscreen:
 			window.mode = Window.MODE_FULLSCREEN
 		return
 	var settings: ConfigFile = ConfigFile.new()
 	settings.load(SETTINGS_PATH)
+	set_low_resolution(settings.get_value("display", "low_resolution", true), false)
 	set_fullscreen(settings.get_value("display", "fullscreen", true), false)
 
 
@@ -40,6 +46,24 @@ func _input(event: InputEvent) -> void:
 	if toggle:
 		get_viewport().set_input_as_handled()   # the start screen's "any key" doesn't start the game
 		set_fullscreen(not fullscreen)
+	elif key.physical_keycode == KEY_F10:
+		get_viewport().set_input_as_handled()
+		set_low_resolution(not low_resolution)
+
+
+## On: the game renders at the base size (`MIN_SIZE`, widened to the window's shape) and the picture is stretched
+## to the window; off: at the window's own pixels. Everything that sizes itself to the screen's real pixels (the
+## retro filter, the tattoo machine and ink) follows, since the window says its size changed.
+func set_low_resolution(on: bool, save: bool = true) -> void:
+	low_resolution = on
+	var root: Window = get_tree().root
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT if on else Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.size_changed.emit()
+	if save:
+		var settings: ConfigFile = ConfigFile.new()
+		settings.load(SETTINGS_PATH)
+		settings.set_value("display", "low_resolution", on)
+		settings.save(SETTINGS_PATH)
 
 
 func set_fullscreen(on: bool, save: bool = true) -> void:

@@ -23,9 +23,17 @@ func _ready() -> void:
 	_fit()
 
 
-## Screen pixels per game pixel for this window height.
+## Screen pixels per game pixel for the height the game renders at: the window's own pixels, or the base size
+## when `Display.low_resolution` stretches a smaller picture to the window.
 func pixel_size() -> int:
-	return clampi(get_window().size.y / min_rows, 1, max_pixel_size)
+	return clampi(_render_height() / min_rows, 1, max_pixel_size)
+
+
+func _render_height() -> int:
+	var window: Window = get_window()
+	if window.content_scale_mode == Window.CONTENT_SCALE_MODE_VIEWPORT:
+		return int(get_viewport().get_visible_rect().size.y)
+	return window.size.y
 
 
 func _fit() -> void:
