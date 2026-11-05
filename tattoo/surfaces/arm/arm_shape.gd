@@ -72,6 +72,8 @@ var bump_overhang: float = 45.0
 var bump_amount: float = 0.0
 ## How uneven the bump is (0: an even dome).
 var bump_uneven: float = 0.5
+## The bump reaches up over the skin above it instead of sagging down (`bump.y` stays its top row).
+var bump_up: bool = false
 ## How ragged the folds' creases are, in pixels the crease wanders up and down (0: straight).
 var fold_ragged: float = 9.0
 
@@ -122,6 +124,13 @@ func skin_unrow(theta: float, row: float) -> float:
 ## A row (after the folds) -> its row with the bump sagging: the bump's rows stretched down over the skin below,
 ## that skin squeezed under it; nothing moves outside the two.
 func bump_place(theta: float, row: float) -> float:
+	if bump_up:
+		return -_bump_place_down(theta, -row)
+	return _bump_place_down(theta, row)
+
+
+## bump_place() for a bump sagging down (an upward one works on mirrored rows).
+func _bump_place_down(theta: float, row: float) -> float:
 	var slip: float = _bump_slip(theta)
 	if slip <= 0.0:
 		return row
@@ -138,6 +147,12 @@ func bump_place(theta: float, row: float) -> float:
 
 ## bump_place()'s inverse.
 func bump_unplace(theta: float, row: float) -> float:
+	if bump_up:
+		return -_bump_unplace_down(theta, -row)
+	return _bump_unplace_down(theta, row)
+
+
+func _bump_unplace_down(theta: float, row: float) -> float:
 	var slip: float = _bump_slip(theta)
 	if slip <= 0.0:
 		return row
@@ -159,7 +174,7 @@ func bump_hidden(theta: float, row: float) -> float:
 	var reach: float = _bump_reach(theta)
 	var local: Vector2 = _bump_local(theta)
 	var lip: float = local.x + local.y
-	var t: float = (row - lip) / bump_overhang
+	var t: float = ((-row if bump_up else row) - lip) / bump_overhang
 	return bump_amount * reach * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t))
 
 
@@ -184,10 +199,12 @@ func _bump_lumps(theta: float) -> float:
 	return 1.0 + bump_uneven * (0.55 * sin(a * 8.0 + 0.6) + 0.3 * sin(a * 19.0 + 2.1))
 
 
-## The bump's top row and height at `theta`: a wavy top, taller where it's lumpier.
+## The bump's far edge row and height at `theta` (rows mirrored for an upward bump, so the far edge is its top when
+## it sags down, its bottom when it reaches up): a wavy edge, taller where it's lumpier.
 func _bump_local(theta: float) -> Vector2:
 	var a: float = theta - bump.x
-	return Vector2(bump.y + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * _bump_lumps(theta)))
+	var edge: float = -(bump.y + bump.w) if bump_up else bump.y
+	return Vector2(edge + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * _bump_lumps(theta)))
 
 
 ## Skin point (theta, v) -> its row on the arm with the fold there bunched up: the band is squeezed and the skin
@@ -385,6 +402,7 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("bump_overhang", bump_overhang)
 	material.set_shader_parameter("bump_amount", bump_amount)
 	material.set_shader_parameter("bump_uneven", bump_uneven)
+	material.set_shader_parameter("bump_up", bump_up)
 	material.set_shader_parameter("fold_ragged", fold_ragged)
 
 

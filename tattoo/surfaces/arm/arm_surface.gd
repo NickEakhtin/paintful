@@ -53,7 +53,9 @@ extends SkinSurface
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
 @export var bump_enabled: bool = true
-@export var bump: Vector4 = Vector4(-5.0, -270.0, 24.0, 60.0)
+@export var bump: Vector4 = Vector4(-5.0, 235.0, 24.0, 60.0)
+## The bump reaches up over the skin above it (here: excess skin lying over the stencil's bottom) instead of sagging down.
+@export var bump_up: bool = true
 @export var bump_overhang: float = 45.0
 ## How uneven the bump is (0: an even dome), and how ragged the folds' creases are (px they wander; 0: straight).
 @export var bump_uneven: float = 0.5
@@ -467,8 +469,11 @@ func _update_fold(delta: float) -> void:
 		var flat: float = 0.0
 		if shape.drag != Vector2.ZERO:
 			var b: Vector4 = shape.bump
+			# the bump and the skin it covers: below it when it sags, above it when it reaches up
+			var span: float = b.w + shape.bump_overhang
+			var middle: float = b.y + (b.w - shape.bump_overhang) * 0.5 if shape.bump_up else b.y + span * 0.5
 			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - b.x) - b.z, 0.0) * radius,
-					maxf(absf(shape.drag_from.y - (b.y + (b.w + shape.bump_overhang) * 0.5)) - (b.w + shape.bump_overhang) * 0.5, 0.0))
+					maxf(absf(shape.drag_from.y - middle) - span * 0.5, 0.0))
 			var reach: float = shape.drag_radius * tension_spread
 			flat = clampf(shape.drag.length() / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
 		var full: float = 1.0 - flat
@@ -537,6 +542,7 @@ func _apply_exports() -> void:
 	shape.bump = Vector4(deg_to_rad(bump.x), bump.y, deg_to_rad(bump.z), bump.w) if bump_enabled else Vector4.ZERO
 	shape.bump_overhang = bump_overhang
 	shape.bump_uneven = bump_uneven
+	shape.bump_up = bump_up
 	shape.fold_ragged = fold_ragged
 	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread

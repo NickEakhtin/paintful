@@ -38,13 +38,14 @@ uniform float bump_overhang = 45.0;
 uniform float bump_amount = 0.0;
 // How uneven the bump is, and how ragged the folds' creases are (px): ArmShape.bump_uneven, fold_ragged.
 uniform float bump_uneven = 0.5;
+uniform bool bump_up = false;
 uniform float fold_ragged = 9.0;
 // How much the bump bends the light, and how dark the shadow it casts on the skin below.
 uniform float bump_relief = 0.45;
 uniform float bump_shadow = 0.45;
 // How dark the crease is, and how much the bunched lips either side of it catch the light.
 uniform float fold_shade = 0.6;
-uniform float fold_lip = 0.12;
+uniform float fold_lip = 0.03;
 
 // The ink layer covers theta -wrap..wrap and v -stencil_height/2..stencil_height/2.
 uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
@@ -180,7 +181,7 @@ float fold_hidden(float theta, float v, out float lips) {
 	float reach = fold_reach(f, theta);
 	float start = f.y - f.w * 0.5;
 	float t = (v - start) / f.w;
-	float lip_width = f.w * 0.18;
+	float lip_width = f.w * 0.1;
 	lips = (exp(-pow((v - start) / lip_width, 2.0)) + exp(-pow((v - start - f.w) / lip_width, 2.0))) * amount * reach;
 	return amount * reach * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
 }
@@ -203,7 +204,8 @@ float bump_lumps(float theta) {
 // The bump's top row and height at `theta` (ArmShape._bump_local()).
 vec2 bump_local(float theta) {
 	float a = theta - bump.x;
-	return vec2(bump.y + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * bump_lumps(theta)));
+	float edge = bump_up ? -(bump.y + bump.w) : bump.y;
+	return vec2(edge + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * bump_lumps(theta)));
 }
 
 float bump_slip(float theta) {
@@ -211,33 +213,36 @@ float bump_slip(float theta) {
 			bump_overhang * 0.95);
 }
 
-// A row (after the folds) -> its row with the bump sagging (ArmShape.bump_place()).
-float bump_place(float theta, float row) {
+// A row (after the folds) -> its row with the bump sagging (ArmShape.bump_place()); rows mirrored for an upward one.
+float bump_place(float theta, float row_in) {
+	float row = bump_up ? -row_in : row_in;
 	float slip = bump_slip(theta);
 	vec2 local = bump_local(theta);
 	float top = local.x;
 	float lip = top + local.y;
 	float bottom = lip + bump_overhang;
 	if (slip <= 0.0 || row <= top || row >= bottom) {
-		return row;
+		return row_in;
 	}
 	if (row <= lip) {
-		return top + (row - top) * (local.y + slip) / local.y;
+		float placed = top + (row - top) * (local.y + slip) / local.y;
+		return bump_up ? -placed : placed;
 	}
-	return lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang;
+	float placed = lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang;
+	return bump_up ? -placed : placed;
 }
 
 // How deep a row is hidden under the bump (ArmShape.bump_hidden()).
 float bump_hidden(float theta, float row) {
 	vec2 local = bump_local(theta);
-	float t = (row - local.x - local.y) / bump_overhang;
+	float t = ((bump_up ? -row : row) - local.x - local.y) / bump_overhang;
 	return bump_amount * bump_reach(theta) * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t));
 }
 
 // The bump's height over the skin at (theta, row after the folds), 0..1: a lumpy dome over its rows.
 float bump_height(float theta, float row) {
 	vec2 local = bump_local(theta);
-	float t = clamp((row - local.x) / local.y, 0.0, 1.0);
+	float t = clamp(((bump_up ? -row : row) - local.x) / local.y, 0.0, 1.0);
 	return bump_amount * bump_reach(theta) * bump_lumps(theta) * sin(t * PI);
 }
 
@@ -281,7 +286,8 @@ void vertex() {
 	NORMAL = normalize(cross(along_v, along_theta));
 	TANGENT = normalize(along_theta);
 	BINORMAL = normalize(along_v);
-	stretch = length(along_theta) / (2.0 * e * radius_at(v));
+	// round the arm only: folds and the bump move rows up and down, which isn't stretch (it lit pale streaks)
+	stretch = length(along_theta.xz) / (2.0 * e * radius_at(v));
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
 	skin_theta = theta;
 	skin_v = v;
