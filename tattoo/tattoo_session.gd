@@ -47,6 +47,11 @@ const SURFACE_SCENES: Dictionary = {
 ## resistance and nothing jumps when it stops. 0: no limit.
 @export var max_skin_speed: float = 450.0
 @export var pointer_leash: float = 220.0
+## While the ink takes densely under the needle (`TattooMachine.ink_density`: taut, open skin) the machine gets this
+## much heavier on top of its mass: it follows by 1 / sqrt(1 + this) as fast, its speed over the skin drops by
+## 1 / (1 + this / 2), and the machine's springs slow too. It comes and goes at `dense_drag_rate` per second.
+@export var dense_heaviness: float = 1.5
+@export var dense_drag_rate: float = 4.0
 ## Skin that can be stretched (`Mechanics.skin_tension`, the arm) takes this share of the ink where it's slack, and
 ## `taut_ink` where the left hand pulls it tight (`SkinSurface.tension_at()` under the needle), in between by how taut.
 @export var slack_ink: float = 0.1
@@ -231,6 +236,8 @@ var _edge_contact: Vector2 = Vector2.ZERO
 var _discarding: bool = false
 ## Where the view rests: 0 at the client, -table_offset at the table, a screen to the right at the basket.
 var _view_home: float = 0.0
+## How much heavier the machine is right now from dense inking (eases toward `dense_heaviness` × density).
+var _dense_drag: float = 0.0
 var _edge_frame_hold_until: float = -1.0
 ## The session clock until which a hard push at the edge keeps the machine stopped.
 var _edge_stall_until: float = -1.0
@@ -615,17 +622,20 @@ func _update_needle(delta: float) -> void:
 		var distance: float = pointer_cell.distance_to(target) / radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
-	var follow: float = 1.0 - exp(-needle_follow * 2.0 * delta)
+	# inking densely (taut, open skin) the machine drags harder: it follows slower and moves slower over the skin
+	var dense: float = _machine.ink_density if _machine.working else 0.0
+	_dense_drag = lerpf(_dense_drag, dense * dense_heaviness, 1.0 - exp(-dense_drag_rate * delta))
+	var follow: float = 1.0 - exp(-needle_follow / sqrt(1.0 + _dense_drag) * 2.0 * delta)
 	_needle_lead = _needle_lead.lerp(desired, follow)
 	var previous: Vector2 = _steady_needle
 	_steady_needle = _steady_needle.lerp(_needle_lead, follow)
 	if max_skin_speed > 0.0 and _surface.is_on_skin(previous):
 		# the skin drags: no faster than max_skin_speed, and the mouse is held on a leash behind the needle
-		_steady_needle = previous + (_steady_needle - previous).limit_length(max_skin_speed * delta)
+		_steady_needle = previous + (_steady_needle - previous).limit_length(max_skin_speed / (1.0 + 0.5 * _dense_drag) * delta)
 		_needle_lead = _steady_needle + (_needle_lead - _steady_needle).limit_length(pointer_leash)
 		_machine.pointer = _steady_needle + (_machine.pointer - _steady_needle).limit_length(pointer_leash)
 	var offset: Vector2 = Vector2.ZERO
-	var weight: float = machine_mass
+	var weight: float = machine_mass + _dense_drag
 	for modifier in _modifiers:
 		offset += modifier.needle_offset()
 		weight += modifier.machine_weight()
