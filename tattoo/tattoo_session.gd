@@ -77,7 +77,9 @@ const SURFACE_SCENES: Dictionary = {
 @export_group("Edge")
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
-@export var edge_push: float = 300.0
+@export var edge_push: float = 450.0
+## How hard a brush on the artist's own left hand is pushed out of it, pixels at full.
+@export var hand_push: float = 300.0
 ## Within this many pixels of the stencil's edge the thick needle lays ink only by distance / margin (none right at
 ## the edge; the dots still fly), so it can't fill the edge evenly: that's the thin needle's job.
 @export var edge_margin: float = 24.0
@@ -953,7 +955,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 		if on_hand > 0.0:
 			# the needle never goes into the artist's own hand, thin or thick: pushed straight out of it
 			var away: Vector2 = _machine.needle - _surface.hand_rect().get_center()
-			target += (away.normalized() if away.length() > 0.5 else Vector2.RIGHT) * edge_push * on_hand
+			target += (away.normalized() if away.length() > 0.5 else Vector2.RIGHT) * hand_push * on_hand
 			_edge_amount = maxf(_edge_amount, on_hand)
 		if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
 			_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
@@ -967,7 +969,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 	if not _turning:
 		var shake: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
 		_view.position = Vector2(-table_offset if _at_table else 0.0, 0.0) + shake
-	_edge_frame_level = lerpf(_edge_frame_level, minf(_edge_amount * 1.5, 1.0), 1.0 - exp(-edge_frame_rate * delta))
+	_edge_frame_level = lerpf(_edge_frame_level, minf(_edge_amount * 2.0, 1.0), 1.0 - exp(-edge_frame_rate * delta))
 	_edge_frame.visible = _edge_frame_level > 0.01
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 

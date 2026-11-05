@@ -42,7 +42,7 @@ extends SkinSurface
 ## How quickly let-go skin slides back (per second, exponential).
 ## The taut patch round a slide's grip reaches this many `drag_radius`es; a flap's taut band along the arm this
 ## many of its `bulge_spread`s.
-@export var tension_spread: float = 0.65
+@export var tension_spread: float = 0.8
 @export var drag_return_rate: float = 8.0
 
 @export_group("Pull")
