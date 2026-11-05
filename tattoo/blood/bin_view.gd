@@ -234,6 +234,7 @@ func _make_ball() -> RigidBody3D:
 	ball.physics_material_override.bounce = 0.08
 	ball.physics_material_override.friction = 0.9
 	ball.angular_damp = 2.0
+	ball.continuous_cd = true   # never through the mesh, however fast
 	var shape: CollisionShape3D = CollisionShape3D.new()
 	var sphere: SphereShape3D = SphereShape3D.new()
 	sphere.radius = BALL_RADIUS
@@ -365,7 +366,8 @@ func _build_bin() -> void:
 	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	base.position.y = 0.005
 	_bin_visual.add_child(base)
-	# collision: a base and 20 slanted wall slats
+	# collision: a base and 32 slanted wall slats, thick and overlapping, their inner faces on the mesh: a thin wall
+	# let a fast ball step through it between two physics frames
 	var base_shape: CollisionShape3D = CollisionShape3D.new()
 	var base_box: CylinderShape3D = CylinderShape3D.new()
 	base_box.radius = bin_bottom_radius
@@ -373,16 +375,17 @@ func _build_bin() -> void:
 	base_shape.shape = base_box
 	base_shape.position.y = 0.01
 	bin.add_child(base_shape)
-	var slats: int = 20
+	var slats: int = 32
+	var thickness: float = 0.06
 	var middle_radius: float = (bin_top_radius + bin_bottom_radius) * 0.5
 	var lean: float = atan2(bin_top_radius - bin_bottom_radius, bin_height)
 	for i in slats:
 		var angle: float = TAU * i / slats
 		var slat: CollisionShape3D = CollisionShape3D.new()
 		var box: BoxShape3D = BoxShape3D.new()
-		box.size = Vector3(TAU * middle_radius / slats * 1.15, bin_height, 0.012)
+		box.size = Vector3(TAU * bin_top_radius / slats * 1.4, bin_height + 0.02, thickness)
 		slat.shape = box
 		var outward: Vector3 = Vector3(sin(angle), 0.0, cos(angle))
-		slat.transform = Transform3D(Basis(Vector3.UP, angle) * Basis(Vector3.RIGHT, -lean),
-				outward * middle_radius + Vector3.UP * bin_height * 0.5)
+		slat.transform = Transform3D(Basis(Vector3.UP, angle) * Basis(Vector3.RIGHT, lean),
+				outward * (middle_radius + thickness * 0.5) + Vector3.UP * bin_height * 0.5)
 		bin.add_child(slat)
