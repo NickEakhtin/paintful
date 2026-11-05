@@ -5,7 +5,7 @@ extends GPUParticles2D
 ## `level` (0..1): how many fly. Specks already out stay where they are (global coordinates).
 
 ## Specks alive at a full level.
-@export var count: int = 27000
+@export var count: int = 12000
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
 @export var life: float = 1.8
