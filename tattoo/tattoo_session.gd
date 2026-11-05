@@ -68,7 +68,7 @@ const SURFACE_SCENES: Dictionary = {
 @export_group("Edge")
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
-@export var edge_push: float = 60.0
+@export var edge_push: float = 180.0
 ## The view (skin and table, like a camera) shakes by up to this many pixels meanwhile; the machine stays under
 ## the mouse.
 @export var edge_shake: float = 8.0
