@@ -92,10 +92,10 @@ const SURFACE_SCENES: Dictionary = {
 @export_range(0.05, 1.0) var film_full: float = 0.35
 
 @export_group("Feel")
-## Radius of the dent under the working needle, in pixels.
-@export var press_radius: float = 12.0
+## Radius of the dent under the working needle, in pixels (as big as the brush's half length).
+@export var press_radius: float = 30.0
 ## How far the picture is pulled into the dent, in pixels.
-@export var press_depth: float = 1.4
+@export var press_depth: float = 3.5
 ## Pink halo around the tip; alpha is its strength.
 @export var press_tint: Color = Color(1.0, 0.45, 0.45, 0.28)
 ## Seconds for the dent to appear and to go once the needle stops.
