@@ -29,7 +29,7 @@ const SURFACE_SCENES: Dictionary = {
 
 @export_group("Tuning")
 ## Needle radius on screen, in pixels: the flat brush's half length.
-@export var brush_radius: float = 10.0
+@export var brush_radius: float = 15.0
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
 @export_range(0.5, 1.0) var completion_threshold: float = 0.97
@@ -37,11 +37,20 @@ const SURFACE_SCENES: Dictionary = {
 @export var magnet_radius: float = 14.0
 ## Share of the way to the target the needle moves when right next to it.
 @export_range(0.0, 1.0) var magnet_strength: float = 0.85
-## How fast the needle catches up with the mouse (per second); higher is snappier, lower smoother and calmer:
-## 14 smooths out hand jitter with about 70 ms of lag (42 was nearly raw mouse).
-@export var needle_follow: float = 14.0
+## How fast the needle catches up with the mouse (per second); higher is snappier, lower calmer. It follows
+## through two smoothing stages (each twice this fast): the same lag as one, but the needle eases into a move and
+## out of it instead of starting at once. 4.2 is about 240 ms behind (14 was 70 ms, 42 nearly the raw mouse).
+@export var needle_follow: float = 4.2
 ## Seconds fresh ink takes to dry from wet gloss to matte.
 @export var ink_dry_time: float = 6.0
+
+@export_group("Look")
+## The game's retro filter (world/fx/retro_post) over the skin and the machine; the HUD stays sharp.
+@export var retro_filter: bool = true
+## As the game's RetroPost: a game pixel is a whole number of screen pixels, as big as fits this many rows in
+## the window, at most `retro_max_pixel`.
+@export var retro_min_rows: int = 360
+@export var retro_max_pixel: int = 3
 
 @export_group("Brush")
 ## The flat brush's half thickness as a share of `brush_radius` (1: round). Off with `Mechanics.flat_brush`.
@@ -154,6 +163,8 @@ var _highlight_tween: Tween
 var _modifiers: Array[TattooModifier] = []
 ## Needle after magnet and smoothing, before task offsets.
 var _steady_needle: Vector2 = Vector2.ZERO
+## The first smoothing stage between the mouse and `_steady_needle`.
+var _needle_lead: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
 var _at_table: bool = false
 var _turning: bool = false
@@ -199,6 +210,8 @@ var _brush_angle2: float = 0.0
 @onready var _to_table_hint: Label = $View/ToTable
 @onready var _to_client_hint: Label = $View/ToClient
 @onready var _blur: ColorRect = $MotionBlur
+@onready var _retro: ColorRect = $RetroFilter
+@onready var _retro_copy: BackBufferCopy = $RetroCopy
 
 ## Whether the window's own 3D was already off before the session turned it off.
 var _window_3d_was_off: bool = false
@@ -211,6 +224,7 @@ func _ready() -> void:
 	# 15 ms a frame on a 3K screen for nothing, so the window stops drawing 3D until the session is freed
 	_window_3d_was_off = get_viewport().disable_3d
 	get_viewport().disable_3d = true
+	_fit_retro()
 	_start_if_main_scene.call_deferred()
 
 
@@ -244,6 +258,19 @@ func _bind_paint() -> void:
 ## ink cap size themselves every frame).
 func _on_window_resized() -> void:
 	_resize_paint.call_deferred()   # after the layout has settled
+	_fit_retro()
+
+
+## The retro filter's game pixel for the height the session renders at, as the game's RetroPost does it.
+func _fit_retro() -> void:
+	_retro.visible = retro_filter
+	_retro_copy.visible = retro_filter
+	var window: Window = get_window()
+	var height: int = window.size.y
+	if window.content_scale_mode == Window.CONTENT_SCALE_MODE_VIEWPORT:
+		height = int(get_viewport().get_visible_rect().size.y)
+	var pixel: int = clampi(height / maxi(retro_min_rows, 1), 1, retro_max_pixel)
+	(_retro.material as ShaderMaterial).set_shader_parameter("pixel_size", float(pixel))
 
 
 func _resize_paint() -> void:
@@ -316,6 +343,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_machine.show_gauge = MECHANICS.ink_supply
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
+	_needle_lead = _machine.pointer
 	_show_turn_hints()
 	_ink_left = ink_capacity
 	_update_ink_display()
@@ -489,7 +517,9 @@ func _update_needle(delta: float) -> void:
 		var distance: float = pointer_cell.distance_to(target) / radius
 		var pull: float = magnet_strength * (1.0 - distance * distance) # stays strong until near the radius
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
-	_steady_needle = _steady_needle.lerp(desired, 1.0 - exp(-needle_follow * delta))
+	var follow: float = 1.0 - exp(-needle_follow * 2.0 * delta)
+	_needle_lead = _needle_lead.lerp(desired, follow)
+	_steady_needle = _steady_needle.lerp(_needle_lead, follow)
 	var offset: Vector2 = Vector2.ZERO
 	var weight: float = 0.0
 	for modifier in _modifiers:
@@ -735,6 +765,7 @@ func _restart() -> void:
 	_add_modifiers(_tasks)
 	_machine.needle = _machine.pointer
 	_steady_needle = _machine.pointer
+	_needle_lead = _machine.pointer
 	_reset_brush()
 	# The click that closed the spirit's line may still be held.
 	_wait_for_release = true
