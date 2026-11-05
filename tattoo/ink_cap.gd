@@ -24,6 +24,9 @@ func _process(delta: float) -> void:
 	var pixels: Vector2i = Vector2i((size * get_global_transform_with_canvas().get_scale() * get_viewport().get_final_transform().get_scale()).round())
 	if pixels.x > 0 and pixels != _view.size:
 		_view.size = pixels
+	# the cup stands off screen until the view swings to the table: no 3D frames for nobody to see
+	var on_screen: bool = is_visible_in_tree() and get_global_rect().intersects(get_viewport_rect())
+	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on_screen else SubViewport.UPDATE_DISABLED
 	_wobble = maxf(0.0, _wobble - delta / WOBBLE_TIME)
 	_time = _time + delta if _wobble > 0.0 else 0.0
 	var wave: float = sin(_time * 24.0) * _wobble

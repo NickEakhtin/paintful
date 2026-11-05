@@ -200,11 +200,22 @@ var _brush_angle2: float = 0.0
 @onready var _to_client_hint: Label = $View/ToClient
 @onready var _blur: ColorRect = $MotionBlur
 
+## Whether the window's own 3D was already off before the session turned it off.
+var _window_3d_was_off: bool = false
+
 
 func _ready() -> void:
 	_machine.visible = false
 	get_viewport().size_changed.connect(_on_window_resized)
+	# the session covers the whole screen: the level's 3D under it (SSAO, volumetric fog, glow) would cost about
+	# 15 ms a frame on a 3K screen for nothing, so the window stops drawing 3D until the session is freed
+	_window_3d_was_off = get_viewport().disable_3d
+	get_viewport().disable_3d = true
 	_start_if_main_scene.call_deferred()
+
+
+func _exit_tree() -> void:
+	get_viewport().disable_3d = _window_3d_was_off
 
 
 func _start_if_main_scene() -> void:
