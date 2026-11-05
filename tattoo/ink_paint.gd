@@ -43,6 +43,11 @@ render_mode %s;
 // ellipses where new ink doesn't land: centre and half size, in buffer pixels
 uniform vec4 blocks[%d];
 uniform int block_count = 0;
+// near the stencil's edge the film (R) is laid only by distance / edge_margin, as the logic lays ink; the dots (G)
+// stay, so the thick needle leaves a ragged spray there. edge_map: distance from the edge in cells.
+uniform sampler2D edge_map : filter_linear;
+uniform float edge_margin = 0.0;
+uniform vec2 buffer_size = vec2(1.0);
 void fragment() {
 	for (int i = 0; i < block_count; i++) {
 		vec2 offset = (FRAGCOORD.xy - blocks[i].xy) / blocks[i].zw;
@@ -50,7 +55,11 @@ void fragment() {
 			discard;
 		}
 	}
-	COLOR = texture(TEXTURE, UV) * COLOR;
+	vec4 color = texture(TEXTURE, UV) * COLOR;
+	if (edge_margin > 0.0) {
+		color.r *= clamp(texture(edge_map, FRAGCOORD.xy / buffer_size).r / edge_margin, 0.0, 1.0);
+	}
+	COLOR = color;
 }
 """
 
@@ -285,6 +294,15 @@ func _add_dots(from: Vector2, to: Vector2, basis: Transform2D, amount: float, ra
 		_pending.append([centre, Transform2D(along, across, Vector2.ZERO), 1.0, true])
 
 
+## The stencil's edge distances (InkCanvas.edge_texture) and the margin (cells) within which new film is thinned,
+## like InkCanvas.edge_margin; 0: off. Only the coverage buffer's film; the dots and the wetness don't change.
+func set_edge(edge_map: Texture2D, margin: float) -> void:
+	var material: ShaderMaterial = _cover_brush.material
+	material.set_shader_parameter("edge_map", edge_map)
+	material.set_shader_parameter("edge_margin", margin)
+	material.set_shader_parameter("buffer_size", Vector2(_cover.size))
+
+
 ## Ellipses (inscribed in rects, in cells) where new dabs don't land, like InkCanvas.blocked.
 func set_blocks(blocked: Array[Rect2]) -> void:
 	var blocks: Array[Vector4] = []
@@ -345,6 +363,7 @@ func _finish_move() -> void:
 		view.remove_child(copy)
 		copy.queue_free()
 	_cover_brush.reparent(_cover, false)
+	(_cover_brush.material as ShaderMaterial).set_shader_parameter("buffer_size", Vector2(_cover.size))
 	_fader.reparent(_wet, false)
 	_wet_brush.reparent(_wet, false)
 	_fader.queue_redraw()

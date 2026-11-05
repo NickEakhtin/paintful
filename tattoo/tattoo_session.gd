@@ -63,19 +63,22 @@ const SURFACE_SCENES: Dictionary = {
 ## The thin needle (`Mechanics.needle_swap`): a small round brush, no dots, for careful edges.
 @export var thin_radius: float = 18.0
 ## How much the thin needle feels the stencil's edge, as a share of the thick one's push and shake.
-@export_range(0.0, 1.0) var thin_edge_factor: float = 0.15
+@export_range(0.0, 1.0) var thin_edge_factor: float = 0.03
 
 @export_group("Edge")
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
-@export var edge_push: float = 180.0
+@export var edge_push: float = 300.0
+## Within this many pixels of the stencil's edge the thick needle lays ink only by distance / margin (none right at
+## the edge; the dots still fly), so it can't fill the edge evenly: that's the thin needle's job.
+@export var edge_margin: float = 24.0
 ## The view (skin and table, like a camera) shakes by up to this many pixels meanwhile; the machine stays under
 ## the mouse.
 @export var edge_shake: float = 8.0
 ## A red frame around the screen shows how far past the edge the brush is; how fast it comes and goes.
 @export var edge_frame_rate: float = 10.0
 ## How quickly the push builds up past the edge, and fades once the needle is back in (per second).
-@export var edge_rate: float = 12.0
+@export var edge_rate: float = 25.0
 @export var edge_return: float = 5.0
 ## Seconds between two flinch sounds at the edge.
 @export var edge_sound_gap: float = 0.7
@@ -634,6 +637,9 @@ func _setup_brush() -> void:
 	_paint_view.core = brush_core if flat else 0.0
 	_thick_cartridge.taken = not _thin
 	_thin_cartridge.taken = _thin
+	var margin: float = edge_margin / _surface.pixels_per_cell() if MECHANICS.edge_kick and not _thin else 0.0
+	canvas.edge_margin = margin
+	_paint_view.set_edge(canvas.edge_texture, margin)
 	_machine.set_needle_color((_thin_cartridge if _thin else _thick_cartridge).color)
 	_paint_view.dot_spread = dot_spread
 	_paint_view.dot_falloff = dot_falloff

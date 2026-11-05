@@ -25,6 +25,14 @@ var strokes: Array[Array] = []
 var _in_stroke: bool = false
 ## Set when ink was taken off; the look wipes itself and clears this.
 var cleared: bool = false
+## Within this many cells of the stencil's edge a stamp lays only distance / edge_margin of its ink (none right at
+## the edge), so a brush can't fill the edge evenly; 0: off. The session sets it for the thick needle.
+var edge_margin: float = 0.0
+## Every stencil cell's distance from the stencil's edge in cells (R float, up to EDGE_REACH), for the look.
+var edge_texture: ImageTexture
+
+## How far in from the edge distances are measured; farther cells count as EDGE_REACH.
+const EDGE_REACH: int = 32
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
@@ -36,12 +44,14 @@ var _part_done: PackedByteArray = PackedByteArray()
 var _pixels: PackedByteArray = PackedByteArray()
 var _image: Image
 var _dirty: bool = false
+var _edge_distance: PackedFloat32Array = PackedFloat32Array()
 
 
 func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
 	_threshold = completion_threshold
 	size = stencil.grid_size
 	_build_parts(stencil)
+	_build_edge_distance()
 	_ink.resize(size.x * size.y)
 	_pixels.resize(size.x * size.y)
 	_image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_R8, _pixels)
@@ -110,6 +120,8 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 			if placed.z <= 0.0:
 				continue
 			var share: float = brush.weight(Vector2(placed.x, placed.y) - tip)
+			if edge_margin > 0.0:
+				share *= minf(_edge_distance[cell] / edge_margin, 1.0)
 			if share > 0.0 and not _is_blocked(point):
 				laid += _add_ink(cell, dose * placed.z * share)
 	return laid
@@ -181,6 +193,8 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 						var sum_i: float = (float(i0) + i1) * n * 0.5
 						var sum_i2: float = _sum_squares(i1) - _sum_squares(i0 - 1)
 						share = n - 0.5 * (quad * sum_i2 - 2.0 * lin * sum_i + const_e * n)
+			if edge_margin > 0.0:
+				share *= minf(_edge_distance[cell] / edge_margin, 1.0)
 			if share > 0.0 and not _is_blocked(point):
 				laid += _add_ink(cell, dose * placed.z * share)
 	return laid
@@ -319,6 +333,44 @@ func _check_part(part: int) -> void:
 			_set_ink(cell, 1.0)
 	_part_filled[part] = _part_cells[part].size()
 	part_completed.emit(part)
+
+
+## Breadth-first from the stencil's rim (cells with a neighbour outside it or at the grid's border, 0.5 cells in)
+## to EDGE_REACH cells deep; also uploads it as `edge_texture`.
+func _build_edge_distance() -> void:
+	_edge_distance.resize(size.x * size.y)
+	_edge_distance.fill(EDGE_REACH)
+	var queue: PackedInt32Array = PackedInt32Array()
+	for cell in size.x * size.y:
+		if _part_of[cell] < 0:
+			_edge_distance[cell] = 0.0
+			continue
+		var x: int = cell % size.x
+		var y: int = cell / size.x
+		if x == 0 or y == 0 or x == size.x - 1 or y == size.y - 1 or _part_of[cell - 1] < 0 \
+				or _part_of[cell + 1] < 0 or _part_of[cell - size.x] < 0 or _part_of[cell + size.x] < 0:
+			_edge_distance[cell] = 0.5
+			queue.append(cell)
+	var head: int = 0
+	while head < queue.size():
+		var cell: int = queue[head]
+		head += 1
+		var next: float = _edge_distance[cell] + 1.0
+		if next >= EDGE_REACH:
+			continue
+		var x: int = cell % size.x
+		var y: int = cell / size.x
+		for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nx: int = x + offset.x
+			var ny: int = y + offset.y
+			if nx < 0 or ny < 0 or nx >= size.x or ny >= size.y:
+				continue
+			var neighbour: int = ny * size.x + nx
+			if _edge_distance[neighbour] > next:
+				_edge_distance[neighbour] = next
+				queue.append(neighbour)
+	var image: Image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_RF, _edge_distance.to_byte_array())
+	edge_texture = ImageTexture.create_from_image(image)
 
 
 func _build_parts(stencil: StencilData) -> void:
