@@ -1,19 +1,23 @@
 class_name EdgeMotes
 extends GPUParticles2D
-## Tiny spirit-purple specks that come off every edge of the screen and float up, swirling, while the edge frame
+## Spirit-purple specks that shoot from every edge of the screen toward the middle, brake, then float up, swirling, while the edge frame
 ## burns (like the dust out of the basement hatch). The session sets `level` (0..1): how many fly.
 
 ## Specks alive at a full level.
-@export var count: int = 420
+@export var count: int = 900
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
 @export var life: float = 3.0
-## How fast they rise (pixels per second, at the end of the climb) and how much they swirl.
-@export var rise: float = 90.0
+## How hard they shoot from the edges toward the middle (pixels per second) and how quickly that dies down.
+@export var burst_min: float = 380.0
+@export var burst_max: float = 760.0
+@export var brake: float = 520.0
+## How fast they rise once the burst is spent (pixels per second per second) and how much they swirl.
+@export var rise: float = 140.0
 @export var swirl: float = 0.9
 ## Speck size in pixels.
-@export var size_min: float = 2.5
-@export var size_max: float = 5.0
+@export var size_min: float = 4.0
+@export var size_max: float = 8.0
 ## How many points along the screen's edges they come from.
 const POINTS: int = 512
 
@@ -45,13 +49,13 @@ func _process_material() -> ParticleProcessMaterial:
 	var m: ParticleProcessMaterial = ParticleProcessMaterial.new()
 	m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_DIRECTED_POINTS
 	m.particle_flag_disable_z = true
-	m.direction = Vector3(1, 0, 0)   # turned to each point's normal: away from its edge, into the screen
-	m.spread = 40.0
-	m.initial_velocity_min = 60.0
-	m.initial_velocity_max = 170.0
+	m.direction = Vector3(1, 0, 0)   # turned to each point's normal: from its edge toward the screen's middle
+	m.spread = 18.0
+	m.initial_velocity_min = burst_min
+	m.initial_velocity_max = burst_max
 	m.gravity = Vector3(0, -rise, 0)   # screen y is down: they drift up
-	m.damping_min = 20.0
-	m.damping_max = 45.0
+	m.damping_min = brake * 0.8
+	m.damping_max = brake * 1.2
 	m.scale_min = size_min / 8.0
 	m.scale_max = size_max / 8.0
 	m.turbulence_enabled = true
@@ -110,6 +114,7 @@ func _fit_points() -> void:
 		else:
 			point = Vector2(inset, at - 2.0 * screen.x - screen.y)
 			inward = Vector2.RIGHT
+		inward = (screen * 0.5 - point).normalized()   # aimed at the middle of the screen
 		image.set_pixel(i, 0, Color(point.x, point.y, 0.0))
 		normals.set_pixel(i, 0, Color(inward.x, inward.y, 0.0))
 	var m: ParticleProcessMaterial = process_material
