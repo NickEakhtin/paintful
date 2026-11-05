@@ -32,7 +32,7 @@ const SURFACE_SCENES: Dictionary = {
 @export var brush_radius: float = 30.0
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
-@export_range(0.5, 1.0) var completion_threshold: float = 0.97
+@export_range(0.5, 1.0) var completion_threshold: float = 0.95
 ## How far (in cells) the needle feels the pull of unfilled stencil.
 @export var magnet_radius: float = 14.0
 ## Share of the way to the target the needle moves when right next to it.

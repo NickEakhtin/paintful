@@ -51,7 +51,7 @@ var _dirty: bool = false
 var _edge_distance: PackedFloat32Array = PackedFloat32Array()
 
 
-func _init(stencil: StencilData, completion_threshold: float = 0.97) -> void:
+func _init(stencil: StencilData, completion_threshold: float = 0.95) -> void:
 	_threshold = completion_threshold
 	size = stencil.grid_size
 	_build_parts(stencil)
