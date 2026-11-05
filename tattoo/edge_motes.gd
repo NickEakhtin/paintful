@@ -5,10 +5,10 @@ extends GPUParticles2D
 ## `level` (0..1): how many fly. Specks already out stay where they are (global coordinates).
 
 ## Specks alive at a full level.
-@export var count: int = 1500
+@export var count: int = 3000
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
-@export var life: float = 0.9
+@export var life: float = 1.15
 ## How hard they burst out of the touch (pixels per second) and how quickly that dies down.
 @export var burst_min: float = 150.0
 @export var burst_max: float = 420.0
@@ -19,7 +19,7 @@ extends GPUParticles2D
 ## Speck size in pixels, and how wide the spot they come from is.
 @export var size_min: float = 4.0
 @export var size_max: float = 8.0
-@export var spot_radius: float = 10.0
+@export var spot_radius: float = 20.0
 
 ## 0..1: share of `count` emitted.
 var level: float = 0.0:
