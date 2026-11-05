@@ -53,7 +53,7 @@ extends SkinSurface
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
 @export var bump_enabled: bool = true
-@export var bump: Vector4 = Vector4(-2.0, 10.0, 24.0, 60.0)
+@export var bump: Vector4 = Vector4(-5.0, -270.0, 24.0, 60.0)
 @export var bump_overhang: float = 45.0
 ## Width of a closed fold on the arm, in pixels.
 @export var fold_closed: float = 8.0

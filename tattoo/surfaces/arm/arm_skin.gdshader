@@ -279,21 +279,19 @@ void fragment() {
 	if (skin_uv.x >= 0.0 && skin_uv.x <= 1.0 && skin_uv.y >= 0.0 && skin_uv.y <= 1.0) {
 		ink = texture(ink_layer, skin_uv);
 	}
-	// the fold: the tucked band goes dark (its ink with it), the bunched lips either side catch the light
+	// the fold: the tucked band goes dark, the bunched lips either side catch the light
 	float lips;
 	float hidden = fold_hidden(skin_theta, skin_v, lips);
 	// the bump: the skin it sags over lies in its shadow; the dome itself bends the light (below)
 	float bump_row = fold_place(skin_theta, skin_v);
 	float under = bump_hidden(skin_theta, bump_row);
 	hidden = max(hidden, under);
-	skin *= 1.0 - bump_shadow * under;
-	skin *= 1.0 - fold_shade * hidden;
-	skin += vec3(fold_lip) * lips;
-	ink.a *= 1.0 - 0.85 * hidden;
+	// the shadow darkens skin and ink alike, after the ink is laid on (fading the ink there left brown skin showing)
+	float shade = (1.0 - bump_shadow * under) * (1.0 - fold_shade * hidden);
 	// The arm darkens and reddens toward its silhouette, like skin turning away from the lamp.
 	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
-	ALBEDO = mix(skin, ink.rgb, ink.a);
+	ALBEDO = mix(skin, ink.rgb, ink.a) * shade + vec3(fold_lip) * lips * (1.0 - ink.a);
 	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
 	// the bump's dome: tilt the normal by the height's slope along the arm and round it
 	if (bump_amount > 0.0) {
