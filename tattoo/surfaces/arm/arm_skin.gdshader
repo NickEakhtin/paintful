@@ -8,9 +8,9 @@ render_mode cull_disabled;
 uniform float radius = 210.0;
 uniform float arm_length = 1800.0;
 // The arm's outline, shoulder to wrist (ArmShape.PROFILE_V / PROFILE_S, the same Hermite curve): change both together.
-const int PROFILE_COUNT = 16;
-const float PROFILE_V[16] = float[](-1480.0, -1390.0, -1200.0, -960.0, -760.0, -540.0, -400.0, -260.0, -110.0, 100.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0);
-const float PROFILE_S[16] = float[](0.9, 1.2, 1.12, 1.1, 1.15, 1.02, 0.9, 1.0, 1.06, 0.98, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0);
+const int PROFILE_COUNT = 15;
+const float PROFILE_V[15] = float[](-1350.0, -1150.0, -960.0, -760.0, -540.0, -400.0, -260.0, -110.0, 100.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0);
+const float PROFILE_S[15] = float[](1.15, 1.13, 1.1, 1.13, 1.02, 0.9, 1.0, 1.06, 0.98, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0);
 // The mesh runs this many times `arm_length`, so a pull dragging the skin up or down never shows its ends.
 const float MESH_REACH = 1.8;
 uniform float grip_angle = 2.007;

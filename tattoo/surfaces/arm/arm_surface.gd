@@ -46,7 +46,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
-@export var scroll_min: float = -1420.0
+@export var scroll_min: float = -1300.0
 @export var scroll_max: float = 850.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
