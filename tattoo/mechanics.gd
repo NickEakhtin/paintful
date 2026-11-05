@@ -25,3 +25,9 @@ extends Resource
 @export var flat_brush: bool = true
 ## Spirit, client and player dialogues. Off: `Dialogue.play()` returns at once, so the day goes on without them.
 @export var dialogues: bool = true
+## Two needles on the side table (Q): LMB on one swaps it into the machine. The thick one paints with the flat
+## spray brush, the thin one with a small round brush for careful edges. Off: always the thick one, no needles.
+@export var needle_swap: bool = true
+## Inking past the stencil's edge with the needle shakes the skin and pushes the machine back toward the
+## drawing (the thick needle hard, the thin one gently).
+@export var edge_kick: bool = true

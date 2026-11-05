@@ -57,6 +57,8 @@ const MAX_STEP: float = 1.0 / 120.0
 var working: bool = false
 ## Extra mass on the machine (spirit tasks add it); 0 = just the machine. Both springs slow down with it.
 var weight: float = 0.0
+## The model's needle surface, which glows in the needle's colour.
+const NEEDLE_SURFACE: int = 4
 ## Mouse position in viewport pixels. With the mouse captured (the session does it) it moves by the mouse's
 ## own motion times `mouse_sensitivity` instead, kept on screen.
 var pointer: Vector2 = Vector2.ZERO
@@ -206,6 +208,22 @@ func top_position() -> Vector2:
 
 ## Window pixels per viewport pixel (2 on a 1440p screen, 3 on 4K): the model is rendered at the window's own
 ## resolution, so it stays sharp on any monitor, and its sprite is drawn back at viewport size.
+## The needle's glow colour (the needle cartridge in the machine).
+func set_needle_color(value: Color) -> void:
+	var mesh: MeshInstance3D = _model as MeshInstance3D
+	if mesh == null:
+		return
+	var material: StandardMaterial3D = mesh.get_surface_override_material(NEEDLE_SURFACE)
+	if material == null:
+		return
+	if not material.resource_local_to_scene and not material.has_meta(&"own_copy"):
+		material = material.duplicate()
+		material.set_meta(&"own_copy", true)
+		mesh.set_surface_override_material(NEEDLE_SURFACE, material)
+	material.albedo_color = value
+	material.emission = value
+
+
 func _pixel_scale() -> float:
 	return maxf(1.0, get_viewport().get_final_transform().get_scale().x) / render_divisor
 

@@ -59,6 +59,24 @@ const SURFACE_SCENES: Dictionary = {
 @export var retro_min_rows: int = 360
 @export var retro_max_pixel: int = 3
 
+@export_group("Needles")
+## The thin needle (`Mechanics.needle_swap`): a small round brush, no dots, for careful edges.
+@export var thin_radius: float = 9.0
+## How much the thin needle feels the stencil's edge, as a share of the thick one's push and shake.
+@export_range(0.0, 1.0) var thin_edge_factor: float = 0.15
+
+@export_group("Edge")
+## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
+## this many pixels, in proportion to how much of the brush is outside.
+@export var edge_push: float = 24.0
+## The skin shakes by up to this many pixels meanwhile.
+@export var edge_shake: float = 3.0
+## How quickly the push builds up past the edge, and fades once the needle is back in (per second).
+@export var edge_rate: float = 12.0
+@export var edge_return: float = 5.0
+## Seconds between two flinch sounds at the edge.
+@export var edge_sound_gap: float = 0.7
+
 @export_group("Brush")
 ## The flat brush's half thickness as a share of `brush_radius` (1: round). Off with `Mechanics.flat_brush`.
 @export_range(0.05, 1.0) var brush_thickness: float = 0.25
@@ -177,6 +195,14 @@ var _modifiers: Array[TattooModifier] = []
 var _steady_needle: Vector2 = Vector2.ZERO
 ## The first smoothing stage between the mouse and `_steady_needle`.
 var _needle_lead: Vector2 = Vector2.ZERO
+## The thin needle is in the machine (`Mechanics.needle_swap`).
+var _thin: bool = false
+## Push on the needle back toward the drawing, and how far past the edge the brush is (0..1, weighted by needle).
+var _edge_push: Vector2 = Vector2.ZERO
+var _edge_amount: float = 0.0
+var _edge_sound_at: float = -10.0
+## The stencil's centre in cells: where the edge pushes toward.
+var _stencil_center: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
 var _at_table: bool = false
 var _turning: bool = false
@@ -216,6 +242,9 @@ var _brush_angle2: float = 0.0
 @onready var _ding: AudioStreamPlayer = $Ding
 @onready var _dip_sound: AudioStreamPlayer = $DipSound
 @onready var _wince: AudioStreamPlayer = $Wince
+@onready var _needle_swap: AudioStreamPlayer = $NeedleSwap
+@onready var _thick_cartridge: NeedleCartridge = $View/ThickNeedle
+@onready var _thin_cartridge: NeedleCartridge = $View/ThinNeedle
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _cry: AudioStreamPlayer = $Cry
 @onready var _ink_cap: InkCap = $View/InkCap
@@ -310,6 +339,12 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	stencil = new_stencil
 	_setup_surface()
 	canvas = InkCanvas.new(stencil, completion_threshold)
+	_stencil_center = _find_stencil_center()
+	_thin = false
+	_thick_cartridge.visible = MECHANICS.needle_swap
+	_thin_cartridge.visible = MECHANICS.needle_swap
+	_edge_push = Vector2.ZERO
+	_edge_amount = 0.0
 	canvas.part_completed.connect(_on_part_completed)
 	if _paint_view != null:
 		_paint_view.queue_free()
@@ -516,6 +551,8 @@ func _apply_skin_offset() -> void:
 	var offset: Vector2 = Vector2.ZERO
 	for modifier in _modifiers:
 		offset += modifier.skin_offset()
+	if _edge_amount > 0.0:   # the skin shakes while the needle works past the edge
+		offset += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
 	_body.position = offset + _flinch
 
 
@@ -540,7 +577,7 @@ func _update_needle(delta: float) -> void:
 	for modifier in _modifiers:
 		offset += modifier.needle_offset()
 		weight += modifier.machine_weight()
-	_machine.needle = _steady_needle + offset
+	_machine.needle = _steady_needle + offset + _edge_push
 	_machine.weight = weight
 
 
@@ -562,11 +599,15 @@ func _paint(delta: float) -> void:
 	var over_cap: bool = _ink_cap.get_global_rect().has_point(_machine.needle)
 	if clicked and over_cap:
 		_dip()
-	var inking: bool = pressing and not over_cap and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
+	var cartridge: NeedleCartridge = _cartridge_under(_machine.needle)
+	if clicked and cartridge != null and not cartridge.taken:
+		_swap_needle(cartridge == _thin_cartridge)
+	var inking: bool = pressing and not over_cap and cartridge == null \
+			and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
 	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
 	if inking and _ink_left > 0.0 and on_skin:
-		_brush.radius_px = brush_radius * (1.0 + flow_brush_bonus * _flow.strength())
+		_brush.radius_px = _needle_radius() * (1.0 + flow_brush_bonus * _flow.strength())
 		var laid: float
 		if _was_inking:
 			laid = canvas.stroke_on(_surface, _last_cell, cell, _brush, ink_rate * delta)
@@ -574,6 +615,7 @@ func _paint(delta: float) -> void:
 			laid = canvas.stamp_on(_surface, cell, _brush, ink_rate * delta)
 		if MECHANICS.ink_supply:
 			_ink_left = maxf(0.0, _ink_left - laid)
+	_update_edge(delta, inking and on_skin)
 	_last_cell = cell
 	# Off the skin the stroke breaks, so it never joins two far-apart points.
 	_was_inking = inking and on_skin
@@ -582,10 +624,14 @@ func _paint(delta: float) -> void:
 
 ## The brush's shape and the dots' look, from the exports (`Mechanics.flat_brush` off: the old round brush).
 func _setup_brush() -> void:
-	var flat: bool = MECHANICS.flat_brush
+	var flat: bool = MECHANICS.flat_brush and not _thin
 	_brush.thickness = brush_thickness if flat else 1.0
+	_brush.radius_px = _needle_radius()
 	_paint_view.dots_per_dose = dots_per_second / maxf(ink_rate, 0.001) if flat else 0.0
 	_paint_view.core = brush_core if flat else 0.0
+	_thick_cartridge.taken = not _thin
+	_thin_cartridge.taken = _thin
+	_machine.set_needle_color((_thin_cartridge if _thin else _thick_cartridge).color)
 	_paint_view.dot_spread = dot_spread
 	_paint_view.dot_falloff = dot_falloff
 	_paint_view.dot_size_center = dot_size_center
@@ -676,6 +722,10 @@ func _update_skin_press(delta: float) -> void:
 	material.set_shader_parameter("tip", _machine.needle - _press_rect.get_global_rect().position)
 	material.set_shader_parameter("axis", _brush.axis)
 	material.set_shader_parameter("thickness", minf(_brush.thickness * press_widen, 1.0))
+	# a thin needle makes a smaller, shallower dent
+	var needle_scale: float = _brush.radius_px / maxf(brush_radius, 0.001)
+	material.set_shader_parameter("radius", press_radius * needle_scale)
+	material.set_shader_parameter("depth", press_depth * needle_scale)
 	material.set_shader_parameter("press", smoothstep(0.0, 1.0, _press))
 	material.set_shader_parameter("shake", shake)
 
@@ -813,6 +863,70 @@ func _calm_skin() -> void:
 	(_redness.material as ShaderMaterial).set_shader_parameter("pulse", 0.0)
 
 
+## The needle in the machine's brush half length, without flow.
+func _needle_radius() -> float:
+	return thin_radius if _thin else brush_radius
+
+
+## The needle cartridge on the side table under a screen point, or null.
+func _cartridge_under(point: Vector2) -> NeedleCartridge:
+	if not MECHANICS.needle_swap:
+		return null
+	for cartridge: NeedleCartridge in [_thick_cartridge, _thin_cartridge]:
+		if cartridge.get_global_rect().has_point(point):
+			return cartridge
+	return null
+
+
+## Puts the needle in the machine back in its slot and takes the other one.
+func _swap_needle(thin: bool) -> void:
+	_thin = thin
+	_setup_brush()
+	(_thin_cartridge if thin else _thick_cartridge).flash()
+	(_thick_cartridge if thin else _thin_cartridge).flash()
+	_needle_swap.play()
+
+
+## How much of the working brush is past the stencil's edge (`Mechanics.edge_kick`): the skin shakes and the
+## machine is pushed back toward the drawing. The thin needle feels it `thin_edge_factor` as much.
+func _update_edge(delta: float, inking: bool) -> void:
+	var target: Vector2 = Vector2.ZERO
+	_edge_amount = 0.0
+	if MECHANICS.edge_kick and inking:
+		var outside: float = _brush_outside()
+		if outside > 0.0:
+			_edge_amount = outside * (thin_edge_factor if _thin else 1.0)
+			var toward: Vector2 = _to_screen(_stencil_center) - _machine.needle
+			target = toward.normalized() * edge_push * _edge_amount
+			if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
+				_edge_sound_at = canvas.time
+				_wince.pitch_scale = randf_range(1.15, 1.35)
+				_wince.play()
+	var rate: float = edge_rate if target != Vector2.ZERO else edge_return
+	_edge_push = _edge_push.lerp(target, 1.0 - exp(-rate * delta))
+
+
+## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil.
+func _brush_outside() -> float:
+	var outside: int = 0
+	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+		var cell: Vector2 = _surface.to_cell(_machine.needle + _brush.axis * _brush.radius_px * s)
+		if not cell.is_finite() or not canvas.is_stencil(cell):
+			outside += 1
+	return outside / 5.0
+
+
+## Centre of the stencil's cells, in cells.
+func _find_stencil_center() -> Vector2:
+	var sum: Vector2 = Vector2.ZERO
+	var count: int = 0
+	for part in canvas.part_count():
+		for cell: int in canvas.part_cells(part):
+			sum += Vector2(cell % canvas.size.x, cell / canvas.size.x) + Vector2(0.5, 0.5)
+			count += 1
+	return sum / count if count > 0 else Vector2(canvas.size) * 0.5
+
+
 func _skin_corner_radius() -> float:
 	var style: StyleBoxFlat = skin.get_theme_stylebox("panel") as StyleBoxFlat
 	return minf(style.corner_radius_top_left, minf(skin.size.x, skin.size.y) * 0.5) if style != null else 0.0
@@ -865,8 +979,9 @@ func _turn(to_table: bool) -> void:
 ## Each view shows only the way to the other one.
 ## Without the ink supply there's no reason to turn, so no hints.
 func _show_turn_hints() -> void:
-	_to_table_hint.visible = MECHANICS.ink_supply and not _at_table
-	_to_client_hint.visible = MECHANICS.ink_supply and _at_table
+	var table_needed: bool = MECHANICS.ink_supply or MECHANICS.needle_swap
+	_to_table_hint.visible = table_needed and not _at_table
+	_to_client_hint.visible = table_needed and _at_table
 
 
 ## Peaks halfway through the swing.
