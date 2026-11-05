@@ -18,17 +18,17 @@ const FINGERS: Dictionary = {
 	"middle": [Vector3(-0.0055, 0.275, -0.041), Vector3(-0.006, 0.345, -0.038), Vector3(-0.01, 0.395, -0.025), Vector3(-0.015, 0.445, -0.012)],
 	"ring": [Vector3(-0.0575, 0.27, -0.046), Vector3(-0.062, 0.335, -0.024), Vector3(-0.068, 0.372, -0.01), Vector3(-0.073, 0.415, 0.0)],
 	"little": [Vector3(-0.089, 0.262, -0.036), Vector3(-0.092, 0.31, -0.025), Vector3(-0.097, 0.34, -0.01), Vector3(-0.1, 0.375, 0.0)],
-	"thumb": [Vector3(0.03, 0.12, 0.03), Vector3(0.06, 0.2, 0.02), Vector3(0.09, 0.255, 0.035), Vector3(0.12, 0.31, 0.05)],
+	"thumb": [Vector3(0.025, 0.08, 0.01), Vector3(0.065, 0.19, 0.025), Vector3(0.093, 0.255, 0.04), Vector3(0.12, 0.31, 0.05)],
 }
 ## The fist's bend at each joint, knuckle out (degrees, toward the palm).
 const FINGER_BEND: Array[float] = [82.0, 98.0, 62.0]
-const THUMB_BEND: Array[float] = [0.0, 12.0, 25.0]
+const THUMB_BEND: Array[float] = [12.0, 32.0, 30.0]
 ## The thumb also swings across the palm from its root (degrees round the palm's normal).
-const THUMB_SWING: float = 55.0
+const THUMB_SWING: float = 18.0
 ## A vertex this close to a finger's bones (m) follows them; fading out over the last part.
 const CAPTURE: float = 0.06
 ## The thumb is thicker and its outer side far from its bones.
-const THUMB_CAPTURE: float = 0.09
+const THUMB_CAPTURE: float = 0.07
 ## Joints blend over this much either side (m).
 const BLEND: float = 0.011
 ## The thumb's root eases in over this much either side of its joint (m).
@@ -149,7 +149,9 @@ func _pose() -> void:
 			if finger == "thumb":
 				var joints: Array = FINGERS["thumb"]
 				var along: Vector3 = ((joints[i + 1] as Vector3) - (joints[i] as Vector3)).normalized()
-				var axis: Vector3 = along.cross(Vector3.BACK).normalized()   # bends the tip toward the palm (+z)
+				# a thumb folds across the palm (round the palm's normal) and only a little toward it
+				var toward_palm: Vector3 = along.cross(Vector3.BACK).normalized()
+				var axis: Vector3 = (Vector3.BACK * 0.85 + toward_palm * 0.4).normalized()
 				rotation = Quaternion(axis, deg_to_rad(THUMB_BEND[i]) * fist)
 				if i == 0:
 					rotation = Quaternion(Vector3.BACK, deg_to_rad(THUMB_SWING) * fist) * rotation
