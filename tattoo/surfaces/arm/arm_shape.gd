@@ -70,6 +70,10 @@ var fold_spread: float = 70.0
 var bump: Vector4 = Vector4.ZERO
 var bump_overhang: float = 45.0
 var bump_amount: float = 0.0
+## How uneven the bump is (0: an even dome).
+var bump_uneven: float = 0.5
+## How ragged the folds' creases are, in pixels the crease wanders up and down (0: straight).
+var fold_ragged: float = 9.0
 
 
 ## Arm radius at row `v`.
@@ -121,13 +125,14 @@ func bump_place(theta: float, row: float) -> float:
 	var slip: float = _bump_slip(theta)
 	if slip <= 0.0:
 		return row
-	var top: float = bump.y
-	var lip: float = top + bump.w
+	var local: Vector2 = _bump_local(theta)   # (top, height) here
+	var top: float = local.x
+	var lip: float = top + local.y
 	var bottom: float = lip + bump_overhang
 	if row <= top or row >= bottom:
 		return row
 	if row <= lip:
-		return top + (row - top) * (bump.w + slip) / bump.w
+		return top + (row - top) * (local.y + slip) / local.y
 	return lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang
 
 
@@ -136,13 +141,14 @@ func bump_unplace(theta: float, row: float) -> float:
 	var slip: float = _bump_slip(theta)
 	if slip <= 0.0:
 		return row
-	var top: float = bump.y
-	var lip: float = top + bump.w
+	var local: Vector2 = _bump_local(theta)
+	var top: float = local.x
+	var lip: float = top + local.y
 	var bottom: float = lip + bump_overhang
 	if row <= top or row >= bottom:
 		return row
 	if row <= lip + slip:
-		return top + (row - top) * bump.w / (bump.w + slip)
+		return top + (row - top) * local.y / (local.y + slip)
 	return lip + (row - lip - slip) * bump_overhang / (bump_overhang - slip)
 
 
@@ -151,7 +157,8 @@ func bump_hidden(theta: float, row: float) -> float:
 	if bump.z <= 0.0 or bump_amount <= 0.0:
 		return 0.0
 	var reach: float = _bump_reach(theta)
-	var lip: float = bump.y + bump.w
+	var local: Vector2 = _bump_local(theta)
+	var lip: float = local.x + local.y
 	var t: float = (row - lip) / bump_overhang
 	return bump_amount * reach * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t))
 
@@ -165,9 +172,22 @@ func _bump_reach(theta: float) -> float:
 	return r * r   # round, easing to nothing at the sides (no hard edge)
 
 
-## How far the bump sags over the skin below at `theta`, in pixels.
+## How far the bump sags over the skin below at `theta`, in pixels: uneven, more in some places than others.
 func _bump_slip(theta: float) -> float:
-	return bump_overhang * 0.92 * clampf(bump_amount, 0.0, 1.0) * _bump_reach(theta)
+	return minf(bump_overhang * 0.92 * clampf(bump_amount, 0.0, 1.0) * _bump_reach(theta) * _bump_lumps(theta),
+			bump_overhang * 0.95)
+
+
+## The bump's lumpiness at `theta`: around 1, swelling and shrinking along it (`bump_uneven`).
+func _bump_lumps(theta: float) -> float:
+	var a: float = theta - bump.x
+	return 1.0 + bump_uneven * (0.55 * sin(a * 8.0 + 0.6) + 0.3 * sin(a * 19.0 + 2.1))
+
+
+## The bump's top row and height at `theta`: a wavy top, taller where it's lumpier.
+func _bump_local(theta: float) -> Vector2:
+	var a: float = theta - bump.x
+	return Vector2(bump.y + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * _bump_lumps(theta)))
 
 
 ## Skin point (theta, v) -> its row on the arm with the fold there bunched up: the band is squeezed and the skin
@@ -177,7 +197,7 @@ func fold_place(theta: float, v: float) -> float:
 	var index: int = _fold_at(theta)
 	if index < 0:
 		return v
-	return v + _fold_shift(folds[index], _fold_slack(index, theta), v)
+	return v + _fold_shift(_fold_local(index, theta), _fold_slack(index, theta), v)
 
 
 ## fold_place()'s inverse along the row (theta doesn't move): the map only moves a row by up to half the slack and
@@ -186,7 +206,7 @@ func fold_unplace(theta: float, row: float) -> float:
 	var index: int = _fold_at(theta)
 	if index < 0:
 		return row
-	var fold: Vector4 = folds[index]
+	var fold: Vector4 = _fold_local(index, theta)
 	var slack: float = _fold_slack(index, theta)
 	if slack <= 0.0:
 		return row
@@ -218,7 +238,7 @@ func fold_hidden(theta: float, v: float) -> float:
 	var index: int = _fold_at(theta)
 	if index < 0:
 		return 0.0
-	var fold: Vector4 = folds[index]
+	var fold: Vector4 = _fold_local(index, theta)
 	var t: float = (v - (fold.y - fold.w * 0.5)) / fold.w
 	return fold_amounts[index] * _fold_reach(fold, theta) * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t))
 
@@ -236,8 +256,19 @@ func _fold_reach(fold: Vector4, theta: float) -> float:
 	return 1.0 - smoothstep(0.5, 1.0, absf(theta - fold.x) / fold.z)
 
 
-func _fold_slack(index: int, theta: float) -> float:
+## Fold `index` as it is at `theta`: a scar, not a straight line — its middle row wanders up and down and its band
+## widens and narrows along it (`fold_ragged`).
+func _fold_local(index: int, theta: float) -> Vector4:
 	var fold: Vector4 = folds[index]
+	var a: float = theta - fold.x
+	var seed: float = index * 2.3 + 0.7
+	var middle: float = fold.y + fold_ragged * (0.6 * sin(a * 9.0 + seed) + 0.3 * sin(a * 23.0 + 2.0 * seed)
+			+ 0.15 * sin(a * 53.0 + 3.0 * seed))
+	return Vector4(fold.x, middle, fold.z, fold.w * (1.0 + 0.3 * sin(a * 13.0 + 1.7 * seed)))
+
+
+func _fold_slack(index: int, theta: float) -> float:
+	var fold: Vector4 = _fold_local(index, theta)
 	return maxf(0.0, fold.w - fold_closed_width) * clampf(fold_amounts[index], 0.0, 1.0) * _fold_reach(fold, theta)
 
 
@@ -353,6 +384,8 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("bump", bump)
 	material.set_shader_parameter("bump_overhang", bump_overhang)
 	material.set_shader_parameter("bump_amount", bump_amount)
+	material.set_shader_parameter("bump_uneven", bump_uneven)
+	material.set_shader_parameter("fold_ragged", fold_ragged)
 
 
 func _side_sign() -> float:

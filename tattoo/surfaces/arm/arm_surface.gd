@@ -55,6 +55,9 @@ extends SkinSurface
 @export var bump_enabled: bool = true
 @export var bump: Vector4 = Vector4(-5.0, -270.0, 24.0, 60.0)
 @export var bump_overhang: float = 45.0
+## How uneven the bump is (0: an even dome), and how ragged the folds' creases are (px they wander; 0: straight).
+@export var bump_uneven: float = 0.5
+@export var fold_ragged: float = 9.0
 ## Width of a closed fold on the arm, in pixels.
 @export var fold_closed: float = 8.0
 ## How far beyond a fold the skin is drawn in toward it, in pixels (the rest of the arm stays put).
@@ -533,6 +536,8 @@ func _apply_exports() -> void:
 	shape.fold_closed_width = fold_closed
 	shape.bump = Vector4(deg_to_rad(bump.x), bump.y, deg_to_rad(bump.z), bump.w) if bump_enabled else Vector4.ZERO
 	shape.bump_overhang = bump_overhang
+	shape.bump_uneven = bump_uneven
+	shape.fold_ragged = fold_ragged
 	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)

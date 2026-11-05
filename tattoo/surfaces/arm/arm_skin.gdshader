@@ -36,6 +36,9 @@ uniform float fold_spread = 70.0;
 uniform vec4 bump = vec4(0.0);
 uniform float bump_overhang = 45.0;
 uniform float bump_amount = 0.0;
+// How uneven the bump is, and how ragged the folds' creases are (px): ArmShape.bump_uneven, fold_ragged.
+uniform float bump_uneven = 0.5;
+uniform float fold_ragged = 9.0;
 // How much the bump bends the light, and how dark the shadow it casts on the skin below.
 uniform float bump_relief = 0.45;
 uniform float bump_shadow = 0.45;
@@ -121,14 +124,22 @@ vec3 place(float theta, float v) {
 	return vec3(on_flap.x * s, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
 }
 
-// The fold at `theta` (ArmShape._fold_at()): its vec4 in `f`, its amount returned (0: none).
+// A fold as it is at `theta` (ArmShape._fold_local()): a scar — its middle wanders, its band widens and narrows.
+vec4 fold_local(vec4 f, float seed, float theta) {
+	float a = theta - f.x;
+	float middle = f.y + fold_ragged * (0.6 * sin(a * 9.0 + seed) + 0.3 * sin(a * 23.0 + 2.0 * seed)
+			+ 0.15 * sin(a * 53.0 + 3.0 * seed));
+	return vec4(f.x, middle, f.z, f.w * (1.0 + 0.3 * sin(a * 13.0 + 1.7 * seed)));
+}
+
+// The fold at `theta` (ArmShape._fold_at()), as it is there: its vec4 in `f`, its amount returned (0: none).
 float fold_at(float theta, out vec4 f) {
 	if (fold_amount_0 > 0.0 && abs(theta - fold_0.x) < fold_0.z) {
-		f = fold_0;
+		f = fold_local(fold_0, 0.7, theta);
 		return fold_amount_0;
 	}
 	if (fold_amount_1 > 0.0 && abs(theta - fold_1.x) < fold_1.z) {
-		f = fold_1;
+		f = fold_local(fold_1, 3.0, theta);
 		return fold_amount_1;
 	}
 	f = vec4(0.0, 0.0, 1.0, 1.0);
@@ -183,31 +194,51 @@ float bump_reach(float theta) {
 	return r * r;   // round, easing to nothing at the sides (no hard edge)
 }
 
+// The bump's lumpiness at `theta` (ArmShape._bump_lumps()).
+float bump_lumps(float theta) {
+	float a = theta - bump.x;
+	return 1.0 + bump_uneven * (0.55 * sin(a * 8.0 + 0.6) + 0.3 * sin(a * 19.0 + 2.1));
+}
+
+// The bump's top row and height at `theta` (ArmShape._bump_local()).
+vec2 bump_local(float theta) {
+	float a = theta - bump.x;
+	return vec2(bump.y + bump_uneven * 14.0 * sin(a * 11.0 + 1.3), bump.w * (0.75 + 0.25 * bump_lumps(theta)));
+}
+
+float bump_slip(float theta) {
+	return min(bump_overhang * 0.92 * clamp(bump_amount, 0.0, 1.0) * bump_reach(theta) * bump_lumps(theta),
+			bump_overhang * 0.95);
+}
+
 // A row (after the folds) -> its row with the bump sagging (ArmShape.bump_place()).
 float bump_place(float theta, float row) {
-	float slip = bump_overhang * 0.92 * clamp(bump_amount, 0.0, 1.0) * bump_reach(theta);
-	float top = bump.y;
-	float lip = top + bump.w;
+	float slip = bump_slip(theta);
+	vec2 local = bump_local(theta);
+	float top = local.x;
+	float lip = top + local.y;
 	float bottom = lip + bump_overhang;
 	if (slip <= 0.0 || row <= top || row >= bottom) {
 		return row;
 	}
 	if (row <= lip) {
-		return top + (row - top) * (bump.w + slip) / bump.w;
+		return top + (row - top) * (local.y + slip) / local.y;
 	}
 	return lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang;
 }
 
 // How deep a row is hidden under the bump (ArmShape.bump_hidden()).
 float bump_hidden(float theta, float row) {
-	float t = (row - bump.y - bump.w) / bump_overhang;
+	vec2 local = bump_local(theta);
+	float t = (row - local.x - local.y) / bump_overhang;
 	return bump_amount * bump_reach(theta) * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t));
 }
 
-// The bump's height over the skin at (theta, row after the folds), 0..1: a soft dome over its rows.
+// The bump's height over the skin at (theta, row after the folds), 0..1: a lumpy dome over its rows.
 float bump_height(float theta, float row) {
-	float t = clamp((row - bump.y) / bump.w, 0.0, 1.0);
-	return bump_amount * bump_reach(theta) * sin(t * PI);
+	vec2 local = bump_local(theta);
+	float t = clamp((row - local.x) / local.y, 0.0, 1.0);
+	return bump_amount * bump_reach(theta) * bump_lumps(theta) * sin(t * PI);
 }
 
 // Where skin point (theta, v) sits after the fold and the slide.
