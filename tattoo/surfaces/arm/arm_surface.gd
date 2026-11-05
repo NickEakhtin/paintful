@@ -15,6 +15,8 @@ signal paper_discard_requested
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 const PAPER_STACK: Script = preload("res://tattoo/blood/paper_stack.gd")
 const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
+const HAND_ALBEDO: String = "res://art/characters/client_hand/hand_albedo.png"
+const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 
 @export_group("Shape")
 @export var radius: float = 210.0
@@ -47,7 +49,12 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 500.0
+@export var scroll_max: float = 1300.0
+## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
+## and middle, in the picture's pixels), so it lines up with the arm.
+@export var hand_top: float = 460.0
+@export var hand_wrist_width: float = 235.0
+@export var hand_wrist_center: float = 322.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
@@ -190,6 +197,7 @@ func _ready() -> void:
 	_material.set_shader_parameter("wrap_angle", _wrap)
 	_material.set_shader_parameter("stencil_height", stencil_height)
 	shape.apply_to(_material)
+	_build_client_hand()
 	_hand.visible = false
 	_reset_hand.call_deferred()
 	# blood on the skin (look only) and the wet paper towels that wipe it
@@ -775,6 +783,34 @@ func _apply_exports() -> void:
 	pull.pull_rate = pull_rate
 	pull.return_rate = return_rate
 	pull.tilt_speed = deg_to_rad(tilt_speed)
+
+
+## The client's hand below the wrist: a flat out-of-focus picture (`client_hand.gdshader`) on a quad just behind the
+## arm, scaled so its wrist is as wide as the arm's and its top under the arm's fade, where it dissolves in.
+func _build_client_hand() -> void:
+	var albedo: Texture2D = load(HAND_ALBEDO)
+	if albedo == null:
+		return
+	var picture: Vector2 = Vector2(albedo.get_size())
+	var scale: float = 2.0 * shape.radius_at(hand_top + 140.0) / hand_wrist_width
+	var size: Vector2 = picture * scale
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = size
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = load("res://tattoo/surfaces/arm/client_hand.gdshader")
+	material.set_shader_parameter("albedo_tex", albedo)
+	material.set_shader_parameter("normal_tex", load(HAND_NORMAL))
+	material.set_shader_parameter("skin_detail", _material.get_shader_parameter("skin_detail"))
+	material.set_shader_parameter("skin_normal", _material.get_shader_parameter("skin_normal"))
+	material.set_shader_parameter("quad_size", size)
+	var hand: MeshInstance3D = MeshInstance3D.new()
+	hand.name = "ClientHand"
+	hand.mesh = quad
+	hand.material_override = material
+	hand.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# world y is up and the arm's rows run down; the wrist (the picture's top) lines up with the arm's middle
+	hand.position = Vector3((picture.x * 0.5 - hand_wrist_center) * scale, -(hand_top + size.y * 0.5), 0.0)
+	_view_viewport.add_child(hand)
 
 
 ## A flat grid; UV = skin coordinates (theta -PI..PI, v along `arm_length` × the shader's MESH_REACH).
