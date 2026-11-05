@@ -61,16 +61,19 @@ const SURFACE_SCENES: Dictionary = {
 
 @export_group("Needles")
 ## The thin needle (`Mechanics.needle_swap`): a small round brush, no dots, for careful edges.
-@export var thin_radius: float = 9.0
+@export var thin_radius: float = 18.0
 ## How much the thin needle feels the stencil's edge, as a share of the thick one's push and shake.
 @export_range(0.0, 1.0) var thin_edge_factor: float = 0.15
 
 @export_group("Edge")
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
-@export var edge_push: float = 24.0
-## The skin shakes by up to this many pixels meanwhile.
-@export var edge_shake: float = 3.0
+@export var edge_push: float = 60.0
+## The view (skin and table, like a camera) shakes by up to this many pixels meanwhile; the machine stays under
+## the mouse.
+@export var edge_shake: float = 8.0
+## A red frame around the screen shows how far past the edge the brush is; how fast it comes and goes.
+@export var edge_frame_rate: float = 10.0
 ## How quickly the push builds up past the edge, and fades once the needle is back in (per second).
 @export var edge_rate: float = 12.0
 @export var edge_return: float = 5.0
@@ -201,6 +204,7 @@ var _thin: bool = false
 var _edge_push: Vector2 = Vector2.ZERO
 var _edge_amount: float = 0.0
 var _edge_sound_at: float = -10.0
+var _edge_frame_level: float = 0.0
 ## The stencil's centre in cells: where the edge pushes toward.
 var _stencil_center: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
@@ -245,6 +249,7 @@ var _brush_angle2: float = 0.0
 @onready var _needle_swap: AudioStreamPlayer = $NeedleSwap
 @onready var _thick_cartridge: NeedleCartridge = $View/ThickNeedle
 @onready var _thin_cartridge: NeedleCartridge = $View/ThinNeedle
+@onready var _edge_frame: ColorRect = $EdgeFrame
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _cry: AudioStreamPlayer = $Cry
 @onready var _ink_cap: InkCap = $View/InkCap
@@ -551,8 +556,6 @@ func _apply_skin_offset() -> void:
 	var offset: Vector2 = Vector2.ZERO
 	for modifier in _modifiers:
 		offset += modifier.skin_offset()
-	if _edge_amount > 0.0:   # the skin shakes while the needle works past the edge
-		offset += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
 	_body.position = offset + _flinch
 
 
@@ -904,6 +907,13 @@ func _update_edge(delta: float, inking: bool) -> void:
 				_wince.play()
 	var rate: float = edge_rate if target != Vector2.ZERO else edge_return
 	_edge_push = _edge_push.lerp(target, 1.0 - exp(-rate * delta))
+	# the view shakes like a camera (the machine stays under the mouse); the swing owns it while turning
+	if not _turning:
+		var shake: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
+		_view.position = Vector2(-table_offset if _at_table else 0.0, 0.0) + shake
+	_edge_frame_level = lerpf(_edge_frame_level, minf(_edge_amount * 1.5, 1.0), 1.0 - exp(-edge_frame_rate * delta))
+	_edge_frame.visible = _edge_frame_level > 0.01
+	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil.

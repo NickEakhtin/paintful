@@ -32,6 +32,8 @@
 
 [ext_resource type="AudioStream" path="res://placeholders/sounds/pop.wav" id="32_pop"]
 
+[ext_resource type="Shader" path="res://tattoo/edge_frame.gdshader" id="33_edge_frame"]
+
 [sub_resource type="StyleBoxFlat" id="skin_style"]
 bg_color = Color(0.86, 0.66, 0.54, 1)
 corner_radius_top_left = 280
@@ -46,6 +48,9 @@ border_width_top = 10
 border_color = Color(0.42, 0.3, 0.2, 1)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
+
+[sub_resource type="ShaderMaterial" id="edge_frame_material"]
+shader = ExtResource("33_edge_frame")
 
 [sub_resource type="ShaderMaterial" id="retro_material"]
 shader = ExtResource("30_retro")
@@ -296,6 +301,16 @@ copy_mode = 2
 
 [node name="RetroFilter" type="ColorRect" parent="."]
 material = SubResource("retro_material")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="EdgeFrame" type="ColorRect" parent="."]
+visible = false
+material = SubResource("edge_frame_material")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
