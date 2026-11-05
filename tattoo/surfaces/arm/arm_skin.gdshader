@@ -18,10 +18,12 @@ uniform float fade_length = 300.0;
 uniform float relief = 1.0;
 uniform float elbow_hollow = 0.3;
 uniform float arm_length = 1800.0;
-// The arm's outline, shoulder to wrist (ArmShape.PROFILE_V / PROFILE_S, the same Hermite curve): change both together.
-const int PROFILE_COUNT = 16;
-const float PROFILE_V[16] = float[](-1350.0, -1150.0, -980.0, -800.0, -620.0, -470.0, -400.0, -330.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0);
-const float PROFILE_S[16] = float[](1.12, 1.1, 1.14, 1.22, 1.1, 0.92, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0);
+// The arm's outline, shoulder to wrist: ArmShape's table of it (scale × `radius`), one texel every `profile_step` px
+// from `profile_top`; read with the same linear step as ArmShape.radius_at(), so the two agree exactly.
+uniform sampler2D profile_tex : filter_nearest, repeat_disable;
+uniform float profile_top = -1600.0;
+uniform float profile_step = 2.0;
+uniform int profile_count = 2;
 // The mesh runs this many times `arm_length`, so a pull dragging the skin up or down never shows its ends.
 const float MESH_REACH = 1.8;
 uniform float grip_angle = 2.007;
@@ -90,36 +92,12 @@ varying float skin_theta;
 varying float skin_v;
 varying float stretch;
 
-float profile_slope(int i) {
-	if (i <= 0 || i >= PROFILE_COUNT - 1) {
-		return 0.0;
-	}
-	return (PROFILE_S[i + 1] - PROFILE_S[i - 1]) / (PROFILE_V[i + 1] - PROFILE_V[i - 1]);
-}
-
 float radius_at(float v) {
-	if (v <= PROFILE_V[0]) {
-		float d = (PROFILE_V[0] - v) / (PROFILE_S[0] * radius);   // the shoulder's round cap
-		return radius * PROFILE_S[0] * sqrt(max(1.0 - d * d, 0.0));
-	}
-	if (v >= PROFILE_V[PROFILE_COUNT - 1]) {
-		return radius * PROFILE_S[PROFILE_COUNT - 1];
-	}
-	int i = 0;
-	for (int k = 0; k < PROFILE_COUNT - 1; k++) {
-		if (v > PROFILE_V[k + 1]) {
-			i = k + 1;
-		}
-	}
-	float h = PROFILE_V[i + 1] - PROFILE_V[i];
-	float u = (v - PROFILE_V[i]) / h;
-	float m0 = profile_slope(i) * h;
-	float m1 = profile_slope(i + 1) * h;
-	float u2 = u * u;
-	float u3 = u2 * u;
-	float s = (2.0 * u3 - 3.0 * u2 + 1.0) * PROFILE_S[i] + (u3 - 2.0 * u2 + u) * m0
-			+ (-2.0 * u3 + 3.0 * u2) * PROFILE_S[i + 1] + (u3 - u2) * m1;
-	return radius * s;
+	float at = (clamp(v, profile_top, profile_top + profile_step * float(profile_count - 2)) - profile_top) / profile_step;
+	int i = min(int(at), profile_count - 2);
+	float a = texelFetch(profile_tex, ivec2(i, 0), 0).r;
+	float b = texelFetch(profile_tex, ivec2(i + 1, 0), 0).r;
+	return radius * mix(a, b, at - float(i));
 }
 
 float bulge_at(float v) {

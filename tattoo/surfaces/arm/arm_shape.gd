@@ -25,16 +25,19 @@ var radius: float = 210.0:
 	set(value):
 		radius = value
 		_profile_table.clear()
+		_profile_texture = null
 ## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
 ## positive) and the radius there in `radius`es — the upper arm and biceps, the narrow elbow, the forearm's muscles
 ## swelling below it and thinning to the wrist, then closing (hidden: the arm fades out there, see `arm_skin.gdshader`'s `fade_*`). Above PROFILE_V[0] the
 ## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step.
-## A smooth (Hermite) curve through them; `arm_skin.gdshader` has the same points and curve. Change both together.
+## A smooth (Hermite) curve through them, kept as a table every PROFILE_STEP px; the shader reads the same table as a
+## texture (`apply_to()`), so the outline lives only here.
 const PROFILE_V: PackedFloat32Array = [-1350.0, -1150.0, -980.0, -800.0, -620.0, -470.0, -400.0, -330.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
 const PROFILE_S: PackedFloat32Array = [1.12, 1.1, 1.14, 1.22, 1.1, 0.92, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
 ## `radius_at()` reads a table of the curve, this many px a step.
 const PROFILE_STEP: float = 2.0
 var _profile_table: PackedFloat32Array = PackedFloat32Array()
+var _profile_texture: ImageTexture
 ## Length the mesh is built for, in pixels (the shader's mesh runs MESH_REACH times it, centred on the stencil):
 ## from above the shoulder cap to below the hand.
 var length: float = 1800.0
@@ -461,6 +464,16 @@ func tangent_angle(v: float) -> float:
 ## Copies the shape into an `arm_skin.gdshader` material.
 func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("radius", radius)
+	if _profile_table.is_empty():
+		_build_profile_table()
+	if _profile_texture == null or _profile_texture.get_width() != _profile_table.size():
+		var image: Image = Image.create_from_data(_profile_table.size(), 1, false, Image.FORMAT_RF,
+				_profile_table.to_byte_array())
+		_profile_texture = ImageTexture.create_from_image(image)
+		material.set_shader_parameter("profile_tex", _profile_texture)
+	material.set_shader_parameter("profile_top", _profile_top())
+	material.set_shader_parameter("profile_step", PROFILE_STEP)
+	material.set_shader_parameter("profile_count", _profile_table.size())
 	material.set_shader_parameter("arm_length", length)
 	material.set_shader_parameter("grip_angle", grip_angle)
 	material.set_shader_parameter("max_pull", max_pull)

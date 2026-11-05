@@ -49,7 +49,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 950.0
+@export var scroll_max: float = 700.0
 ## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
 ## and middle, in the picture's pixels), so it lines up with the arm.
 @export var hand_top: float = 460.0
@@ -57,6 +57,12 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 @export var hand_wrist_center: float = 322.0
 ## The hand's size against a wrist as wide as the arm's (1: as wide; below 1 smaller).
 @export var hand_scale: float = 0.667
+## Out of focus toward the wrist and over the hand (a screen blur): from nothing at the arm's row `defocus_from` to
+## `defocus_radius` px at `defocus_full` and on, draining `defocus_desaturate` of the colour at full.
+@export var defocus_from: float = 360.0
+@export var defocus_full: float = 700.0
+@export var defocus_radius: float = 22.0
+@export_range(0.0, 1.0) var defocus_desaturate: float = 0.45
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
@@ -155,6 +161,8 @@ var hand_locked: bool = false
 var _blood: BloodLayer
 var _paper_stack: Node2D
 var _paper: Node2D
+var _defocus: ColorRect
+var _defocus_copy: BackBufferCopy
 ## How far down the arm the view looks, in pixels (negative: up).
 var _pan: float = 0.0
 ## Where the scroll is heading.
@@ -200,6 +208,7 @@ func _ready() -> void:
 	_material.set_shader_parameter("stencil_height", stencil_height)
 	shape.apply_to(_material)
 	_build_client_hand()
+	_build_defocus()
 	_hand.visible = false
 	_reset_hand.call_deferred()
 	# blood on the skin (look only) and the wet paper towels that wipe it
@@ -577,6 +586,7 @@ func _reset_hand() -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_defocus()
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
 		_camera.size = view_size.y
@@ -787,6 +797,40 @@ func _apply_exports() -> void:
 	pull.tilt_speed = deg_to_rad(tilt_speed)
 
 
+## The defocus over the wrist and the hand: a screen blur drawn right after the arm's 3D view (under the artist's
+## hand and everything else), its rows set every frame from the scroll (`_update_defocus()`).
+func _build_defocus() -> void:
+	var copy: BackBufferCopy = BackBufferCopy.new()
+	_defocus_copy = copy
+	copy.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+	add_child(copy)
+	move_child(copy, $View3D.get_index() + 1)
+	_defocus = ColorRect.new()
+	_defocus.name = "Defocus"
+	_defocus.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = load("res://tattoo/surfaces/arm/defocus.gdshader")
+	_defocus.material = material
+	add_child(_defocus)
+	move_child(_defocus, copy.get_index() + 1)
+	_defocus.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## The defocus starts at `defocus_from` along the arm and is full at `defocus_full`, `defocus_radius` px at full.
+func _update_defocus() -> void:
+	if _defocus == null:
+		return
+	var scale: float = get_viewport().get_final_transform().get_scale().y
+	var centre: float = _center().y
+	var material: ShaderMaterial = _defocus.material
+	material.set_shader_parameter("from_y", (centre + defocus_from) * scale)
+	material.set_shader_parameter("full_y", (centre + defocus_full) * scale)
+	material.set_shader_parameter("max_radius", defocus_radius * scale)
+	material.set_shader_parameter("desaturate", defocus_desaturate)
+	_defocus.visible = centre + defocus_from < size.y + get_global_rect().position.y
+	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
+
+
 ## The client's hand below the wrist: a flat out-of-focus picture (`client_hand.gdshader`) on a quad just behind the
 ## arm, scaled so its wrist is as wide as the arm's and its top under the arm's fade, where it dissolves in.
 func _build_client_hand() -> void:
@@ -798,6 +842,7 @@ func _build_client_hand() -> void:
 	var size: Vector2 = picture * scale
 	var quad: QuadMesh = QuadMesh.new()
 	quad.size = size
+	quad.subdivide_depth = 32   # rows for the shader's lean
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = load("res://tattoo/surfaces/arm/client_hand.gdshader")
 	material.set_shader_parameter("albedo_tex", albedo)
