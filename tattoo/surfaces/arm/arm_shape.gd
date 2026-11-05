@@ -19,10 +19,6 @@ extends RefCounted
 ## (gaussian over `drag_radius`). Skin coordinates stay on the skin, so the stencil and the ink go with it; a point
 ## is shown where it slid to, so skin from behind a silhouette can be slid into view (and take ink) or front skin
 ## pushed away. Kept invertible: `drag` stays under about 1.1 × `drag_radius`.
-##
-## Swelling: pulled outward from near a silhouette, the arm itself stretches too: its radius grows by `swell` px
-## around where the grip sits now (`swell_at`), on that side only, as a gaussian over `drag_radius`, so the outline
-## bulges toward the hand. `refresh_swell()` works it out from the drag.
 
 ## Radius at the arm's centre, in pixels.
 var radius: float = 210.0
@@ -57,39 +53,12 @@ var shear: float = 0.0
 var drag_from: Vector2 = Vector2.ZERO
 var drag: Vector2 = Vector2.ZERO
 var drag_radius: float = 160.0
-## How much the arm swells, and where (theta, v); share of an outward drag at the silhouette that swells it.
-var swell: float = 0.0
-var swell_at: Vector2 = Vector2.ZERO
-var swell_share: float = 0.7
-## How far the hand is outward of where it gripped, on screen (px); the swell grows with it (0: use the drag).
-var outward: float = 0.0
 
 
 ## Arm radius at row `v`.
 func radius_at(v: float) -> float:
 	var t: float = clampf(v / length + 0.5, 0.0, 1.0)
 	return radius * lerpf(taper_top, taper_bottom, t)
-
-
-## Arm radius at (theta, v) on the bare arm with the swell.
-func radius_here(theta: float, v: float) -> float:
-	var r: float = radius_at(v)
-	if swell <= 0.0:
-		return r
-	var d: Vector2 = Vector2((theta - swell_at.x) * radius, v - swell_at.y)
-	var on_side: float = smoothstep(0.0, 0.35, theta * signf(swell_at.x))
-	return r + swell * exp(-d.length_squared() / (drag_radius * drag_radius)) * on_side
-
-
-## The swell from the drag: how far the grip was pulled outward, times how close to a silhouette it was taken.
-func refresh_swell() -> void:
-	if drag == Vector2.ZERO:
-		swell = 0.0
-		return
-	swell_at = slide(drag_from.x, drag_from.y)
-	var near_edge: float = smoothstep(0.35, 0.9, absf(sin(drag_from.x)))
-	var out: float = maxf(outward, drag.x * signf(drag_from.x))
-	swell = maxf(0.0, out) * near_edge * swell_share
 
 
 ## How much of the pull reaches row `v`, 0..1.
@@ -219,8 +188,6 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("drag_from", drag_from)
 	material.set_shader_parameter("drag", drag)
 	material.set_shader_parameter("drag_radius", drag_radius)
-	material.set_shader_parameter("swell", swell)
-	material.set_shader_parameter("swell_at", swell_at)
 
 
 func _side_sign() -> float:
@@ -233,7 +200,7 @@ func _row_shear(v: float) -> float:
 
 ## [Vector3 screen point, float facing].
 func _place(theta: float, v: float) -> Array:
-	var r: float = radius_here(theta, v)
+	var r: float = radius_at(v)
 	var s: float = _side_sign()
 	var local: float = theta * s # angle in the pulled side's frame
 	var t_angle: float = tangent_angle(v)
@@ -283,14 +250,6 @@ func _solve_row(x: float, v: float) -> Vector3:
 			t = minf(t, 1.0)
 			var share: float = _ease_back(t_angle, v, t)
 			return Vector3((t_angle + share * (grip_angle - t_angle)) * s, t, ok)
-	if swell > 0.0:
-		# the swollen radius depends on theta: find it by a few rounds (x = sin(theta) × radius_here)
-		var theta: float = asin(clampf(x / r, -1.0, 1.0))
-		for i in 12:
-			theta = asin(clampf(x / radius_here(theta, v), -1.0, 1.0))
-		if absf(x) > radius_here(theta, v) + 0.01:
-			return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
-		return Vector3(theta, 0.0, 1.0)
 	if absf(x) > r:
 		return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
 	return Vector3(asin(x / r), 0.0, 1.0)

@@ -241,14 +241,10 @@ func update_surface(delta: float, active: bool) -> void:
 		# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
 		var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
 		shape.drag = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y).limit_length(max_drag)
-		# near a silhouette, how far the hand went outward swells the arm (refresh_swell())
-		shape.outward = maxf(0.0, (_hand_position.x - _grip_screen.x) * signf(_grip_skin.x))
 	else:
-		shape.outward *= exp(-drag_return_rate * delta)
 		shape.drag = shape.drag * exp(-drag_return_rate * delta)
 		if shape.drag.length() < 0.2:
 			shape.drag = Vector2.ZERO
-			shape.outward = 0.0
 	_sync_pull()
 	_place_hand()
 	if shape.drag == Vector2.ZERO:
@@ -304,7 +300,6 @@ func release() -> void:
 	pull.release()
 	_gripping = false
 	shape.drag = Vector2.ZERO
-	shape.outward = 0.0
 	_reset_hand()
 	_sync_pull()
 
@@ -327,7 +322,6 @@ func _sync_pull() -> void:
 	shape.side = pull.side
 	shape.amount = pull.amount
 	shape.shear = pull.shear(max_pull)
-	shape.refresh_swell()
 	var pulled: Vector4 = Vector4(shape.amount + shape.side * 10.0, shape.shear, shape.drag.x, shape.drag.y)
 	if pulled != _projected_pull or (shape.drag != Vector2.ZERO and _projected_from != shape.drag_from):
 		_projected_pull = pulled
