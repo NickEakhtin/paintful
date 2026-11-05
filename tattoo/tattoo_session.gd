@@ -29,7 +29,7 @@ const SURFACE_SCENES: Dictionary = {
 
 @export_group("Tuning")
 ## Needle radius on screen, in pixels: the flat brush's half length.
-@export var brush_radius: float = 15.0
+@export var brush_radius: float = 30.0
 ## Ink per second under the needle centre; 1.0 fills a cell.
 @export var ink_rate: float = 4.0
 @export_range(0.5, 1.0) var completion_threshold: float = 0.97
@@ -42,6 +42,9 @@ const SURFACE_SCENES: Dictionary = {
 ## out of it instead of starting at once. 2.2 is about 450 ms behind, a heavy machine (4.2 was 240 ms, 14 was
 ## 70 ms, 42 nearly the raw mouse).
 @export var needle_follow: float = 2.2
+## Share of the mouse's own motion the machine follows (the session captures the mouse): 0.5 = half as
+## sensitive; 1 uses the plain cursor position.
+@export var mouse_sensitivity: float = 0.5
 ## The machine's own weight on top of the tasks' (`TattooMachine.weight`): its top swings slower and wider, as a
 ## mass 1 + this times the bare machine's. 0.9: 90% heavier.
 @export var machine_mass: float = 0.9
@@ -68,7 +71,7 @@ const SURFACE_SCENES: Dictionary = {
 ## Slower than this (pixels per second) the brush keeps its angle.
 @export var brush_min_speed: float = 30.0
 ## Dots the brush drops per second of inking.
-@export var dots_per_second: float = 650.0
+@export var dots_per_second: float = 2600.0
 ## Solid middle of the brush (share of its radius): the ink closes up there first, the dots are densest.
 @export_range(0.0, 0.95) var brush_core: float = 0.45
 ## Dots scatter out to this many brush radii, past the brush's rim, like a spray.
@@ -351,7 +354,8 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_show_turn_hints()
 	_ink_left = ink_capacity
 	_update_ink_display()
-	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
+	_machine.mouse_sensitivity = mouse_sensitivity
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if is_equal_approx(mouse_sensitivity, 1.0) else Input.MOUSE_MODE_CAPTURED
 	_running = true
 
 

@@ -57,8 +57,11 @@ const MAX_STEP: float = 1.0 / 120.0
 var working: bool = false
 ## Extra mass on the machine (spirit tasks add it); 0 = just the machine. Both springs slow down with it.
 var weight: float = 0.0
-## Mouse position in viewport pixels.
+## Mouse position in viewport pixels. With the mouse captured (the session does it) it moves by the mouse's
+## own motion times `mouse_sensitivity` instead, kept on screen.
 var pointer: Vector2 = Vector2.ZERO
+## Share of the mouse's motion the pointer follows while the mouse is captured: 0.5 = half as sensitive.
+var mouse_sensitivity: float = 1.0
 ## Set: where the hand wants the needle. Get: where the needle actually is.
 var needle: Vector2:
 	set(value):
@@ -117,7 +120,12 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		pointer = event.position
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			var motion: InputEventMouseMotion = event
+			pointer = (pointer + motion.relative * mouse_sensitivity).clamp(Vector2.ZERO,
+					get_viewport().get_visible_rect().size)
+		else:
+			pointer = event.position
 
 
 func _process(delta: float) -> void:
