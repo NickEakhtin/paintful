@@ -2,10 +2,10 @@ class_name ArmSurface
 extends SkinSurface
 ## The forearm, seen straight on and filling the screen top to bottom. The stencil is the unwrapped skin
 ## (`theta` -wrap..wrap around the arm, `stencil_height` px along it), so its sides hide behind the
-## silhouettes. WASD (`hand_*`) move the artist's left hand over the screen; holding Space (`hand_wave`) grips the
-## skin under it and the hand drags it along, any way: the skin around the grip slides over the arm (up to
+## silhouettes. WASD (`hand_*`) move the artist's left hand over the screen; Space (`hand_wave`) grips the skin
+## under it and the hand drags it along, any way, until Space is pressed again: the skin around the grip slides over the arm (up to
 ## `max_drag` px, fading out over `drag_radius`), the stencil and ink with it, so skin from behind a silhouette
-## can be slid into view and inked. Let go and it slides back.
+## can be slid into view and inked. Let go (Space again) and it slides back.
 ## The math is `ArmShape` (and its copy in `arm_skin.gdshader`).
 
 @export_group("Shape")
@@ -30,10 +30,11 @@ extends SkinSurface
 ## How fast the left hand moves, pixels per second, and how quickly it gets there (per second).
 @export var hand_speed: float = 650.0
 @export var hand_acceleration: float = 12.0
-## Farthest the gripped skin is dragged from where it was taken, in pixels (half the old side pull's 220).
-@export var max_drag: float = 110.0
-## How far around the grip the skin moves along, in pixels (a gaussian; keep it over max_drag, or the skin folds).
-@export var drag_radius: float = 160.0
+## Farthest the gripped skin is dragged from where it was taken, in pixels.
+@export var max_drag: float = 160.0
+## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
+## folds).
+@export var drag_radius: float = 200.0
 ## How quickly let-go skin slides back (per second, exponential).
 @export var drag_return_rate: float = 8.0
 
@@ -220,9 +221,9 @@ func update_surface(delta: float, active: bool) -> void:
 	var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") if can_use else Vector2.ZERO
 	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
-	# Space grips the skin under the hand; while held, the hand drags it (no farther than max_drag)
-	var holding: bool = can_use and Input.is_action_pressed("hand_wave")
-	if holding and not _gripping:
+	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
+	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
+	if toggled and not _gripping:
 		var skin: Vector2 = shape.screen_to_skin(_hand_position - size * 0.5)
 		if skin.is_finite():
 			_gripping = true
@@ -231,7 +232,7 @@ func update_surface(delta: float, active: bool) -> void:
 			shape.drag_from = skin
 			shape.drag = Vector2.ZERO
 			_stretch_sound.play()
-	elif not holding and _gripping:
+	elif toggled and _gripping:
 		_gripping = false
 		if shape.drag.length() > max_drag * 0.3:
 			_release_sound.play()
