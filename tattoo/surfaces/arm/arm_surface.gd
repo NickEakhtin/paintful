@@ -32,6 +32,8 @@ extends SkinSurface
 @export var hand_acceleration: float = 12.0
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
+## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
+@export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
 ## folds).
 @export var drag_radius: float = 200.0
@@ -247,6 +249,8 @@ func update_surface(delta: float, active: bool) -> void:
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
 	if toggled and not _gripping:
 		var skin: Vector2 = shape.screen_to_skin(_hand_position - size * 0.5)
+		if not skin.is_finite():
+			skin = _side_grab(_hand_position - size * 0.5)
 		if skin.is_finite():
 			_gripping = true
 			_grip_skin = skin
@@ -267,6 +271,7 @@ func update_surface(delta: float, active: bool) -> void:
 		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag)
 		if _grip_flap:
 			_lift_flap()
+			_slide_side_grip()
 		else:
 			# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
 			var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
@@ -282,6 +287,27 @@ func update_surface(delta: float, active: bool) -> void:
 	_place_hand()
 	if shape.drag == Vector2.ZERO and pull.amount <= 0.0:
 		_warm_projections()
+
+
+## Just outside the silhouette (within `side_grab_margin` of it, on the background) the hand still takes the skin:
+## the side at the silhouette of that row. INF farther out.
+func _side_grab(point: Vector2) -> Vector2:
+	var past: float = absf(point.x) - shape.radius_at(point.y)
+	if past < 0.0 or past > side_grab_margin:
+		return Vector2.INF
+	return shape.rest_skin(point)
+
+
+## A side grip moved inward or up and down (rather than out) slides the skin too, like a grip in front: the inward
+## part of the hand's way and the up-down part the flap doesn't use for its tilt.
+func _slide_side_grip() -> void:
+	var offset: Vector2 = _hand_position - _grip_screen
+	var side: float = -1.0 if _grip_skin.x < 0.0 else 1.0
+	var inward: float = minf(offset.x * side, 0.0) * side
+	var way: Vector2 = Vector2(inward, offset.y * (1.0 - pull.amount))
+	var base: Vector2 = shape.rest_skin(_grip_screen - size * 0.5)
+	var target: Vector2 = shape.rest_skin(_grip_screen + way - size * 0.5)
+	shape.drag = Vector2((target.x - base.x) * radius, target.y - base.y).limit_length(max_drag)
 
 
 ## A side grip: how far the hand went outward lifts the flap (`max_pull` = a full one), how far up or down tilts it
