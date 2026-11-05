@@ -88,6 +88,8 @@ const SURFACE_SCENES: Dictionary = {
 @export var edge_shake: float = 8.0
 ## A red frame around the screen shows how far past the edge the brush is; how fast it comes and goes.
 @export var edge_frame_rate: float = 10.0
+## The frame stays this many seconds at its last strength once the brush is back inside, then fades.
+@export var edge_frame_hold: float = 0.5
 ## How quickly the push builds up past the edge, and fades once the needle is back in (per second).
 @export var edge_rate: float = 25.0
 @export var edge_return: float = 5.0
@@ -223,6 +225,9 @@ var _edge_push: Vector2 = Vector2.ZERO
 var _edge_amount: float = 0.0
 var _edge_sound_at: float = -10.0
 var _edge_frame_level: float = 0.0
+## The frame's strength held after the brush comes back in, and the session clock until which it's held.
+var _edge_frame_held: float = 0.0
+var _edge_frame_hold_until: float = -1.0
 ## The session clock until which a hard push at the edge keeps the machine stopped.
 var _edge_stall_until: float = -1.0
 ## The stencil's centre in cells: where the edge pushes toward.
@@ -969,7 +974,13 @@ func _update_edge(delta: float, inking: bool) -> void:
 	if not _turning:
 		var shake: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
 		_view.position = Vector2(-table_offset if _at_table else 0.0, 0.0) + shake
-	_edge_frame_level = lerpf(_edge_frame_level, minf(_edge_amount * 2.0, 1.0), 1.0 - exp(-edge_frame_rate * delta))
+	var frame_target: float = minf(_edge_amount * 2.0, 1.0)
+	if frame_target > 0.0:
+		_edge_frame_held = maxf(frame_target, _edge_frame_held if canvas.time < _edge_frame_hold_until else 0.0)
+		_edge_frame_hold_until = canvas.time + edge_frame_hold
+	elif canvas.time < _edge_frame_hold_until:
+		frame_target = _edge_frame_held
+	_edge_frame_level = lerpf(_edge_frame_level, frame_target, 1.0 - exp(-edge_frame_rate * delta))
 	_edge_frame.visible = _edge_frame_level > 0.01
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 
