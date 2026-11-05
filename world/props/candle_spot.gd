@@ -1,11 +1,14 @@
 class_name CandleSpot
 extends ItemSlot
-## A place for a candle in the ritual circle. A lit spot with a candle glows and flickers.
+## A place for a candle in the ritual circle. A lit spot with a candle glows (and flickers with `flicker` on).
 
 var lit: bool = false:
 	set(value):
 		lit = value
 		_update_flame()
+
+## The flame's light breathes like a flame; off (for speed), it shines steadily.
+@export var flicker: bool = false
 
 var _time: float = 0.0
 
@@ -22,7 +25,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not _flame.visible:
+	if not _flame.visible or not flicker:
 		return
 	_time += delta
 	_flame.light_energy = 0.9 + 0.15 * sin(_time * 11.0) + 0.1 * sin(_time * 23.0 + 1.3)
