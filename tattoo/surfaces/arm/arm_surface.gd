@@ -49,12 +49,14 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 1300.0
+@export var scroll_max: float = 950.0
 ## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
 ## and middle, in the picture's pixels), so it lines up with the arm.
 @export var hand_top: float = 460.0
 @export var hand_wrist_width: float = 235.0
 @export var hand_wrist_center: float = 322.0
+## The hand's size against a wrist as wide as the arm's (1: as wide; below 1 smaller).
+@export var hand_scale: float = 0.667
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
@@ -792,7 +794,7 @@ func _build_client_hand() -> void:
 	if albedo == null:
 		return
 	var picture: Vector2 = Vector2(albedo.get_size())
-	var scale: float = 2.0 * shape.radius_at(hand_top + 140.0) / hand_wrist_width
+	var scale: float = 2.0 * shape.radius_at(hand_top + 140.0) / hand_wrist_width * hand_scale
 	var size: Vector2 = picture * scale
 	var quad: QuadMesh = QuadMesh.new()
 	quad.size = size

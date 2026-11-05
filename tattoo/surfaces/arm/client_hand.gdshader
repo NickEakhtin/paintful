@@ -16,15 +16,15 @@ uniform float normal_strength = 0.8;
 // The quad's size in px (for the skin lines and the blur).
 uniform vec2 quad_size = vec2(920.0, 1226.0);
 // Out of focus: blur radius in px at the wrist (top) and at the fingertips, easing over `blur_span` of the height.
-uniform float blur_near = 18.0;
-uniform float blur_far = 5.0;
+uniform float blur_near = 30.0;
+uniform float blur_far = 11.0;
 uniform float blur_span = 0.65;
 // The top `top_fade` px dissolve in, against the arm dissolving out there.
 uniform float top_fade = 300.0;
 // The picture's tone against the arm's (it has no blotches or shadow mix): below 1 darkens it.
 uniform float brightness = 0.86;
 
-const int TAPS = 16;
+const int TAPS = 24;
 
 float grain(vec2 frag) {
 	return fract(52.9829189 * fract(dot(floor(frag), vec2(0.06711056, 0.00583715))));
