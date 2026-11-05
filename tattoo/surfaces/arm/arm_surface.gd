@@ -37,8 +37,8 @@ extends SkinSurface
 ## Pushing the hand against the top or bottom of the screen (within `pan_edge` px of it) moves the view along the
 ## arm at `pan_speed` px/s, at most `max_pan` px either way.
 @export var pan_edge: float = 40.0
-@export var pan_speed: float = 420.0
-@export var max_pan: float = 300.0
+@export var pan_speed: float = 200.0
+@export var max_pan: float = 150.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -121,6 +121,8 @@ var _projected_bump: float = -1.0
 var _hand_position: Vector2 = Vector2.ZERO
 ## How far down the arm the view looks, in pixels (negative: up).
 var _pan: float = 0.0
+## The arm's centre on screen as cached projections need it (`_refresh_center()`).
+var _center_offset: Vector3 = Vector3.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
 ## Holding the skin: the gripped skin point (theta, v) and where on screen the hand took it.
 var _gripping: bool = false
@@ -200,12 +202,13 @@ func project(cell: Vector2) -> Vector3:
 		if _projected_known[index] == 0:
 			_projected[index] = _place_cell(cell)
 			_projected_known[index] = 1
-		return _projected[index] + _center3()
+		return _projected[index] + _center_offset
 	return _project_now(cell)
 
 
 func _project_now(cell: Vector2) -> Vector3:
-	return _place_cell(cell) + _center3()
+	var center: Vector2 = _center()
+	return _place_cell(cell) + Vector3(center.x, center.y, 0.0)
 
 
 ## A cell centre placed on the arm, relative to the arm's centre (the cache keeps these, so panning the view
@@ -215,10 +218,6 @@ func _place_cell(cell: Vector2) -> Vector3:
 	return shape.project(skin.x, skin.y)
 
 
-func _center3() -> Vector3:
-	var center: Vector2 = _center()
-	return Vector3(center.x, center.y, 0.0)
-
 
 func pixels_per_cell() -> float:
 	return 2.0 * _wrap * radius / grid.x
@@ -226,17 +225,26 @@ func pixels_per_cell() -> float:
 
 ## The preimage of a screen circle is a sheared ellipse on stretched skin: bound it with the local Jacobian.
 func cells_within(cell: Vector2, radius_px: float) -> Vector2:
-	var here: Vector3 = project(cell)
-	var du: Vector3 = project(cell + Vector2(1.0, 0.0)) - here
-	var dv: Vector3 = project(cell + Vector2(0.0, 1.0)) - here
-	var det: float = du.x * dv.y - dv.x * du.y
-	var limit: Vector2 = Vector2.ONE * 3.0 * radius_px / pixels_per_cell()
-	if absf(det) < 0.0001:
-		return limit
-	# Rows of the inverse Jacobian: how much u and v change per screen pixel.
-	var u_row: Vector2 = Vector2(dv.y, -dv.x) / det
-	var v_row: Vector2 = Vector2(-du.y, du.x) / det
-	return (Vector2(u_row.length(), v_row.length()) * radius_px + Vector2.ONE).min(limit)
+	# Walk out along each axis over cell centres until the screen distance passes the radius: exact where the skin
+	# is bunched (a fold squeezes many rows into a few pixels, which the local Jacobian blew up to the cap).
+	var limit: int = ceili(3.0 * radius_px / pixels_per_cell())
+	var center: Vector2 = Vector2(floorf(cell.x) + 0.5, floorf(cell.y) + 0.5)
+	var here: Vector3 = project(center)
+	var reach: Vector2 = Vector2.ONE
+	for axis in 2:
+		for direction: float in [-1.0, 1.0]:
+			var step: Vector2 = Vector2(direction, 0.0) if axis == 0 else Vector2(0.0, direction)
+			var k: int = 1
+			while k < limit:
+				var there: Vector3 = project(center + step * k)
+				# rows by how far down the screen they go, columns by how far across: a slide shears the other way,
+				# which doesn't bring a row or column closer
+				var gone: float = absf(there.x - here.x) if axis == 0 else absf(there.y - here.y)
+				if gone > radius_px:
+					break
+				k += 1
+			reach[axis] = maxf(reach[axis], minf(ceilf(k * 1.2) + 2.0, limit))
+	return reach
 
 
 ## The brush's screen vectors on the skin, through the local inverse Jacobian (so it skews where the skin is
@@ -271,6 +279,7 @@ func hint() -> String:
 
 
 func update_surface(delta: float, active: bool) -> void:
+	_refresh_center()
 	var can_use: bool = active and not Transition.is_busy
 	if _hand_position == Vector2.ZERO and size != Vector2.ZERO:
 		_reset_hand()
@@ -279,6 +288,7 @@ func update_surface(delta: float, active: bool) -> void:
 	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
 	_update_pan(delta, wanted)
+	_refresh_center()
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
 	if toggled and not _gripping:
@@ -546,6 +556,13 @@ func _forget_projections() -> void:
 ## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
 	return get_global_rect().get_center() - Vector2(0.0, _pan)
+
+
+## Refreshes `_center_offset`, the arm's centre that cached projections add (a field, not a call: a stroke reads
+## thousands of them). The session calls update_surface() first thing every frame, after moving the skin.
+func _refresh_center() -> void:
+	var center: Vector2 = _center()
+	_center_offset = Vector3(center.x, center.y, 0.0)
 
 
 ## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
