@@ -1,6 +1,6 @@
 class_name InkPaint
 extends Node
-## The look of the ink at the screen's own resolution. InkCanvas counts ink on a coarse grid (progress, the 95%,
+## The look of the ink at the screen's own resolution. InkCanvas counts ink on a coarse grid (progress, the 85%,
 ## the magnet, the tasks' blocks), which shows steps and blotches stretched over a big monitor. Two half-float
 ## buffers, as big as the stencil is drawn in real pixels, get the same stamps drawn at that resolution:
 ## - `coverage` R, the film: every stamp as a smooth dab of the brush's shape (the brush's flat ellipse, skewed
