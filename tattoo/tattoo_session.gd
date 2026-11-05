@@ -50,6 +50,8 @@ const SURFACE_SCENES: Dictionary = {
 ## While the ink takes densely under the needle (`TattooMachine.ink_density`: taut, open skin) the machine gets this
 ## much heavier on top of its mass: it follows by 1 / sqrt(1 + this) as fast, its speed over the skin drops by
 ## 1 / (1 + this / 2), and the machine's springs slow too. It comes and goes at `dense_drag_rate` per second.
+## After a paper ball misses the basket (hits the floor outside), the view swings back after this many seconds.
+@export var miss_return_delay: float = 0.5
 @export var dense_heaviness: float = 1.5
 @export var dense_drag_rate: float = 4.0
 ## Skin that can be stretched (`Mechanics.skin_tension`, the arm) takes this share of the ink where it's slack, and
@@ -1100,7 +1102,8 @@ func _on_paper_discard() -> void:
 	var in_bin: bool = await _bin_view.throw_finished
 	if in_bin:
 		_paper_throw.play()
-	await get_tree().create_timer(0.35).timeout
+	# a miss: back to the tattoo half a second after the ball hits the floor
+	await get_tree().create_timer(0.35 if in_bin else miss_return_delay).timeout
 	arm.finish_paper()
 	await _swing_to(0.0)
 	_wait_for_release = Input.is_action_pressed("use")

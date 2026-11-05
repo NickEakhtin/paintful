@@ -3,7 +3,7 @@ extends Control
 ## What's to the left of the client: a wire-mesh waste basket on the floor in its own little 3D world (the mesh lets
 ## you see what's inside). The artist's left hand holds the crumpled bloody paper towel; WASD move it over the
 ## screen and LMB throws: the ball leaves the hand toward the point under it, and the higher the hand, the farther
-## it flies. `throw_finished(in_bin)` fires once the ball lies still. Balls stay where they land (inside or not)
+## it flies. `throw_finished(in_bin)` fires once the ball lies still, or as soon as it hits the floor outside. Balls stay where they land (inside or not)
 ## until the session ends.
 
 signal throw_finished(in_bin: bool)
@@ -142,7 +142,10 @@ func _process(delta: float) -> void:
 	elif _ball != null:
 		_wait += delta
 		var settled: bool = _wait > 0.7 and (_ball.sleeping or _ball.linear_velocity.length() < 0.05)
-		if settled or _wait > 4.0 or _ball.global_position.y < -1.0:
+		# on the floor outside the basket: a miss, no need to wait for it to stop rolling
+		var at: Vector3 = _ball.global_position
+		var missed: bool = at.y < BALL_RADIUS * 1.6 and Vector2(at.x, at.z).length() > bin_top_radius + BALL_RADIUS
+		if settled or missed or _wait > 4.0 or at.y < -1.0:
 			var inside: bool = _is_inside(_ball.global_position)
 			_ball = null
 			throw_finished.emit(inside)
