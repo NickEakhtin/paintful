@@ -80,6 +80,10 @@ const SURFACE_SCENES: Dictionary = {
 ## How quickly the push builds up past the edge, and fades once the needle is back in (per second).
 @export var edge_rate: float = 25.0
 @export var edge_return: float = 5.0
+## A push this strong (share of the brush past the edge, times the needle's factor) stops the machine for
+## `edge_stall_time` seconds: it doesn't ink or buzz meanwhile.
+@export_range(0.0, 1.0) var edge_stall_from: float = 0.2
+@export var edge_stall_time: float = 0.5
 ## Seconds between two flinch sounds at the edge.
 @export var edge_sound_gap: float = 0.7
 
@@ -208,6 +212,8 @@ var _edge_push: Vector2 = Vector2.ZERO
 var _edge_amount: float = 0.0
 var _edge_sound_at: float = -10.0
 var _edge_frame_level: float = 0.0
+## The session clock until which a hard push at the edge keeps the machine stopped.
+var _edge_stall_until: float = -1.0
 ## The stencil's centre in cells: where the edge pushes toward.
 var _stencil_center: Vector2 = Vector2.ZERO
 var _result: SessionResult = null
@@ -353,6 +359,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 	_thin_cartridge.visible = MECHANICS.needle_swap
 	_edge_push = Vector2.ZERO
 	_edge_amount = 0.0
+	_edge_stall_until = -1.0
 	canvas.part_completed.connect(_on_part_completed)
 	if _paint_view != null:
 		_paint_view.queue_free()
@@ -608,7 +615,8 @@ func _paint(delta: float) -> void:
 	var cartridge: NeedleCartridge = _cartridge_under(_machine.needle)
 	if clicked and cartridge != null and not cartridge.taken:
 		_swap_needle(cartridge == _thin_cartridge)
-	var inking: bool = pressing and not over_cap and cartridge == null \
+	var stalled: bool = canvas.time < _edge_stall_until
+	var inking: bool = pressing and not over_cap and cartridge == null and not stalled \
 			and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
 	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
@@ -907,6 +915,8 @@ func _update_edge(delta: float, inking: bool) -> void:
 			_edge_amount = outside * (thin_edge_factor if _thin else 1.0)
 			var toward: Vector2 = _to_screen(_stencil_center) - _machine.needle
 			target = toward.normalized() * edge_push * _edge_amount
+			if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
+				_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
 			if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
 				_edge_sound_at = canvas.time
 				_wince.pitch_scale = randf_range(1.15, 1.35)
