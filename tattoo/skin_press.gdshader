@@ -1,5 +1,6 @@
 shader_type canvas_item;
-// The skin under the working needle: the picture is pulled in toward the tip like a small dent,
+// The skin under the working needle: the picture is pulled in toward the tip like a small dent shaped like the
+// brush (an ellipse `radius` long along `axis`, `thickness` of that across, turning with it),
 // lit from the same lamp as the wet ink (up and to the left), with a pink halo around it.
 // The whole skin also trembles by `shake` pixels while the machine buzzes.
 // Reads the screen (a BackBufferCopy right before it), so it bends skin, stencil, ink and redness,
@@ -13,6 +14,9 @@ uniform float press = 0.0;
 // Picture offset this frame, in pixels.
 uniform vec2 shake = vec2(0.0);
 uniform float radius = 18.0;
+// The brush's direction on screen (unit) and its half thickness as a share of `radius` (1: a round dent).
+uniform vec2 axis = vec2(1.0, 0.0);
+uniform float thickness = 1.0;
 // Farthest the picture moves toward the tip, in pixels (halfway out the dent).
 uniform float depth = 2.1;
 // Light and shade on the dent's walls.
@@ -35,12 +39,21 @@ float inside_skin(vec2 uv) {
 void fragment() {
 	vec2 p = UV * size;
 	vec2 offset = p - tip;
-	float r = length(offset) / radius;
-	vec2 out_dir = r > 0.0001 ? normalize(offset) : vec2(0.0);
+	// in the brush's ellipse: x along it, y across, 1 on its rim
+	vec2 across_dir = vec2(-axis.y, axis.x);
+	float thick = max(thickness, 0.05);
+	vec2 local = vec2(dot(offset, axis), dot(offset, across_dir)) / (radius * vec2(1.0, thick));
+	float r = length(local);
+	vec2 local_dir = r > 0.0001 ? local / r : vec2(0.0);
+	// outward in the ellipse, back on the skin: the pull keeps the brush's shape (shorter across it)
+	vec2 out_vec = axis * local_dir.x + across_dir * local_dir.y * thick;
+	// the ellipse's normal, for the light on its walls
+	vec2 normal = axis * local_dir.x * thick + across_dir * local_dir.y;
+	vec2 out_dir = length(normal) > 0.0001 ? normalize(normal) : vec2(0.0);
 
 	// Sample farther out than we draw: what's around the tip looks pulled into the dent.
 	float pull = r < 1.0 ? 4.0 * r * (1.0 - r) : 0.0;
-	vec2 source = p + out_dir * depth * pull * press - shake;
+	vec2 source = p + out_vec * depth * pull * press - shake;
 	// `size`, `tip`, `shake` are layout pixels (the 1280x720 base), the screen is real pixels (x2 on 1440p, x3 on 4K):
 	// step through this rect's UV, so the dent is the same on every monitor
 	vec2 uv_to_screen = vec2(dFdx(SCREEN_UV.x) / dFdx(UV.x), dFdy(SCREEN_UV.y) / dFdy(UV.y));

@@ -92,7 +92,8 @@ const SURFACE_SCENES: Dictionary = {
 @export_range(0.05, 1.0) var film_full: float = 0.35
 
 @export_group("Feel")
-## Radius of the dent under the working needle, in pixels (as big as the brush's half length).
+## Half length of the dent under the working needle, in pixels (as the brush's); it has the brush's shape and
+## turns with it.
 @export var press_radius: float = 30.0
 ## How far the picture is pulled into the dent, in pixels (deep enough to read through the retro filter).
 @export var press_depth: float = 9.0
@@ -669,6 +670,8 @@ func _update_skin_press(delta: float) -> void:
 	var shake: Vector2 = Vector2(randf_range(-skin_buzz, skin_buzz), randf_range(-skin_buzz, skin_buzz)) if working else Vector2.ZERO
 	var material: ShaderMaterial = _press_rect.material
 	material.set_shader_parameter("tip", _machine.needle - _press_rect.get_global_rect().position)
+	material.set_shader_parameter("axis", _brush.axis)
+	material.set_shader_parameter("thickness", _brush.thickness)
 	material.set_shader_parameter("press", smoothstep(0.0, 1.0, _press))
 	material.set_shader_parameter("shake", shake)
 
