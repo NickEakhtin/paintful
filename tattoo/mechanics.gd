@@ -23,3 +23,5 @@ extends Resource
 @export var flow: bool = true
 ## The needle paints with a flat brush of dots across its motion. Off: the old round brush and smooth trail.
 @export var flat_brush: bool = true
+## Spirit, client and player dialogues. Off: `Dialogue.play()` returns at once, so the day goes on without them.
+@export var dialogues: bool = true

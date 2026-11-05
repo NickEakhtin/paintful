@@ -43,6 +43,7 @@
 [ext_resource type="Script" path="res://interaction/interactable.gd" id="interactable"]
 [ext_resource type="PackedScene" path="res://items/item.tscn" id="item"]
 [ext_resource type="PackedScene" path="res://items/item_slot.tscn" id="slot"]
+[ext_resource type="PackedScene" path="res://world/basement/tattoo_tester/tattoo_tester.tscn" id="tattoo_tester"]
 
 [sub_resource type="Gradient" id="fade"]
 offsets = PackedFloat32Array(0, 0.16, 0.8, 1)
@@ -1085,3 +1086,6 @@ script = ExtResource("43_5hpdc")
 exact = [NodePath("../Shell")]
 boxes = [NodePath("../Furniture")]
 skip_names = PackedStringArray("curtain", "rug", "light", "sky", "simplewoodencabinet", "candle", "book", "coin", "inkbottle", "mug")
+
+[node name="TattooTester" parent="Gameplay" instance=ExtResource("tattoo_tester")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.6, 0.25, -14.3)

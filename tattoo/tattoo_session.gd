@@ -37,8 +37,9 @@ const SURFACE_SCENES: Dictionary = {
 @export var magnet_radius: float = 14.0
 ## Share of the way to the target the needle moves when right next to it.
 @export_range(0.0, 1.0) var magnet_strength: float = 0.85
-## How fast the needle catches up with where it should be; higher is snappier.
-@export var needle_follow: float = 42.0
+## How fast the needle catches up with the mouse (per second); higher is snappier, lower smoother and calmer:
+## 14 smooths out hand jitter with about 70 ms of lag (42 was nearly raw mouse).
+@export var needle_follow: float = 14.0
 ## Seconds fresh ink takes to dry from wet gloss to matte.
 @export var ink_dry_time: float = 6.0
 

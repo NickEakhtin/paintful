@@ -22,6 +22,7 @@ GameState="*res://autoload/game_state.gd"
 Transition="*res://autoload/transition.tscn"
 Dialogue="*res://autoload/dialogue.tscn"
 Display="*res://autoload/display.gd"
+FpsCounter="*res://autoload/fps_counter.gd"
 
 [display]
 

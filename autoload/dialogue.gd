@@ -6,6 +6,8 @@ extends CanvasLayer
 
 signal _advance
 
+const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
+
 ## Letters per second.
 @export var typing_speed: float = 45.0
 ## Extra pause after . ! ? … and commas, in seconds.
@@ -30,6 +32,8 @@ func _ready() -> void:
 
 
 func play(dialogue: DialogueData, client_head: Node3D = null, client_name: String = "") -> void:
+	if not MECHANICS.dialogues:
+		return   # switched off in data/mechanics.tres
 	is_playing = true
 	var player: Player = get_tree().get_first_node_in_group(&"player")
 	if player != null:
