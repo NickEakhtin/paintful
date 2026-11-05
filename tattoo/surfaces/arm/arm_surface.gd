@@ -39,6 +39,8 @@ extends SkinSurface
 @export var pan_edge: float = 40.0
 @export var pan_speed: float = 200.0
 @export var max_pan: float = 150.0
+## How quickly the view goes back to the middle once the skin is let go (per second).
+@export var pan_return_rate: float = 4.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -117,6 +119,13 @@ var _projected_pull: Vector4 = Vector4.INF
 var _projected_from: Vector2 = Vector2.INF
 var _projected_fold: PackedFloat32Array = PackedFloat32Array()
 var _projected_bump: float = -1.0
+## Each cell centre's ArmShape.skin_layer() (row before the slide, how much shows), and which are known: kept while
+## the slide moves, dropped when a fold or the bump changes.
+var _layers: PackedVector2Array = PackedVector2Array()
+var _layers_known: PackedByteArray = PackedByteArray()
+## ArmShape.ink_factor()'s smoothstep edges, for place_cell_at().
+var _ink_low: float = 0.0
+var _ink_high: float = 1.0
 ## The left hand: where it is (this control's pixels) and how fast it moves.
 var _hand_position: Vector2 = Vector2.ZERO
 ## How far down the arm the view looks, in pixels (negative: up).
@@ -169,6 +178,9 @@ func setup(stencil: StencilData) -> void:
 	super(stencil)
 	_projected.resize(grid.x * grid.y)
 	_projected_known.resize(grid.x * grid.y)
+	_layers.resize(grid.x * grid.y)
+	_layers_known.resize(grid.x * grid.y)
+	_layers_known.fill(0)
 	_warm_rows.clear()
 	var middle: int = grid.y / 2
 	_warm_rows.append(middle)   # the middle row first, then outward
@@ -215,8 +227,53 @@ func _project_now(cell: Vector2) -> Vector3:
 ## doesn't drop it).
 func _place_cell(cell: Vector2) -> Vector3:
 	var skin: Vector2 = _cell_to_skin(cell)
+	var x: int = int(cell.x)
+	var y: int = int(cell.y)
+	if cell.x - x == 0.5 and cell.y - y == 0.5 and x >= 0 and y >= 0 and x < grid.x and y < grid.y \
+			and not _layers.is_empty():
+		# the folds' and the bump's part, kept while only the slide moves (the costly part of a projection)
+		var index: int = y * grid.x + x
+		if _layers_known[index] == 0:
+			_layers[index] = shape.skin_layer(skin.x, skin.y)
+			_layers_known[index] = 1
+		return shape.project_layer(skin.x, skin.y, _layers[index])
 	return shape.project(skin.x, skin.y)
 
+
+
+## Cell (x, y)'s centre placed on the arm, relative to the arm's centre, through the cache: everything inline for
+## the plain arm (no flap), since a stroke over sliding skin projects a thousand cells a frame.
+func place_cell_at(x: int, y: int) -> Vector3:
+	var index: int = y * grid.x + x
+	if _projected_known[index] == 1:
+		return _projected[index]
+	var theta: float = ((x + 0.5) / grid.x * 2.0 - 1.0) * _wrap
+	var v: float = ((y + 0.5) / grid.y - 0.5) * stencil_height
+	var layer: Vector2
+	if _layers_known[index] == 1:
+		layer = _layers[index]
+	else:
+		layer = shape.skin_layer(theta, v)
+		_layers[index] = layer
+		_layers_known[index] = 1
+	var placed: Vector3
+	if shape.side == 0:
+		var at_theta: float = theta
+		var at_row: float = layer.x
+		if shape.drag != Vector2.ZERO:
+			var dx: float = (theta - shape.drag_from.x) * shape.radius
+			var dy: float = v - shape.drag_from.y
+			var k: float = exp(-(dx * dx + dy * dy) / (shape.drag_radius * shape.drag_radius))
+			at_theta += shape.drag.x / shape.radius * k
+			at_row += shape.drag.y * k
+		var t: float = clampf(at_row / shape.length + 0.5, 0.0, 1.0)
+		var r: float = shape.radius * lerpf(shape.taper_top, shape.taper_bottom, t)
+		placed = Vector3(sin(at_theta) * r, at_row, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
+	else:
+		placed = shape.project_layer(theta, v, layer)
+	_projected[index] = placed
+	_projected_known[index] = 1
+	return placed
 
 
 func cached_projections() -> Array:
@@ -426,9 +483,16 @@ func release() -> void:
 	_sync_pull()
 
 
-## The hand pushing against the top or bottom of the screen (within `pan_edge`, keys held that way) moves the view
-## along the arm, up to `max_pan` either way; it stays there until pushed back. A held grip moves with the arm.
+## While the hand holds the skin, pushing against the top or bottom of the screen (within `pan_edge`, keys held that
+## way) moves the view along the arm, up to `max_pan` either way, and the grip moves with the arm; let go and the
+## view eases back to the middle (`pan_return_rate`).
 func _update_pan(delta: float, wanted: Vector2) -> void:
+	if not _gripping:
+		# let go: the view eases back to the middle of the arm
+		_pan = _pan * exp(-pan_return_rate * delta)
+		if absf(_pan) < 0.5:
+			_pan = 0.0
+		return
 	var push: float = 0.0
 	if _hand_position.y <= pan_edge and wanted.y < 0.0:
 		push = -1.0
@@ -464,6 +528,8 @@ func _sync_pull() -> void:
 	var pulled: Vector4 = Vector4(shape.amount + shape.side * 10.0, shape.shear, shape.drag.x, shape.drag.y)
 	if pulled != _projected_pull or (shape.drag != Vector2.ZERO and _projected_from != shape.drag_from) \
 			or shape.fold_amounts != _projected_fold or shape.bump_amount != _projected_bump:
+		if shape.fold_amounts != _projected_fold or shape.bump_amount != _projected_bump:
+			_layers_known.fill(0)   # the folds or the bump changed: their part goes too
 		_projected_fold = shape.fold_amounts.duplicate()
 		_projected_bump = shape.bump_amount
 		_projected_pull = pulled
@@ -586,6 +652,7 @@ func _cell_to_skin(cell: Vector2) -> Vector2:
 
 func _apply_exports() -> void:
 	_forget_projections()
+	_layers_known.fill(0)
 	_wrap = deg_to_rad(wrap_angle)
 	shape.radius = radius
 	shape.taper_top = taper_top
@@ -611,6 +678,8 @@ func _apply_exports() -> void:
 	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)
+	_ink_low = cos(deg_to_rad(ink_max_angle))
+	_ink_high = cos(deg_to_rad(ink_soft_angle))
 	shape.ink_max_angle = deg_to_rad(ink_max_angle)
 	pull.max_angle = deg_to_rad(max_pull_angle)
 	pull.pull_rate = pull_rate

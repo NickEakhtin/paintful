@@ -29,6 +29,9 @@ var cleared: bool = false
 ## the edge), and never fills a cell there past `edge_cap`, however many passes: a brush can't fill the edge at
 ## all; 0: off. The session sets it for the thick needle.
 var edge_margin: float = 0.0
+## stroke_on() skips blocks of this many cells a side that land far from the stroke on screen, with this margin (px).
+const BLOCK: int = 4
+const BLOCK_MARGIN: float = 3.0
 ## Most ink a stamp within `edge_margin` brings a cell up to (below full, so the part can't complete without
 ## another brush there).
 var edge_cap: float = 0.5
@@ -127,10 +130,12 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
 			var placed: Vector3
-			if use_cache and known[cell] == 1:
+			if not use_cache:
+				placed = surface.project(point)
+			elif known[cell] == 1:
 				placed = cached[cell] + cache_offset
 			else:
-				placed = surface.project(point)
+				placed = surface.place_cell_at(x, y) + cache_offset
 			if placed.z <= 0.0:
 				continue
 			var share: float = brush.weight(Vector2(placed.x, placed.y) - tip)
@@ -187,6 +192,65 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 	var seg: Vector2 = to - from
 	var seg_len_sq: float = maxf(seg.length_squared(), 1e-9)
 	var reach_sq: float = reach_cells * reach_cells
+	# Blocks of BLOCK × BLOCK cells whose corners all land far from the stroke on screen are skipped whole: the box
+	# above is a circle's worth of cells round a thin brush, and where the skin is bunched or sliding it's thousands
+	# of projections. A cell lies between its block's corners on screen (the map keeps the order of rows and
+	# columns); BLOCK_MARGIN px covers the arm's curve inside a block.
+	var sweep: Vector2 = Vector2(step_a, step_b) * (steps - 1)
+	var sweep_len_sq: float = maxf(sweep.length_squared(), 1e-9)
+	var corner_columns: int = (x1 - x0) / BLOCK + 2
+	var corner_rows: int = (y1 - y0) / BLOCK + 2
+	var corners: PackedVector2Array = PackedVector2Array()
+	corners.resize(corner_columns * corner_rows)
+	for j in corner_rows:
+		var cy: int = mini(y0 + j * BLOCK, y1)
+		for i in corner_columns:
+			var cx: int = mini(x0 + i * BLOCK, x1)
+			var corner_cell: int = cy * size.x + cx
+			var at: Vector3
+			if not use_cache:
+				at = surface.project(Vector2(cx + 0.5, cy + 0.5))
+			elif known[corner_cell] == 1:
+				at = cached[corner_cell] + cache_offset
+			else:
+				at = surface.place_cell_at(cx, cy) + cache_offset
+			corners[j * corner_columns + i] = Vector2(at.x, at.y)
+	for block_y in range(0, corner_rows - 1):
+		for block_x in range(0, corner_columns - 1):
+			var c00: Vector2 = corners[block_y * corner_columns + block_x]
+			var c10: Vector2 = corners[block_y * corner_columns + block_x + 1]
+			var c01: Vector2 = corners[(block_y + 1) * corner_columns + block_x]
+			var c11: Vector2 = corners[(block_y + 1) * corner_columns + block_x + 1]
+			# the block's screen box (with the margin), in the brush's ellipse units: the stroke sweeps a unit circle
+			# from the origin to `sweep`, so a box farther than 1 from that segment gets no ink
+			var box_low: Vector2 = c00.min(c10).min(c01.min(c11)) - Vector2.ONE * BLOCK_MARGIN
+			var box_high: Vector2 = c00.max(c10).max(c01.max(c11)) + Vector2.ONE * BLOCK_MARGIN
+			var unit_low: Vector2 = Vector2(INF, INF)
+			var unit_high: Vector2 = Vector2(-INF, -INF)
+			for corner: Vector2 in [box_low, box_high, Vector2(box_low.x, box_high.y), Vector2(box_high.x, box_low.y)]:
+				var rel: Vector2 = corner - tip0
+				var unit: Vector2 = Vector2(rel.dot(unit_along), rel.dot(unit_across))
+				unit_low = unit_low.min(unit)
+				unit_high = unit_high.max(unit)
+			var unit_mid: Vector2 = (unit_low + unit_high) * 0.5
+			var u: float = clampf(unit_mid.dot(sweep) / sweep_len_sq, 0.0, 1.0)
+			var nearest: Vector2 = sweep * u
+			if nearest.clamp(unit_low, unit_high).distance_squared_to(nearest) > 1.0 \
+					and unit_mid.distance_to(nearest) - (unit_high - unit_low).length() * 0.5 > 1.0:
+				continue
+			laid += _stroke_block(x0 + block_x * BLOCK, mini(x0 + block_x * BLOCK + BLOCK - 1, x1),
+					y0 + block_y * BLOCK, mini(y0 + block_y * BLOCK + BLOCK - 1, y1), surface, from, seg, seg_len_sq,
+					reach_sq, use_cache, cached, known, cache_offset, tip0, unit_along, unit_across, step_a, step_b,
+					quad, steps, dose, blocks)
+	return laid
+
+
+## stroke_on()'s per-cell work over one block of cells (x0..x1, y0..y1 inclusive).
+func _stroke_block(x0: int, x1: int, y0: int, y1: int, surface: SkinSurface, from: Vector2, seg: Vector2,
+		seg_len_sq: float, reach_sq: float, use_cache: bool, cached: PackedVector3Array, known: PackedByteArray,
+		cache_offset: Vector3, tip0: Vector2, unit_along: Vector2, unit_across: Vector2, step_a: float,
+		step_b: float, quad: float, steps: int, dose: float, blocks: PackedVector4Array) -> float:
+	var laid: float = 0.0
 	for y in range(y0, y1 + 1):
 		var py: float = y + 0.5
 		for x in range(x0, x1 + 1):
@@ -201,10 +265,12 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 			if gx * gx + gy * gy > reach_sq:
 				continue
 			var placed: Vector3
-			if use_cache and known[cell] == 1:
+			if not use_cache:
+				placed = surface.project(Vector2(px, py))
+			elif known[cell] == 1:
 				placed = cached[cell] + cache_offset
 			else:
-				placed = surface.project(Vector2(px, py))
+				placed = surface.place_cell_at(x, y) + cache_offset
 			if placed.z <= 0.0:
 				continue
 			var point: Vector2 = Vector2(px, py)

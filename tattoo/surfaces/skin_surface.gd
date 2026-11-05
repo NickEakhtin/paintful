@@ -73,6 +73,12 @@ func cached_projections() -> Array:
 	return []
 
 
+## Cell (x, y)'s centre through the cache, relative to `cached_projections()`'s offset; only called when that
+## isn't empty.
+func place_cell_at(x: int, y: int) -> Vector3:
+	return project(Vector2(x + 0.5, y + 0.5))
+
+
 ## Whether this skin can be stretched (`tension_at()` means something); the flat panel can't.
 func has_tension() -> bool:
 	return false

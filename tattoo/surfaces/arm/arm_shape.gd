@@ -172,6 +172,8 @@ func bump_hidden(theta: float, row: float) -> float:
 	if bump.z <= 0.0 or bump_amount <= 0.0:
 		return 0.0
 	var reach: float = _bump_reach(theta)
+	if reach <= 0.0:
+		return 0.0
 	var local: Vector2 = _bump_local(theta)
 	var lip: float = local.x + local.y
 	var t: float = ((-row if bump_up else row) - lip) / bump_overhang
@@ -189,6 +191,8 @@ func _bump_reach(theta: float) -> float:
 
 ## How far the bump sags over the skin below at `theta`, in pixels: uneven, more in some places than others.
 func _bump_slip(theta: float) -> float:
+	if bump.z <= 0.0 or bump_amount <= 0.0 or absf(theta - bump.x) >= bump.z:
+		return 0.0
 	return minf(bump_overhang * 0.92 * clampf(bump_amount, 0.0, 1.0) * _bump_reach(theta) * _bump_lumps(theta),
 			bump_overhang * 0.95)
 
@@ -315,10 +319,33 @@ func _slide_weight(theta: float, v: float) -> float:
 
 ## Screen point plus how much ink lands there (0..1), as (x, y, ink).
 func project(theta: float, v: float) -> Vector3:
-	var at: Vector2 = slide(theta, v)
-	var placed: Array = _place(at.x, at.y)
+	return project_layer(theta, v, skin_layer(theta, v))
+
+
+## The part of a projection that only the folds and the bump change: (the skin point's row on the arm before the
+## slide, how much of it shows: 0 tucked in a fold or under the bump .. 1). A slide doesn't change it, so a surface
+## can keep it while the hand drags the skin.
+func skin_layer(theta: float, v: float) -> Vector2:
+	var folded: float = fold_place(theta, v)
+	return Vector2(bump_place(theta, folded), (1.0 - fold_hidden(theta, v)) * (1.0 - bump_hidden(theta, folded)))
+
+
+## project() from a skin_layer() already worked out.
+func project_layer(theta: float, v: float, layer: Vector2) -> Vector3:
+	var at_theta: float = theta
+	var at_row: float = layer.x
+	if drag != Vector2.ZERO:
+		var k: float = _slide_weight(theta, v)
+		at_theta += drag.x / radius * k
+		at_row += drag.y * k
+	if side == 0:   # no flap: the plain cylinder, inline (the common case, thousands of times a stroke)
+		var t: float = clampf(at_row / length + 0.5, 0.0, 1.0)
+		var r: float = radius * lerpf(taper_top, taper_bottom, t)
+		var face: float = cos(at_theta)
+		return Vector3(sin(at_theta) * r, at_row, ink_factor(face) * layer.y)
+	var placed: Array = _place(at_theta, at_row)
 	var point: Vector3 = placed[0]
-	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(theta, v)) * (1.0 - bump_hidden(theta, fold_place(theta, v))))
+	return Vector3(point.x, point.y, ink_factor(placed[1]) * layer.y)
 
 
 ## 1 where the skin faces the camera squarely enough to take ink, fading to 0 toward the silhouette.
