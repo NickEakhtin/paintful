@@ -1,27 +1,25 @@
 class_name EdgeMotes
 extends GPUParticles2D
-## Spirit-purple specks that shoot from every edge of the screen toward the middle, brake, then float up, swirling, while the edge frame
-## burns (like the dust out of the basement hatch). The session sets `level` (0..1): how many fly.
+## Spirit-purple specks that burst out where the brush touches the stencil's edge, then float up, swirling, and
+## vanish fast (like the dust out of the basement hatch). The session moves this node to the touch and sets
+## `level` (0..1): how many fly. Specks already out stay where they are (global coordinates).
 
 ## Specks alive at a full level.
-@export var count: int = 9000
+@export var count: int = 1500
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
 @export var life: float = 0.9
-## How much of their speed they keep bouncing off the arm (0: they stop dead on it).
-@export var bounce: float = 0.6
-## How hard they shoot from the edges toward the middle (pixels per second) and how quickly that dies down.
-@export var burst_min: float = 380.0
-@export var burst_max: float = 760.0
-@export var brake: float = 520.0
+## How hard they burst out of the touch (pixels per second) and how quickly that dies down.
+@export var burst_min: float = 150.0
+@export var burst_max: float = 420.0
+@export var brake: float = 420.0
 ## How fast they rise once the burst is spent (pixels per second per second) and how much they swirl.
 @export var rise: float = 350.0
 @export var swirl: float = 0.9
-## Speck size in pixels.
+## Speck size in pixels, and how wide the spot they come from is.
 @export var size_min: float = 4.0
 @export var size_max: float = 8.0
-## How many points along the screen's edges they come from.
-const POINTS: int = 2048
+@export var spot_radius: float = 10.0
 
 ## 0..1: share of `count` emitted.
 var level: float = 0.0:
@@ -29,20 +27,6 @@ var level: float = 0.0:
 		level = clampf(value, 0.0, 1.0)
 		amount_ratio = level
 		emitting = level > 0.01
-
-var _built_for: Vector2 = Vector2.ZERO
-## The skin's outline the specks bounce off (no shadow: it only feeds the particles' collision field).
-var _obstacle: LightOccluder2D = LightOccluder2D.new()
-var _outline: PackedVector2Array = PackedVector2Array()
-
-
-## The skin's outline in viewport pixels; the specks can't fly onto it and bounce off. Empty: nothing to avoid.
-func set_obstacle(outline: PackedVector2Array) -> void:
-	if outline == _outline:
-		return
-	_outline = outline
-	_obstacle.occluder.polygon = outline
-	_obstacle.visible = not outline.is_empty()
 
 
 func _ready() -> void:
@@ -55,22 +39,17 @@ func _ready() -> void:
 	var flat: CanvasItemMaterial = CanvasItemMaterial.new()
 	flat.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
 	material = flat
-	collision_base_size = size_max
-	_obstacle.occluder = OccluderPolygon2D.new()
-	_obstacle.sdf_collision = true
-	_obstacle.occluder_light_mask = 0   # only for the specks to bounce off, never casts a shadow
-	add_child(_obstacle)
 	process_material = _process_material()
-	_fit_points()
-	get_viewport().size_changed.connect(_fit_points)
+	visibility_rect = Rect2(-4000, -4000, 8000, 8000)   # global specks: never culled by where the node is
 
 
 func _process_material() -> ParticleProcessMaterial:
 	var m: ParticleProcessMaterial = ParticleProcessMaterial.new()
-	m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_DIRECTED_POINTS
+	m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	m.emission_sphere_radius = spot_radius
 	m.particle_flag_disable_z = true
-	m.direction = Vector3(1, 0, 0)   # turned to each point's normal: from its edge toward the screen's middle
-	m.spread = 18.0
+	m.direction = Vector3(0, -1, 0)
+	m.spread = 180.0   # every way out of the touch
 	m.initial_velocity_min = burst_min
 	m.initial_velocity_max = burst_max
 	m.gravity = Vector3(0, -rise, 0)   # screen y is down: they drift up
@@ -78,9 +57,6 @@ func _process_material() -> ParticleProcessMaterial:
 	m.damping_max = brake * 1.2
 	m.scale_min = size_min / 8.0
 	m.scale_max = size_max / 8.0
-	m.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
-	m.collision_bounce = bounce
-	m.collision_friction = 0.1
 	m.turbulence_enabled = true
 	m.turbulence_noise_strength = swirl
 	m.turbulence_noise_scale = 3.0
@@ -88,7 +64,7 @@ func _process_material() -> ParticleProcessMaterial:
 	m.turbulence_influence_min = 0.02
 	m.turbulence_influence_max = 0.12
 	var ramp: Gradient = Gradient.new()
-	ramp.offsets = PackedFloat32Array([0.0, 0.12, 0.6, 1.0])
+	ramp.offsets = PackedFloat32Array([0.0, 0.1, 0.6, 1.0])
 	var clear: Color = Color(color, 0.0)
 	ramp.colors = PackedColorArray([clear, color, color, clear])
 	var ramp_texture: GradientTexture1D = GradientTexture1D.new()
@@ -110,39 +86,3 @@ func _dot_texture() -> Texture2D:
 	dot.width = 8
 	dot.height = 8
 	return dot
-
-
-## Spawn points spread evenly along the four edges of the screen (a little inside them).
-func _fit_points() -> void:
-	var screen: Vector2 = get_viewport().get_visible_rect().size
-	if screen == _built_for or screen == Vector2.ZERO:
-		return
-	_built_for = screen
-	var perimeter: float = 2.0 * (screen.x + screen.y)
-	var image: Image = Image.create(POINTS, 1, false, Image.FORMAT_RGF)
-	var normals: Image = Image.create(POINTS, 1, false, Image.FORMAT_RGF)
-	for i in POINTS:
-		var at: float = (i + randf()) / POINTS * perimeter
-		var inset: float = randf_range(2.0, 18.0)
-		var point: Vector2
-		var inward: Vector2
-		if at < screen.x:
-			point = Vector2(at, inset)
-			inward = Vector2.DOWN
-		elif at < screen.x + screen.y:
-			point = Vector2(screen.x - inset, at - screen.x)
-			inward = Vector2.LEFT
-		elif at < 2.0 * screen.x + screen.y:
-			point = Vector2(at - screen.x - screen.y, screen.y - inset)
-			inward = Vector2.UP
-		else:
-			point = Vector2(inset, at - 2.0 * screen.x - screen.y)
-			inward = Vector2.RIGHT
-		inward = (screen * 0.5 - point).normalized()   # aimed at the middle of the screen
-		image.set_pixel(i, 0, Color(point.x, point.y, 0.0))
-		normals.set_pixel(i, 0, Color(inward.x, inward.y, 0.0))
-	var m: ParticleProcessMaterial = process_material
-	m.emission_point_texture = ImageTexture.create_from_image(image)
-	m.emission_normal_texture = ImageTexture.create_from_image(normals)
-	m.emission_point_count = POINTS
-	visibility_rect = Rect2(Vector2(-100, -400), screen + Vector2(200, 500))

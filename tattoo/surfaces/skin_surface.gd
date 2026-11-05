@@ -76,11 +76,6 @@ func tension_at(_screen_point: Vector2) -> float:
 	return 1.0
 
 
-## The skin's silhouette on screen (viewport pixels), for effects that must stay off it; empty: none.
-func outline() -> PackedVector2Array:
-	return PackedVector2Array()
-
-
 ## The artist's left hand lying on the skin: a rect in viewport pixels whose inscribed ellipse takes no ink and
 ## pushes the needle away; an empty rect when there is no hand.
 func hand_rect() -> Rect2:

@@ -385,32 +385,6 @@ func tension_at(screen_point: Vector2) -> float:
 	return clampf(tension, 0.0, 1.0)
 
 
-## The arm's silhouette on screen, top to bottom down the right side and back up the left; a lifted flap widens
-## its side to the flap's end.
-func outline() -> PackedVector2Array:
-	const ROWS: int = 24
-	var center: Vector2 = _center()
-	var half: float = size.y * 0.5 + 20.0
-	var right: PackedVector2Array = PackedVector2Array()
-	var left: PackedVector2Array = PackedVector2Array()
-	for i in ROWS + 1:
-		var v: float = lerpf(-half, half, float(i) / ROWS)
-		var r: float = shape.radius_at(v)
-		var reach_right: float = r
-		var reach_left: float = r
-		if shape.side != 0 and shape.amount > 0.0:
-			var flap: float = maxf(r, shape.grip_point(v).x)
-			if shape.side > 0:
-				reach_right = flap
-			else:
-				reach_left = flap
-		right.append(center + Vector2(reach_right, v))
-		left.append(center + Vector2(-reach_left, v))
-	left.reverse()
-	right.append_array(left)
-	return right
-
-
 ## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.
 const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 

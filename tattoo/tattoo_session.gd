@@ -227,6 +227,8 @@ var _edge_sound_at: float = -10.0
 var _edge_frame_level: float = 0.0
 ## The frame's strength held after the brush comes back in, and the session clock until which it's held.
 var _edge_frame_held: float = 0.0
+## Where the brush last crossed the stencil's edge, in viewport pixels: the specks fly off there.
+var _edge_contact: Vector2 = Vector2.ZERO
 var _edge_frame_hold_until: float = -1.0
 ## The session clock until which a hard push at the edge keeps the machine stopped.
 var _edge_stall_until: float = -1.0
@@ -984,23 +986,36 @@ func _update_edge(delta: float, inking: bool) -> void:
 	_edge_frame_level = lerpf(_edge_frame_level, frame_target, 1.0 - exp(-edge_frame_rate * delta))
 	_edge_frame.visible = _edge_frame_level > 0.01
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
-	_edge_motes.level = _edge_frame_level if _edge_frame.visible else 0.0
-	if _edge_motes.emitting:
-		_edge_motes.set_obstacle(_surface.outline())
+	# purple specks fly off where the brush touches the edge, only while it does (the thick needle)
+	_edge_motes.position = _edge_contact
+	_edge_motes.level = minf(_edge_amount * 2.0, 1.0)
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the
 ## artist's hand count for `_brush_on_hand()` instead, so the hand doesn't push toward the stencil's middle).
+## Also finds where the brush crosses the edge (`_edge_contact`, between an inside and an outside point, or the
+## needle when all of it is out).
 func _brush_outside() -> float:
 	var outside: int = 0
 	var hand: Rect2 = _surface.hand_rect()
+	var crossings: Vector2 = Vector2.ZERO
+	var crossing_count: int = 0
+	var was_out: int = -1   # the previous point: -1 none (or on the hand), 0 inside, 1 outside
+	var previous: Vector2 = Vector2.ZERO
 	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
 		var point: Vector2 = _machine.needle + _brush.axis * _brush.radius_px * s
 		if _in_ellipse(point, hand):
+			was_out = -1
 			continue
 		var cell: Vector2 = _surface.to_cell(point)
-		if not cell.is_finite() or not canvas.is_stencil(cell):
-			outside += 1
+		var out: int = 1 if not cell.is_finite() or not canvas.is_stencil(cell) else 0
+		outside += out
+		if was_out >= 0 and was_out != out:
+			crossings += (previous + point) * 0.5
+			crossing_count += 1
+		was_out = out
+		previous = point
+	_edge_contact = crossings / crossing_count if crossing_count > 0 else _machine.needle
 	return outside / 5.0
 
 
