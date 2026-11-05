@@ -116,18 +116,65 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 
 
 ## stroke() for stamp_on(): from one skin cell to another, so ink follows the skin when it slides
-## under a still needle too. Steps half the brush's thickness, so a thin brush leaves no gaps.
+## under a still needle too. Lays what stamps every half of the brush's thickness would (a thin brush leaves no
+## gaps), but projects every cell it touches once: each cell sums only the stamps that can reach it, instead of
+## every stamp walking its whole box (a fast stroke was dozens of stamps, thousands of projections a frame).
 func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush, amount: float) -> float:
 	var step_cells: float = maxf(0.5, brush.half_thickness() / surface.pixels_per_cell()) * 0.5
 	var steps: int = mini(128, maxi(1, ceili(from.distance_to(to) / step_cells)))
-	var laid: float = 0.0
 	var facing: float = surface.project(to).z
 	if facing > 0.0:
 		strokes.append([from, to, _brush_basis(surface, to, brush), amount * facing, brush.radius_px, brush.thickness])
-	_in_stroke = true
+	# the stamps' centres on screen, and how far along the stroke each lies
+	var tips: PackedVector2Array = PackedVector2Array()
+	tips.resize(steps)
 	for i in steps:
-		laid += stamp_on(surface, from.lerp(to, float(i + 1) / steps), brush, amount / steps)
-	_in_stroke = false
+		var middle: Vector3 = surface.project(from.lerp(to, float(i + 1) / steps))
+		tips[i] = Vector2(middle.x, middle.y)
+	var path: Vector2 = tips[steps - 1] - tips[0]
+	var along: Vector2 = path.normalized() if path.length() > 0.001 else Vector2.ZERO
+	var positions: PackedFloat32Array = PackedFloat32Array()
+	positions.resize(steps)
+	for i in steps:
+		positions[i] = (tips[i] - tips[0]).dot(along)
+	positions.sort()   # a path that bends on curved skin may step back a hair
+	# how far the brush reaches along the stroke, with a pixel to spare
+	var extent: float = sqrt(pow(brush.radius_px * brush.axis.dot(along), 2.0) \
+			+ pow(brush.half_thickness() * brush.across().dot(along), 2.0)) + 1.0
+	# every cell any stamp can reach: within the brush's reach (in cells) of the segment between the ends
+	var reach: Vector2 = surface.cells_within(from, brush.radius_px).max(surface.cells_within(to, brush.radius_px))
+	var reach_cells: float = maxf(reach.x, reach.y) + 1.0
+	var low: Vector2 = from.min(to) - reach
+	var high: Vector2 = from.max(to) + reach
+	var x0: int = maxi(0, floori(low.x))
+	var x1: int = mini(size.x - 1, ceili(high.x))
+	var y0: int = maxi(0, floori(low.y))
+	var y1: int = mini(size.y - 1, ceili(high.y))
+	var dose: float = amount / steps * brush.dose_scale()
+	var laid: float = 0.0
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var cell: int = y * size.x + x
+			if _part_of[cell] < 0:
+				continue
+			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
+			if point.distance_to(Geometry2D.get_closest_point_to_segment(point, from, to)) > reach_cells:
+				continue   # out of every stamp's reach: no projection needed
+			var placed: Vector3 = surface.project(point)
+			if placed.z <= 0.0:
+				continue
+			var screen: Vector2 = Vector2(placed.x, placed.y)
+			var first: int = 0
+			var last: int = steps - 1
+			if along != Vector2.ZERO:
+				var at: float = (screen - tips[0]).dot(along)
+				first = maxi(0, positions.bsearch(at - extent) - 1)
+				last = mini(steps - 1, positions.bsearch(at + extent, false))
+			var share: float = 0.0
+			for i in range(first, last + 1):
+				share += brush.weight(screen - tips[i])
+			if share > 0.0 and not _is_blocked(point):
+				laid += _add_ink(cell, dose * placed.z * share)
 	return laid
 
 
