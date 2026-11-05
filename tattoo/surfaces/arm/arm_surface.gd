@@ -47,7 +47,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 850.0
+@export var scroll_max: float = 500.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
@@ -190,7 +190,6 @@ func _ready() -> void:
 	_material.set_shader_parameter("wrap_angle", _wrap)
 	_material.set_shader_parameter("stencil_height", stencil_height)
 	shape.apply_to(_material)
-	_build_client_hand()
 	_hand.visible = false
 	_reset_hand.call_deferred()
 	# blood on the skin (look only) and the wet paper towels that wipe it
@@ -776,53 +775,6 @@ func _apply_exports() -> void:
 	pull.pull_rate = pull_rate
 	pull.return_rate = return_rate
 	pull.tilt_speed = deg_to_rad(tilt_speed)
-
-
-## The client's hand below the wrist (placeholder, primitives, no ink on it): a flattened palm with the back
-## toward the camera, four fingers and a thumb, in the same skin tone, joined to the arm where the profile ends.
-func _build_client_hand() -> void:
-	var hand: Node3D = Node3D.new()
-	hand.name = "ClientHand"
-	_view_viewport.add_child(hand)
-	var skin: StandardMaterial3D = StandardMaterial3D.new()
-	skin.albedo_color = Color(0.6, 0.4, 0.31)   # darker than the arm's base tone: it has no blotches or shadow mix
-	skin.roughness = 0.6
-	var wrist: float = 600.0   # the wrist (ArmShape.PROFILE_V); the arm closes inside the palm below it
-	var wrist_radius: float = shape.radius_at(wrist)
-	# world y is up, the arm's rows run down
-	var palm: MeshInstance3D = MeshInstance3D.new()
-	var ball: SphereMesh = SphereMesh.new()
-	ball.radius = 1.0
-	ball.height = 2.0
-	palm.mesh = ball
-	palm.material_override = skin
-	# as thick as the wrist where the arm closes inside it, a little wider, the back toward the camera
-	palm.scale = Vector3(wrist_radius * 1.12, 200.0, wrist_radius * 1.02)
-	palm.position = Vector3(0.0, -(wrist + 160.0), -wrist_radius * 0.12)
-	hand.add_child(palm)
-	var bottom: float = wrist + 160.0 + 200.0
-	var spread: float = wrist_radius * 1.3
-	for i in 4:
-		var finger: MeshInstance3D = MeshInstance3D.new()
-		var capsule: CapsuleMesh = CapsuleMesh.new()
-		capsule.radius = 31.0 - absf(i - 1.5) * 2.5
-		capsule.height = [200.0, 240.0, 250.0, 225.0][i]
-		finger.mesh = capsule
-		finger.material_override = skin
-		var x: float = lerpf(-spread * 0.5, spread * 0.5, i / 3.0)
-		finger.position = Vector3(x, -(bottom - 50.0 + capsule.height * 0.45), wrist_radius * 0.35)
-		finger.rotation.z = deg_to_rad((i - 1.5) * -2.5)
-		finger.rotation.x = deg_to_rad(-12.0)   # curling a little toward the camera
-		hand.add_child(finger)
-	var thumb: MeshInstance3D = MeshInstance3D.new()
-	var thumb_capsule: CapsuleMesh = CapsuleMesh.new()
-	thumb_capsule.radius = 33.0
-	thumb_capsule.height = 210.0
-	thumb.mesh = thumb_capsule
-	thumb.material_override = skin
-	thumb.position = Vector3(wrist_radius * 1.05, -(wrist + 240.0), wrist_radius * 0.3)
-	thumb.rotation.z = deg_to_rad(32.0)
-	hand.add_child(thumb)
 
 
 ## A flat grid; UV = skin coordinates (theta -PI..PI, v along `arm_length` × the shader's MESH_REACH).

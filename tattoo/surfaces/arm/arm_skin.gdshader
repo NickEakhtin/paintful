@@ -6,11 +6,22 @@ shader_type spatial;
 render_mode cull_disabled;
 
 uniform float radius = 210.0;
+// The arm's ends dissolve into the background instead of showing hard edges: gone above `fade_top_from` (the top of
+// the shoulder's dome) and below `fade_bottom_to` (past the wrist), over `fade_length` px — more and more of their
+// pixels dropped in a fine noise (the background shows through) and the rest darkening a little. No transparency:
+// the transparent pipeline lit the arm in blocks.
+uniform float fade_top_from = -1590.0;
+uniform float fade_bottom_to = 760.0;
+uniform float fade_length = 300.0;
+// Muscle relief, light only (the outline is ArmShape's profile): the biceps in front of the upper arm, the forearm's
+// swell on its outer side, a hollow in the crook of the elbow. `relief` scales how much they bend the light.
+uniform float relief = 1.0;
+uniform float elbow_hollow = 0.3;
 uniform float arm_length = 1800.0;
 // The arm's outline, shoulder to wrist (ArmShape.PROFILE_V / PROFILE_S, the same Hermite curve): change both together.
-const int PROFILE_COUNT = 15;
-const float PROFILE_V[15] = float[](-1350.0, -1150.0, -960.0, -760.0, -540.0, -400.0, -260.0, -110.0, 100.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0);
-const float PROFILE_S[15] = float[](1.15, 1.13, 1.1, 1.13, 1.02, 0.9, 1.0, 1.06, 0.98, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0);
+const int PROFILE_COUNT = 16;
+const float PROFILE_V[16] = float[](-1350.0, -1150.0, -980.0, -800.0, -620.0, -470.0, -400.0, -330.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0);
+const float PROFILE_S[16] = float[](1.12, 1.1, 1.14, 1.22, 1.1, 0.92, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0);
 // The mesh runs this many times `arm_length`, so a pull dragging the skin up or down never shows its ends.
 const float MESH_REACH = 1.8;
 uniform float grip_angle = 2.007;
@@ -276,6 +287,24 @@ float bump_height(float theta, float row) {
 	return bump_amount * bump_reach(theta) * bump_lumps(theta) * sin(t * PI);
 }
 
+// A gaussian bump of skin centred at (theta, v), `wide` radians round the arm and `tall` px along it.
+float muscle(float theta, float v, vec2 at, vec2 size) {
+	vec2 d = vec2((theta - at.x) / size.x, (v - at.y) / size.y);
+	return exp(-dot(d, d));
+}
+
+// The muscles' height over the plain outline (positive: swells, negative: hollows), roughly 0..1.
+float muscles(float theta, float v) {
+	float h = 0.0;
+	h += 1.0 * muscle(theta, v, vec2(0.0, -800.0), vec2(0.75, 210.0));      // biceps, in front of the upper arm
+	h += 0.55 * muscle(theta, v, vec2(0.95, -760.0), vec2(0.45, 260.0));    // the side head of the triceps
+	h += 0.55 * muscle(theta, v, vec2(-0.95, -760.0), vec2(0.45, 260.0));
+	h += 0.7 * muscle(theta, v, vec2(0.65, -190.0), vec2(0.55, 170.0));     // the forearm's swell on the outer side
+	h += 0.35 * muscle(theta, v, vec2(-0.5, -150.0), vec2(0.5, 200.0));
+	h -= 0.9 * muscle(theta, v, vec2(0.05, -420.0), vec2(0.38, 42.0));      // the hollow in the crook of the elbow
+	return h;
+}
+
 // Where skin point (theta, v) sits after the fold and the slide.
 vec2 slide(float theta, float v) {
 	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
@@ -358,8 +387,25 @@ void fragment() {
 	// The arm darkens and reddens toward its silhouette, like skin turning away from the lamp.
 	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
+	// the elbow's hollow sits a little in shadow
+	shade *= 1.0 - elbow_hollow * max(-muscles(skin_theta, skin_v), 0.0);
 	ALBEDO = mix(skin, ink.rgb, ink.a) * shade + vec3(fold_lip) * lips * (1.0 - ink.a);
 	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
+	// the muscles bend the light (not the outline): the normal tilts by their slope along the arm and round it
+	{
+		float e = 3.0;
+		float m_v = muscles(skin_theta, skin_v + e) - muscles(skin_theta, skin_v - e);
+		float m_t = muscles(skin_theta + e / radius, skin_v) - muscles(skin_theta - e / radius, skin_v);
+		NORMAL = normalize(NORMAL - normalize(TANGENT) * m_t * relief * 6.0 / (2.0 * e) - normalize(BINORMAL) * m_v * relief * 6.0 / (2.0 * e));
+	}
+	// the arm's ends dissolve: pixels dropped by a fine noise (interleaved gradient noise, steady on screen)
+	float fade = smoothstep(fade_top_from, fade_top_from + fade_length, skin_v)
+			* (1.0 - smoothstep(fade_bottom_to - fade_length, fade_bottom_to, skin_v));
+	float grain = fract(52.9829189 * fract(dot(floor(FRAGCOORD.xy), vec2(0.06711056, 0.00583715))));
+	if (fade < grain) {
+		discard;
+	}
+	ALBEDO *= mix(0.6, 1.0, fade);
 	// the bump's dome: tilt the normal by the height's slope along the arm and round it
 	if (bump_amount > 0.0) {
 		float e = 2.0;

@@ -27,11 +27,11 @@ var radius: float = 210.0:
 		_profile_table.clear()
 ## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
 ## positive) and the radius there in `radius`es — the upper arm and biceps, the narrow elbow, the forearm's muscles
-## swelling below it and thinning to the wrist, then closing inside the client's palm. Above PROFILE_V[0] the
+## swelling below it and thinning to the wrist, then closing (hidden: the arm fades out there, see `arm_skin.gdshader`'s `fade_*`). Above PROFILE_V[0] the
 ## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step.
 ## A smooth (Hermite) curve through them; `arm_skin.gdshader` has the same points and curve. Change both together.
-const PROFILE_V: PackedFloat32Array = [-1350.0, -1150.0, -960.0, -760.0, -540.0, -400.0, -260.0, -110.0, 100.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
-const PROFILE_S: PackedFloat32Array = [1.15, 1.13, 1.1, 1.13, 1.02, 0.9, 1.0, 1.06, 0.98, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
+const PROFILE_V: PackedFloat32Array = [-1350.0, -1150.0, -980.0, -800.0, -620.0, -470.0, -400.0, -330.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
+const PROFILE_S: PackedFloat32Array = [1.12, 1.1, 1.14, 1.22, 1.1, 0.92, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
 ## `radius_at()` reads a table of the curve, this many px a step.
 const PROFILE_STEP: float = 2.0
 var _profile_table: PackedFloat32Array = PackedFloat32Array()
