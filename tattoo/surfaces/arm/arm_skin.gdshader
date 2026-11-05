@@ -32,6 +32,13 @@ uniform float fold_amount_0 = 0.0;
 uniform float fold_amount_1 = 0.0;
 uniform float fold_closed_width = 8.0;
 uniform float fold_spread = 70.0;
+// The fat bump (ArmShape.bump): (theta, top row, half width in radians, height), the skin it sags over, how full.
+uniform vec4 bump = vec4(0.0);
+uniform float bump_overhang = 45.0;
+uniform float bump_amount = 0.0;
+// How much the bump bends the light, and how dark the shadow it casts on the skin below.
+uniform float bump_relief = 0.45;
+uniform float bump_shadow = 0.45;
 // How dark the crease is, and how much the bunched lips either side of it catch the light.
 uniform float fold_shade = 0.6;
 uniform float fold_lip = 0.12;
@@ -167,11 +174,47 @@ float fold_hidden(float theta, float v, out float lips) {
 	return amount * reach * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
 }
 
+float bump_reach(float theta) {
+	if (bump.z <= 0.0) {
+		return 0.0;
+	}
+	float x = clamp(abs(theta - bump.x) / bump.z, 0.0, 1.0);
+	float r = 1.0 - x * x;
+	return r * r;   // round, easing to nothing at the sides (no hard edge)
+}
+
+// A row (after the folds) -> its row with the bump sagging (ArmShape.bump_place()).
+float bump_place(float theta, float row) {
+	float slip = bump_overhang * 0.92 * clamp(bump_amount, 0.0, 1.0) * bump_reach(theta);
+	float top = bump.y;
+	float lip = top + bump.w;
+	float bottom = lip + bump_overhang;
+	if (slip <= 0.0 || row <= top || row >= bottom) {
+		return row;
+	}
+	if (row <= lip) {
+		return top + (row - top) * (bump.w + slip) / bump.w;
+	}
+	return lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang;
+}
+
+// How deep a row is hidden under the bump (ArmShape.bump_hidden()).
+float bump_hidden(float theta, float row) {
+	float t = (row - bump.y - bump.w) / bump_overhang;
+	return bump_amount * bump_reach(theta) * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t));
+}
+
+// The bump's height over the skin at (theta, row after the folds), 0..1: a soft dome over its rows.
+float bump_height(float theta, float row) {
+	float t = clamp((row - bump.y) / bump.w, 0.0, 1.0);
+	return bump_amount * bump_reach(theta) * sin(t * PI);
+}
+
 // Where skin point (theta, v) sits after the fold and the slide.
 vec2 slide(float theta, float v) {
 	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
 	float k = exp(-dot(d, d) / (drag_radius * drag_radius));
-	return vec2(theta + drag.x / radius * k, fold_place(theta, v) + drag.y * k);
+	return vec2(theta + drag.x / radius * k, bump_place(theta, fold_place(theta, v)) + drag.y * k);
 }
 
 // The skin point's place on screen, slid first.
@@ -239,6 +282,11 @@ void fragment() {
 	// the fold: the tucked band goes dark (its ink with it), the bunched lips either side catch the light
 	float lips;
 	float hidden = fold_hidden(skin_theta, skin_v, lips);
+	// the bump: the skin it sags over lies in its shadow; the dome itself bends the light (below)
+	float bump_row = fold_place(skin_theta, skin_v);
+	float under = bump_hidden(skin_theta, bump_row);
+	hidden = max(hidden, under);
+	skin *= 1.0 - bump_shadow * under;
 	skin *= 1.0 - fold_shade * hidden;
 	skin += vec3(fold_lip) * lips;
 	ink.a *= 1.0 - 0.85 * hidden;
@@ -247,6 +295,14 @@ void fragment() {
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
 	ALBEDO = mix(skin, ink.rgb, ink.a);
 	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
+	// the bump's dome: tilt the normal by the height's slope along the arm and round it
+	if (bump_amount > 0.0) {
+		float e = 2.0;
+		float h_v = bump_height(skin_theta, bump_row + e) - bump_height(skin_theta, bump_row - e);
+		float h_t = bump_height(skin_theta + e / radius, bump_row) - bump_height(skin_theta - e / radius, bump_row);
+		float slope = bump_relief * bump.w * 0.02;
+		NORMAL = normalize(NORMAL - normalize(TANGENT) * h_t * slope / (2.0 * e) * 30.0 - normalize(BINORMAL) * h_v * slope / (2.0 * e) * 30.0);
+	}
 	NORMAL_MAP = texture(skin_normal, detail_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_strength * (1.0 - smooth_out) * (1.0 - 0.5 * ink.a);
 	SPECULAR = 0.35;

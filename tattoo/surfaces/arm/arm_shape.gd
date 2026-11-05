@@ -63,6 +63,13 @@ var fold_amounts: PackedFloat32Array = PackedFloat32Array()
 var fold_closed_width: float = 8.0
 ## How far beyond a fold the skin is drawn in toward it, in pixels.
 var fold_spread: float = 70.0
+## A fat bump: (theta of its middle, its top row, half its width round the arm in radians, its height H in px). The
+## bump's skin (rows top..top+H) bulges out and sags down over the `bump_overhang` px of skin below it, which hides
+## under it and takes no ink. `bump_amount` 1 = full, 0 = flattened (the skin pulled taut). Applied after the folds,
+## before the slide (skin -> folds -> bump -> slide -> arm). `arm_skin.gdshader` repeats it. z = 0: no bump.
+var bump: Vector4 = Vector4.ZERO
+var bump_overhang: float = 45.0
+var bump_amount: float = 0.0
 
 
 ## Arm radius at row `v`.
@@ -91,11 +98,76 @@ func facing(theta: float, v: float) -> float:
 
 ## Where skin point (theta, v) sits on the arm after the slide, as (theta, v).
 func slide(theta: float, v: float) -> Vector2:
-	var row: float = fold_place(theta, v)
+	var row: float = skin_row(theta, v)
 	if drag == Vector2.ZERO:
 		return Vector2(theta, row)
 	var k: float = _slide_weight(theta, v)
 	return Vector2(theta + drag.x / radius * k, row + drag.y * k)
+
+
+## Skin point (theta, v) -> its row on the arm before the slide: folds, then the bump.
+func skin_row(theta: float, v: float) -> float:
+	return bump_place(theta, fold_place(theta, v))
+
+
+## skin_row()'s inverse along the row.
+func skin_unrow(theta: float, row: float) -> float:
+	return fold_unplace(theta, bump_unplace(theta, row))
+
+
+## A row (after the folds) -> its row with the bump sagging: the bump's rows stretched down over the skin below,
+## that skin squeezed under it; nothing moves outside the two.
+func bump_place(theta: float, row: float) -> float:
+	var slip: float = _bump_slip(theta)
+	if slip <= 0.0:
+		return row
+	var top: float = bump.y
+	var lip: float = top + bump.w
+	var bottom: float = lip + bump_overhang
+	if row <= top or row >= bottom:
+		return row
+	if row <= lip:
+		return top + (row - top) * (bump.w + slip) / bump.w
+	return lip + slip + (row - lip) * (bump_overhang - slip) / bump_overhang
+
+
+## bump_place()'s inverse.
+func bump_unplace(theta: float, row: float) -> float:
+	var slip: float = _bump_slip(theta)
+	if slip <= 0.0:
+		return row
+	var top: float = bump.y
+	var lip: float = top + bump.w
+	var bottom: float = lip + bump_overhang
+	if row <= top or row >= bottom:
+		return row
+	if row <= lip + slip:
+		return top + (row - top) * bump.w / (bump.w + slip)
+	return lip + (row - lip - slip) * bump_overhang / (bump_overhang - slip)
+
+
+## How deep a row (after the folds) is hidden under the bump, 0..1.
+func bump_hidden(theta: float, row: float) -> float:
+	if bump.z <= 0.0 or bump_amount <= 0.0:
+		return 0.0
+	var reach: float = _bump_reach(theta)
+	var lip: float = bump.y + bump.w
+	var t: float = (row - lip) / bump_overhang
+	return bump_amount * reach * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.8, 1.0, t))
+
+
+## 1 across the bump's middle, easing to 0 at its sides round the arm.
+func _bump_reach(theta: float) -> float:
+	if bump.z <= 0.0:
+		return 0.0
+	var x: float = clampf(absf(theta - bump.x) / bump.z, 0.0, 1.0)
+	var r: float = 1.0 - x * x
+	return r * r   # round, easing to nothing at the sides (no hard edge)
+
+
+## How far the bump sags over the skin below at `theta`, in pixels.
+func _bump_slip(theta: float) -> float:
+	return bump_overhang * 0.92 * clampf(bump_amount, 0.0, 1.0) * _bump_reach(theta)
 
 
 ## Skin point (theta, v) -> its row on the arm with the fold there bunched up: the band is squeezed and the skin
@@ -172,12 +244,12 @@ func _fold_slack(index: int, theta: float) -> float:
 ## The skin point that slid to (theta, v): slide()'s inverse, by a few rounds.
 func unslide(theta: float, v: float) -> Vector2:
 	if drag == Vector2.ZERO:
-		return Vector2(theta, fold_unplace(theta, v))
-	var skin: Vector2 = Vector2(theta, fold_unplace(theta, v))
+		return Vector2(theta, skin_unrow(theta, v))
+	var skin: Vector2 = Vector2(theta, skin_unrow(theta, v))
 	for i in 24:   # each round cuts the error by about 0.86 × drag / drag_radius: 24 get under a tenth of a pixel
 		var k: float = _slide_weight(skin.x, skin.y)
 		var skin_theta: float = theta - drag.x / radius * k
-		skin = Vector2(skin_theta, fold_unplace(skin_theta, v - drag.y * k))
+		skin = Vector2(skin_theta, skin_unrow(skin_theta, v - drag.y * k))
 	return skin
 
 
@@ -198,7 +270,7 @@ func project(theta: float, v: float) -> Vector3:
 	var at: Vector2 = slide(theta, v)
 	var placed: Array = _place(at.x, at.y)
 	var point: Vector3 = placed[0]
-	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(theta, v)))
+	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(theta, v)) * (1.0 - bump_hidden(theta, fold_place(theta, v))))
 
 
 ## 1 where the skin faces the camera squarely enough to take ink, fading to 0 toward the silhouette.
@@ -278,6 +350,9 @@ func apply_to(material: ShaderMaterial) -> void:
 		material.set_shader_parameter("fold_amount_%d" % i, amount)
 	material.set_shader_parameter("fold_closed_width", fold_closed_width)
 	material.set_shader_parameter("fold_spread", fold_spread)
+	material.set_shader_parameter("bump", bump)
+	material.set_shader_parameter("bump_overhang", bump_overhang)
+	material.set_shader_parameter("bump_amount", bump_amount)
 
 
 func _side_sign() -> float:

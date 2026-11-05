@@ -49,6 +49,12 @@ extends SkinSurface
 ## Each fold: (degrees round the arm of its middle, its middle row in px from the arm's centre (down positive),
 ## half its length round the arm in degrees, skin px tucked in). Two at most; they mustn't overlap round the arm.
 @export var folds: Array[Vector4] = [Vector4(-30.0, -90.0, 22.0, 60.0), Vector4(32.0, 110.0, 20.0, 60.0)]
+## A fat bump that sags over the stencil (`ArmShape.bump`): (degrees round the arm of its middle, its top row,
+## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
+## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
+@export var bump_enabled: bool = true
+@export var bump: Vector4 = Vector4(-2.0, 10.0, 24.0, 60.0)
+@export var bump_overhang: float = 45.0
 ## Width of a closed fold on the arm, in pixels.
 @export var fold_closed: float = 8.0
 ## How far beyond a fold the skin is drawn in toward it, in pixels (the rest of the arm stays put).
@@ -100,6 +106,7 @@ var _projected_known: PackedByteArray = PackedByteArray()
 var _projected_pull: Vector4 = Vector4.INF
 var _projected_from: Vector2 = Vector2.INF
 var _projected_fold: PackedFloat32Array = PackedFloat32Array()
+var _projected_bump: float = -1.0
 ## The left hand: where it is (this control's pixels) and how fast it moves.
 var _hand_position: Vector2 = Vector2.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
@@ -281,7 +288,7 @@ func update_surface(delta: float, active: bool) -> void:
 			# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
 			var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
 			shape.drag = Vector2((target.x - _grip_skin.x) * radius,
-					target.y - shape.fold_place(_grip_skin.x, _grip_skin.y)).limit_length(max_drag)
+					target.y - shape.skin_row(_grip_skin.x, _grip_skin.y)).limit_length(max_drag)
 	else:
 		shape.drag = shape.drag * exp(-drag_return_rate * delta)
 		if shape.drag.length() < 0.2:
@@ -400,8 +407,9 @@ func _sync_pull() -> void:
 	shape.shear = pull.shear(max_pull)
 	var pulled: Vector4 = Vector4(shape.amount + shape.side * 10.0, shape.shear, shape.drag.x, shape.drag.y)
 	if pulled != _projected_pull or (shape.drag != Vector2.ZERO and _projected_from != shape.drag_from) \
-			or shape.fold_amounts != _projected_fold:
+			or shape.fold_amounts != _projected_fold or shape.bump_amount != _projected_bump:
 		_projected_fold = shape.fold_amounts.duplicate()
+		_projected_bump = shape.bump_amount
 		_projected_pull = pulled
 		_projected_from = shape.drag_from
 		_forget_projections()
@@ -451,6 +459,18 @@ func _update_fold(delta: float) -> void:
 		var target: float = (1.0 - opening) if fold_enabled else 0.0
 		var settled: float = lerpf(shape.fold_amounts[i], target, 1.0 - exp(-fold_rate * delta))
 		shape.fold_amounts[i] = target if absf(settled - target) < 0.002 else settled
+	# the bump flattens while the skin round it is pulled taut, whichever way
+	if shape.bump.z > 0.0:
+		var flat: float = 0.0
+		if shape.drag != Vector2.ZERO:
+			var b: Vector4 = shape.bump
+			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - b.x) - b.z, 0.0) * radius,
+					maxf(absf(shape.drag_from.y - (b.y + (b.w + shape.bump_overhang) * 0.5)) - (b.w + shape.bump_overhang) * 0.5, 0.0))
+			var reach: float = shape.drag_radius * tension_spread
+			flat = clampf(shape.drag.length() / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
+		var full: float = 1.0 - flat
+		var eased: float = lerpf(shape.bump_amount, full, 1.0 - exp(-fold_rate * delta))
+		shape.bump_amount = full if absf(eased - full) < 0.002 else eased
 
 
 ## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.
@@ -511,6 +531,9 @@ func _apply_exports() -> void:
 	shape.fold_amounts.resize(shape.folds.size())
 	shape.fold_amounts.fill(1.0 if fold_enabled else 0.0)
 	shape.fold_closed_width = fold_closed
+	shape.bump = Vector4(deg_to_rad(bump.x), bump.y, deg_to_rad(bump.z), bump.w) if bump_enabled else Vector4.ZERO
+	shape.bump_overhang = bump_overhang
+	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)
 	shape.ink_max_angle = deg_to_rad(ink_max_angle)
