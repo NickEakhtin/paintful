@@ -16,8 +16,8 @@ signal throw_finished(in_bin: bool)
 ## The throw: the ball lands on the floor point under the hand after `flight` s, off by up to `aim_error` m, plus
 ## the hand's own motion when it lets go (`swing_error` m per px/s): a still hand aimed over the basket goes in.
 @export var flight: float = 0.75
-@export var aim_error: float = 0.04
-@export var swing_error: float = 0.0006
+@export var aim_error: float = 0.025
+@export var swing_error: float = 0.0004
 ## The basket: radius at the top and bottom, height (m).
 @export var bin_top_radius: float = 0.2
 @export var bin_bottom_radius: float = 0.16
