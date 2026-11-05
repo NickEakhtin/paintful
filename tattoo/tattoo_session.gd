@@ -11,7 +11,6 @@ signal finished(result: SessionResult)
 
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
-const PAPER_BALL: Script = preload("res://tattoo/blood/paper_ball.gd")
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 ## Skin scenes by `StencilData.surface`; anything else uses the flat panel already in the scene.
 const SURFACE_SCENES: Dictionary = {
@@ -230,7 +229,8 @@ var _edge_frame_held: float = 0.0
 var _edge_contact: Vector2 = Vector2.ZERO
 ## The left hand's paper towel is on its way to the bin: the view is at the table, waiting for the throw.
 var _discarding: bool = false
-var _throw_ready: bool = false
+## Where the view rests: 0 at the client, -table_offset at the table, a screen to the right at the basket.
+var _view_home: float = 0.0
 var _edge_frame_hold_until: float = -1.0
 ## The session clock until which a hard push at the edge keeps the machine stopped.
 var _edge_stall_until: float = -1.0
@@ -280,7 +280,7 @@ var _brush_angle2: float = 0.0
 @onready var _thin_cartridge: NeedleCartridge = $View/ThinNeedle
 @onready var _edge_frame: ColorRect = $EdgeFrame
 @onready var _edge_motes: EdgeMotes = $EdgeMotes
-@onready var _trash_bin: Node2D = $View/TrashBin
+@onready var _bin_view: BinView = $View/BinView
 @onready var _paper_throw: AudioStreamPlayer = $PaperThrow
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _cry: AudioStreamPlayer = $Cry
@@ -634,7 +634,7 @@ func _update_needle(delta: float) -> void:
 
 
 func _paint(delta: float) -> void:
-	if _turning:
+	if _turning or _discarding:
 		_machine.working = false
 		_was_inking = false
 		_was_heating = false
@@ -892,6 +892,7 @@ func _restart() -> void:
 	_heat.flush()
 	_was_heating = false
 	_view.position.x = 0.0
+	_view_home = 0.0
 	_at_table = false
 	_show_turn_hints()
 	_body.position = Vector2.ZERO
@@ -978,7 +979,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 	# the view shakes like a camera (the machine stays under the mouse); the swing owns it while turning
 	if not _turning:
 		var shake: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
-		_view.position = Vector2(-table_offset if _at_table else 0.0, 0.0) + shake
+		_view.position = Vector2(_view_home, 0.0) + shake
 	var frame_target: float = minf(_edge_amount * 2.0, 1.0)
 	if frame_target > 0.0:
 		_edge_frame_held = maxf(frame_target, _edge_frame_held if canvas.time < _edge_frame_hold_until else 0.0)
@@ -1069,59 +1070,61 @@ func _update_ink_display() -> void:
 
 ## A quick swing with a horizontal smear to the side table or back, on Q.
 ## The machine never moves by itself: it stays under the mouse the whole time.
-## The left hand brought a bloody paper towel (Space): the view swings to the table, Space throws the crumpled towel
-## at the bin (a real physics ball, aimed with a little error), and once it lies still the view swings back.
+## The left hand brought a bloody paper towel (Space): the view swings left to the wire waste basket, where WASD
+## move the hand with the crumpled towel and LMB throws it (`BinView`); once it lies still the view swings back.
 func _on_paper_discard() -> void:
-	if _discarding or _turning or not _running:
+	if _discarding or _turning or not _running or _at_table:
 		return
 	_discarding = true
 	var arm: ArmSurface = _surface as ArmSurface
 	arm.hand_locked = true
-	_place_trash_bin()
-	await _turn(true)
-	_throw_ready = true
-	while _throw_ready and _running:
-		if Input.is_action_just_pressed("hand_wave") and not Transition.is_busy:
-			_throw_ready = false
-		await get_tree().process_frame
+	_machine.working = false
+	_fit_bin_view()
+	_bin_view.wake()
+	await _swing_to(_view.size.x)
 	if not _running:
-		_discarding = false
+		_end_discard(arm)
 		return
-	var ball: RigidBody2D = PAPER_BALL.new()
-	_view.add_child(ball)
-	var screen: Vector2 = get_viewport().get_visible_rect().size
-	ball.global_position = Vector2(screen.x * 0.1, screen.y * 0.45)
-	# a high lob: drops into the bin's opening after `flight` s, give or take a hand's error (no air drag, so the
-	# arc is the one aimed)
-	var flight: float = 1.4
-	var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
-	var target: Vector2 = _trash_bin.target() + Vector2(randf_range(-22.0, 22.0), 0.0)
-	var lob: Vector2 = (target - ball.global_position) / flight - Vector2(0.0, 0.5 * gravity * flight)
-	ball.linear_velocity = lob
-	ball.angular_velocity = randf_range(-8.0, 8.0)
-	_paper_throw.play()
-	var waited: float = 0.0
-	while waited < 4.0 and _running:
-		await get_tree().physics_frame
-		waited += get_physics_process_delta_time()
-		if waited > 0.6 and (ball.sleeping or ball.linear_velocity.length() < 8.0):
-			break
-	if _trash_bin.holds(ball.global_position):
-		_trash_bin.balls += 1
-	await get_tree().create_timer(0.25).timeout
-	ball.queue_free()
+	_machine.visible = false   # LMB throws here; the machine waits off to the side
+	_bin_view.arm_throw()
+	var in_bin: bool = await _bin_view.throw_finished
+	if in_bin:
+		_paper_throw.play()
+	await get_tree().create_timer(0.35).timeout
 	arm.finish_paper()
-	await _turn(false)
+	await _swing_to(0.0)
+	_wait_for_release = Input.is_action_pressed("use")
+	_end_discard(arm)
+
+
+func _end_discard(arm: ArmSurface) -> void:
+	_machine.visible = true
+	_bin_view.rest()
 	arm.hand_locked = false
 	_discarding = false
 
 
-## The bin's place beside the side table, in `View` pixels.
-func _place_trash_bin() -> void:
-	var table: Control = $View/SideTable
-	var rect: Rect2 = Rect2(table.position, table.size)
-	var floor_y: float = minf(rect.end.y, _view.size.y - 24.0)   # the floor stays on screen in a small window
-	_trash_bin.build(Vector2(rect.end.x + 100.0, floor_y))
+## The basket's view sits one screen to the left of the client.
+func _fit_bin_view() -> void:
+	_bin_view.position = Vector2(-_view.size.x, 0.0)
+	_bin_view.size = _view.size
+
+
+## Swings the whole view to `home` (0: the client, -table_offset: the table, a screen: the basket) with the smear.
+func _swing_to(home: float) -> void:
+	_turning = true
+	_to_table_hint.visible = false
+	_to_client_hint.visible = false
+	_blur.visible = true
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(_view, "position:x", home, turn_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_method(_set_blur, 0.0, 1.0, turn_time)
+	await tween.finished
+	_blur.visible = false
+	_view_home = home
+	_turning = false
+	if home == 0.0:
+		_show_turn_hints()
 
 
 func _turn(to_table: bool) -> void:
@@ -1138,6 +1141,7 @@ func _turn(to_table: bool) -> void:
 	await tween.finished
 	_blur.visible = false
 	_at_table = to_table
+	_view_home = -table_offset if to_table else 0.0
 	if not to_table:
 		_wait_for_release = Input.is_action_pressed("use")
 	_show_turn_hints()

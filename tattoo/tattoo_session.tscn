@@ -34,7 +34,7 @@
 
 [ext_resource type="Shader" path="res://tattoo/edge_frame.gdshader" id="33_edge_frame"]
 [ext_resource type="Script" path="res://tattoo/edge_motes.gd" id="34_motes"]
-[ext_resource type="Script" path="res://tattoo/blood/trash_bin.gd" id="35_bin"]
+[ext_resource type="Script" path="res://tattoo/blood/bin_view.gd" id="35_bin"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/skin_release.wav" id="36_throw"]
 
 [sub_resource type="StyleBoxFlat" id="skin_style"]
@@ -197,7 +197,10 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("table_style")
 
-[node name="TrashBin" type="Node2D" parent="View"]
+[node name="BinView" type="Control" parent="View"]
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
 script = ExtResource("35_bin")
 
 [node name="InkCap" parent="View" instance=ExtResource("12_ink_cap")]
