@@ -5,6 +5,10 @@ extends Node3D
 ## and the item lies across it at `hold_point`. A sweep keeps the glove out of walls; an AnimatableBody on the
 ## "prop_physics" layer pushes the hanging chains. Must be a direct child of the player's Camera3D.
 
+## The squeeze on every use: closing, holding and opening times (s).
+@export var clench_in: float = 0.12
+@export var clench_hold: float = 0.08
+@export var clench_out: float = 0.3
 @export var camera_offset: Vector3 = Vector3(0.25, -0.34, -0.44)
 @export_range(10.0, 80.0, 1.0) var rotation_follow_speed: float = 26.0
 @export_range(0.03, 0.3, 0.01) var tap_distance: float = 0.12
@@ -33,6 +37,9 @@ var _target_orientation: Quaternion = Quaternion.IDENTITY
 var _glove_scale: Vector3 = Vector3.ONE
 var _rest_camera_offset: Vector3 = Vector3.ZERO
 var _tap_tween: Tween
+var _fist_tween: Tween
+## The glove's bones (`GloveRig`): `rig.fist` 0 open .. 1 a fist.
+var rig: GloveRig
 var _hand_shape: CapsuleShape3D = CapsuleShape3D.new()
 var _held_hand_shape: CapsuleShape3D = CapsuleShape3D.new()
 var _sweep: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
@@ -119,6 +126,7 @@ func _physics_process(delta: float) -> void:
 func tap() -> void:
 	if _camera == null:
 		return
+	_clench()
 	if _tap_tween and _tap_tween.is_running():
 		_tap_tween.kill()
 	camera_offset = _rest_camera_offset
@@ -198,6 +206,10 @@ func _setup_glove() -> void:
 	_glove = get_node_or_null("GloveModel") as Node3D
 	if _glove == null:
 		return
+	# bones in the glove (its model has none): it can close into a fist
+	rig = GloveRig.new()
+	rig.name = "Rig"
+	_glove.add_child(rig)
 	_glove_scale = _glove.scale
 	# flip around the finger axis, aim the fingers forward, then cant them toward the screen centre
 	_base_orientation = Quaternion(Vector3.UP, deg_to_rad(inward_aim_degrees))
@@ -239,3 +251,16 @@ func _apply_soft_reflection() -> void:
 
 func _target_position() -> Vector3:
 	return _camera.global_position + _camera.global_basis * camera_offset
+
+
+## A quick squeeze on every use: the empty glove closes into a fist and opens again (not while it holds an item:
+## the fingers would go through it).
+func _clench() -> void:
+	if rig == null or _holding:
+		return
+	if _fist_tween != null and _fist_tween.is_running():
+		_fist_tween.kill()
+	_fist_tween = create_tween()
+	_fist_tween.tween_property(rig, "fist", 1.0, clench_in).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_fist_tween.tween_interval(clench_hold)
+	_fist_tween.tween_property(rig, "fist", 0.0, clench_out).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
