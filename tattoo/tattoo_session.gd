@@ -50,6 +50,10 @@ const SURFACE_SCENES: Dictionary = {
 ## While the ink takes densely under the needle (`TattooMachine.ink_density`: taut, open skin) the machine gets this
 ## much heavier on top of its mass: it follows by 1 / sqrt(1 + this) as fast, its speed over the skin drops by
 ## 1 / (1 + this / 2), and the machine's springs slow too. It comes and goes at `dense_drag_rate` per second.
+## The machine within this share of the screen's height from the top or bottom scrolls the view along the arm, up to
+## `edge_scroll_speed` px/s at the very edge.
+@export_range(0.0, 0.5) var edge_scroll_zone: float = 0.1
+@export var edge_scroll_speed: float = 420.0
 ## After a paper ball misses the basket (hits the floor outside), the view swings back after this many seconds.
 @export var miss_return_delay: float = 0.5
 @export var dense_heaviness: float = 1.5
@@ -455,6 +459,7 @@ func _process(delta: float) -> void:
 	if not _running or Transition.is_busy:
 		return
 	_apply_skin_offset()
+	_edge_scroll(delta)
 	_surface.update_surface(delta, not _turning)
 	_update_ink_blocks()
 	_update_needle(delta)
@@ -697,6 +702,23 @@ func _tension_factor() -> float:
 	if not MECHANICS.skin_tension or not _surface.has_tension():
 		return 1.0
 	return lerpf(slack_ink, taut_ink, _surface.tension_at(_machine.needle))
+
+
+## The machine in the top or bottom `edge_scroll_zone` of the screen moves the view along the skin that way, faster
+## the deeper it is (up to `edge_scroll_speed` px/s).
+func _edge_scroll(delta: float) -> void:
+	if _turning or _discarding or _at_table:
+		return
+	var height: float = get_viewport().get_visible_rect().size.y
+	var zone: float = height * edge_scroll_zone
+	var y: float = _machine.needle.y
+	var push: float = 0.0
+	if y < zone:
+		push = -smoothstep(0.0, 1.0, (zone - y) / zone)
+	elif y > height - zone:
+		push = smoothstep(0.0, 1.0, (y - (height - zone)) / zone)
+	if push != 0.0:
+		_surface.scroll_view(push * edge_scroll_speed * delta)
 
 
 ## The brush's shape and the dots' look, from the exports (`Mechanics.flat_brush` off: the old round brush).

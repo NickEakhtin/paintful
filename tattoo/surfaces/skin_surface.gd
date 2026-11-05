@@ -89,6 +89,11 @@ func tension_at(_screen_point: Vector2) -> float:
 	return 1.0
 
 
+## Moves the view along the skin by `amount` px (down positive), if it can scroll.
+func scroll_view(_amount: float) -> void:
+	pass
+
+
 ## The skin learns where ink just landed (the canvas's new `dabs` and `strokes`, before the look takes them): fresh
 ## ink can bleed. Called by the session every frame.
 func note_ink(_canvas: InkCanvas) -> void:
