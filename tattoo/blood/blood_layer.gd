@@ -7,9 +7,9 @@ extends Node2D
 ## towel wipes them off (`wipe()`).
 
 ## Seconds between two drops (random in this range), at most `max_drops` at once.
-@export var interval_min: float = 2.5
-@export var interval_max: float = 5.5
-@export var max_drops: int = 14
+@export var interval_min: float = 25.0
+@export var interval_max: float = 55.0
+@export var max_drops: int = 3
 ## Only ink this young can bleed, in seconds (the ink's own drying time).
 @export var fresh_time: float = 6.0
 ## A drop's radius when it wells up and once it's full (after `grow_time` s), in skin pixels.
