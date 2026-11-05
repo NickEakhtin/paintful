@@ -32,14 +32,14 @@ const MAX_STEP: float = 1.0 / 120.0
 ## down it lies flatter, its back going up the screen, by up to `tilt_down`. Full at `tilt_full_speed` (150) px/s of
 ## vertical speed; left and right leave the hold as it is, and standing it eases back. Off: no tilt.
 @export var tilt_to_stroke: bool = true
-@export_range(0.0, 60.0) var tilt_up: float = 25.0
-@export_range(0.0, 60.0) var tilt_down: float = 20.0
+@export_range(0.0, 60.0) var tilt_up: float = 32.0
+@export_range(0.0, 60.0) var tilt_down: float = 26.0
 @export var tilt_full_speed: float = 150.0
 ## Steepest and flattest the hold gets with the tilt, in degrees to the skin.
 @export_range(0.0, 90.0) var tilt_max_angle: float = 85.0
 @export_range(0.0, 90.0) var tilt_min_angle: float = 12.0
 ## The tilt's own spring (the machine's weight slows it like the rest): lower is a heavier, lazier tilt.
-@export var tilt_frequency: float = 4.0
+@export var tilt_frequency: float = 2.8
 @export_range(0.0, 2.0) var tilt_damping: float = 0.85
 
 @export_group("Flow")
