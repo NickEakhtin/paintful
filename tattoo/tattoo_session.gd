@@ -652,6 +652,9 @@ func _paint(delta: float) -> void:
 			and _modifiers.all(func(m: TattooModifier) -> bool: return m.can_ink())
 	_machine.working = inking
 	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
+	if inking and on_skin:
+		# the hum: low where the ink takes densely, higher on slack skin, a scar or under the bump
+		_machine.ink_density = clampf(_surface.project(cell).z * _tension_factor(), 0.0, 1.0)
 	if inking and _ink_left > 0.0 and on_skin:
 		_brush.radius_px = _needle_radius() * (1.0 + flow_brush_bonus * _flow.strength())
 		var dose: float = ink_rate * delta * _tension_factor()

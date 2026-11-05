@@ -43,8 +43,14 @@ const MAX_STEP: float = 1.0 / 120.0
 @export_range(0.0, 2.0) var tilt_damping: float = 0.85
 
 @export_group("Flow")
-## Hum pitch added at full flow (0.12 is about two semitones).
-@export var flow_pitch: float = 0.12
+## Hum pitch added at full flow (0.12 is about two semitones); 0: the hum doesn't climb with flow.
+@export var flow_pitch: float = 0.0
+## The hum's pitch by how well the ink takes under the needle (`ink_density`): low where it lands densely (taut,
+## open skin), a little higher where it barely takes (slack skin, a scar, under the bump). It follows at
+## `density_pitch_rate` per second, so it glides instead of jumping.
+@export var dense_pitch: float = 0.92
+@export var sparse_pitch: float = 1.1
+@export var density_pitch_rate: float = 8.0
 ## Hum volume added at full flow, in dB.
 @export var flow_volume_db: float = 3.0
 ## Soft glow around the needle tip in flow: the spirit in the machine likes a steady hand.
@@ -107,6 +113,8 @@ var show_gauge: bool = true:
 var inertia: bool = true
 ## Flow strength, 0..1 (the session's `InkFlow`): higher hum, glow at the tip.
 var flow: float = 0.0
+## How well the ink takes under the needle right now, 0 (barely) .. 1 (densely); the session sets it.
+var ink_density: float = 1.0
 ## The session's brush on screen: the spray comes off along it (`brush_size`: half length, half thickness).
 var brush_axis: Vector2 = Vector2.RIGHT
 var brush_size: Vector2 = Vector2.ZERO
@@ -125,6 +133,8 @@ var _lean_velocity: Vector2 = Vector2.ZERO
 var _tilt: float = 0.0
 var _tilt_velocity: float = 0.0
 var _hum_volume_db: float = 0.0
+## `ink_density` as the hum follows it.
+var _density_shown: float = 1.0
 var _spray_speed: float = 0.0
 
 @onready var _spray: CPUParticles2D = $Spray
@@ -170,7 +180,9 @@ func _process(delta: float) -> void:
 		_spray.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 		_spray.emission_rect_extents = brush_size
 		_spray.rotation = brush_axis.angle()
-	_hum.pitch_scale = 0.8 if dry else 1.0 + flow_pitch * flow # a dry machine sounds hollow
+	_density_shown = lerpf(_density_shown, ink_density, 1.0 - exp(-density_pitch_rate * delta))
+	var pitch: float = lerpf(sparse_pitch, dense_pitch, _density_shown) + flow_pitch * flow
+	_hum.pitch_scale = 0.8 if dry else pitch # a dry machine sounds hollow
 	_hum.volume_db = _hum_volume_db + flow_volume_db * flow
 	_update_glow()
 	if working and not _hum.playing:
