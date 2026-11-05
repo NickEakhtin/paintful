@@ -48,8 +48,8 @@ const MAX_STEP: float = 1.0 / 120.0
 ## The hum's pitch by how well the ink takes under the needle (`ink_density`): low where it lands densely (taut,
 ## open skin), a little higher where it barely takes (slack skin, a scar, under the bump). It follows at
 ## `density_pitch_rate` per second, so it glides instead of jumping.
-@export var dense_pitch: float = 0.92
-@export var sparse_pitch: float = 1.1
+@export var dense_pitch: float = 0.84
+@export var sparse_pitch: float = 1.24
 @export var density_pitch_rate: float = 8.0
 ## Hum volume added at full flow, in dB.
 @export var flow_volume_db: float = 3.0
