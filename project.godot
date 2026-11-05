@@ -23,6 +23,7 @@ Transition="*res://autoload/transition.tscn"
 Dialogue="*res://autoload/dialogue.tscn"
 Display="*res://autoload/display.gd"
 FpsCounter="*res://autoload/fps_counter.gd"
+Diagnostics="*res://autoload/diagnostics.gd"
 
 [display]
 
