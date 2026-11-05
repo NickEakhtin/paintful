@@ -14,4 +14,4 @@ script = ExtResource("1_data")
 display_name = "Чёрный квадрат"
 parts = Array[ExtResource("2_part")]([SubResource("part_square")])
 surface = &"arm"
-grid_size = Vector2i(352, 280)
+grid_size = Vector2i(176, 140)
