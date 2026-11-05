@@ -7,7 +7,9 @@ extends GPUParticles2D
 @export var count: int = 9000
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
-@export var life: float = 3.0
+@export var life: float = 0.9
+## How much of their speed they keep bouncing off the arm (0: they stop dead on it).
+@export var bounce: float = 0.6
 ## How hard they shoot from the edges toward the middle (pixels per second) and how quickly that dies down.
 @export var burst_min: float = 380.0
 @export var burst_max: float = 760.0
@@ -29,6 +31,18 @@ var level: float = 0.0:
 		emitting = level > 0.01
 
 var _built_for: Vector2 = Vector2.ZERO
+## The skin's outline the specks bounce off (no shadow: it only feeds the particles' collision field).
+var _obstacle: LightOccluder2D = LightOccluder2D.new()
+var _outline: PackedVector2Array = PackedVector2Array()
+
+
+## The skin's outline in viewport pixels; the specks can't fly onto it and bounce off. Empty: nothing to avoid.
+func set_obstacle(outline: PackedVector2Array) -> void:
+	if outline == _outline:
+		return
+	_outline = outline
+	_obstacle.occluder.polygon = outline
+	_obstacle.visible = not outline.is_empty()
 
 
 func _ready() -> void:
@@ -37,9 +51,15 @@ func _ready() -> void:
 	local_coords = false
 	emitting = false
 	texture = _dot_texture()
-	var additive: CanvasItemMaterial = CanvasItemMaterial.new()
-	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	material = additive
+	# plain blending, unshaded: their own purple whatever is under them (added up, they went white over the skin)
+	var flat: CanvasItemMaterial = CanvasItemMaterial.new()
+	flat.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	material = flat
+	collision_base_size = size_max
+	_obstacle.occluder = OccluderPolygon2D.new()
+	_obstacle.sdf_collision = true
+	_obstacle.occluder_light_mask = 0   # only for the specks to bounce off, never casts a shadow
+	add_child(_obstacle)
 	process_material = _process_material()
 	_fit_points()
 	get_viewport().size_changed.connect(_fit_points)
@@ -58,6 +78,9 @@ func _process_material() -> ParticleProcessMaterial:
 	m.damping_max = brake * 1.2
 	m.scale_min = size_min / 8.0
 	m.scale_max = size_max / 8.0
+	m.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
+	m.collision_bounce = bounce
+	m.collision_friction = 0.1
 	m.turbulence_enabled = true
 	m.turbulence_noise_strength = swirl
 	m.turbulence_noise_scale = 3.0
@@ -66,18 +89,19 @@ func _process_material() -> ParticleProcessMaterial:
 	m.turbulence_influence_max = 0.12
 	var ramp: Gradient = Gradient.new()
 	ramp.offsets = PackedFloat32Array([0.0, 0.12, 0.6, 1.0])
-	ramp.colors = PackedColorArray([Color.BLACK, color * 2.6, color * 1.6, Color.BLACK])
+	var clear: Color = Color(color, 0.0)
+	ramp.colors = PackedColorArray([clear, color, color, clear])
 	var ramp_texture: GradientTexture1D = GradientTexture1D.new()
 	ramp_texture.gradient = ramp
 	m.color_ramp = ramp_texture
 	return m
 
 
-## A soft round speck, 8 px across (additive: black is invisible).
+## A soft round speck, 8 px across.
 func _dot_texture() -> Texture2D:
 	var gradient: Gradient = Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-	gradient.colors = PackedColorArray([Color.WHITE, Color(0.8, 0.8, 0.8), Color.BLACK])
+	gradient.colors = PackedColorArray([Color.WHITE, Color(1, 1, 1, 0.85), Color(1, 1, 1, 0)])
 	var dot: GradientTexture2D = GradientTexture2D.new()
 	dot.gradient = gradient
 	dot.fill = GradientTexture2D.FILL_RADIAL

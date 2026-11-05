@@ -985,6 +985,8 @@ func _update_edge(delta: float, inking: bool) -> void:
 	_edge_frame.visible = _edge_frame_level > 0.01
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 	_edge_motes.level = _edge_frame_level if _edge_frame.visible else 0.0
+	if _edge_motes.emitting:
+		_edge_motes.set_obstacle(_surface.outline())
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the
