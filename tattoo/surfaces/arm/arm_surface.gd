@@ -49,7 +49,10 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 950.0   # down to the hand's fingertips
+@export var scroll_max: float = 950.0
+## The lowest row of the arm the screen's bottom edge may reach (about the middle of the hand's fingers), whatever
+## the window's height.
+@export var scroll_bottom_row: float = 1190.0
 ## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
 ## and middle, in the picture's pixels), so it lines up with the arm.
 @export var hand_top: float = 460.0
@@ -577,7 +580,8 @@ func _update_pan(delta: float) -> void:
 
 ## Scrolls the view along the arm by `amount` px (down positive), within `scroll_min`..`scroll_max`.
 func scroll_view(amount: float) -> void:
-	_scroll_target = clampf(_scroll_target + amount, scroll_min, scroll_max)
+	var lowest: float = minf(scroll_max, scroll_bottom_row - size.y * 0.5)
+	_scroll_target = clampf(_scroll_target + amount, scroll_min, maxf(lowest, scroll_min))
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
