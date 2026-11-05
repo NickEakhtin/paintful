@@ -49,7 +49,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
 @export var scroll_min: float = -1300.0
-@export var scroll_max: float = 700.0
+@export var scroll_max: float = 950.0   # down to the hand's fingertips
 ## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
 ## and middle, in the picture's pixels), so it lines up with the arm.
 @export var hand_top: float = 460.0

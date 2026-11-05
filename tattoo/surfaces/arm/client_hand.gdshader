@@ -27,7 +27,7 @@ uniform float top_fade = 300.0;
 uniform float brightness = 0.86;
 uniform float desaturate = 0.0;
 // How far the fingers lean away: the bottom is 1 / (1 + this) as wide, and the picture shortens to match.
-uniform float lean = 0.7;
+uniform float lean = 0.0;
 
 void vertex() {
 	// t: 0 at the wrist (top) .. 1 at the fingertips; farther rows draw smaller and closer together
