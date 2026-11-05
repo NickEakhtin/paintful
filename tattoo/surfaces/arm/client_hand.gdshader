@@ -1,7 +1,7 @@
 shader_type spatial;
 // The client's hand below the wrist: a flat picture (art/characters/client_hand/, made by tools/make_client_hand.gd)
 // on a quad behind the arm's front, lit through its normal map, with the arm's own skin lines on it. It's out of
-// focus and paler than the arm; it leans away from us (fingers farther: the picture narrows and shortens toward
+// focus; it leans away from us (fingers farther: the picture narrows and shortens toward
 // them, a fake perspective on a subdivided quad); its top dissolves in the arm's grain the other way round, so where
 // the arm fades out the hand fades in. The arm's own defocus (ArmSurface's `Defocus` overlay) carries on over it.
 render_mode cull_disabled;
@@ -17,15 +17,15 @@ uniform float normal_strength = 0.8;
 // The quad's size in px (for the skin lines and the blur).
 uniform vec2 quad_size = vec2(920.0, 1226.0);
 // Out of focus: blur radius in px at the wrist (top) and at the fingertips, easing over `blur_span` of the height.
-uniform float blur_near = 40.0;
-uniform float blur_far = 26.0;
+uniform float blur_near = 35.0;
+uniform float blur_far = 18.0;
 uniform float blur_span = 0.65;
 // The top `top_fade` px dissolve in, against the arm dissolving out there.
 uniform float top_fade = 300.0;
 // The picture's tone against the arm's (it has no blotches or shadow mix): below 1 darkens it; and how much of its
 // colour it loses (0: none, 1: grey).
 uniform float brightness = 0.86;
-uniform float desaturate = 0.45;
+uniform float desaturate = 0.0;
 // How far the fingers lean away: the bottom is 1 / (1 + this) as wide, and the picture shortens to match.
 uniform float lean = 0.7;
 

@@ -58,11 +58,13 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## The hand's size against a wrist as wide as the arm's (1: as wide; below 1 smaller).
 @export var hand_scale: float = 0.667
 ## Out of focus toward the wrist and over the hand (a screen blur): from nothing at the arm's row `defocus_from` to
-## `defocus_radius` px at `defocus_full` and on, draining `defocus_desaturate` of the colour at full.
+## `defocus_radius` px at `defocus_full` and on, and darkening smoothly from `defocus_from` down to `defocus_dark_to`
+## (`defocus_darken` there and below).
 @export var defocus_from: float = 360.0
 @export var defocus_full: float = 700.0
-@export var defocus_radius: float = 22.0
-@export_range(0.0, 1.0) var defocus_desaturate: float = 0.45
+@export var defocus_radius: float = 13.0
+@export_range(0.0, 1.0) var defocus_darken: float = 0.6
+@export var defocus_dark_to: float = 950.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
@@ -826,7 +828,8 @@ func _update_defocus() -> void:
 	material.set_shader_parameter("from_y", (centre + defocus_from) * scale)
 	material.set_shader_parameter("full_y", (centre + defocus_full) * scale)
 	material.set_shader_parameter("max_radius", defocus_radius * scale)
-	material.set_shader_parameter("desaturate", defocus_desaturate)
+	material.set_shader_parameter("darken", defocus_darken)
+	material.set_shader_parameter("dark_y", (centre + defocus_dark_to) * scale)
 	_defocus.visible = centre + defocus_from < size.y + get_global_rect().position.y
 	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
 
