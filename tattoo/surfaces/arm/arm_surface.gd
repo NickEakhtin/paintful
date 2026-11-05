@@ -35,6 +35,10 @@ extends SkinSurface
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
 ## folds).
 @export var drag_radius: float = 200.0
+## A grip at least this far round the arm (degrees from the front line) takes the side: pulling outward then lifts
+## it off the arm as a taut flap facing the camera (`ArmShape`'s pull, up to `max_pull`), up and down tilt it;
+## closer to the front the skin slides.
+@export var flap_grip_angle: float = 40.0
 ## How quickly let-go skin slides back (per second, exponential).
 @export var drag_return_rate: float = 8.0
 
@@ -42,7 +46,7 @@ extends SkinSurface
 ## Where the fingers hold the skin, in degrees from the front line (behind the silhouette).
 @export var grip_angle: float = 115.0
 ## How far past the silhouette a full pull drags the skin, in pixels.
-@export var max_pull: float = 220.0
+@export var max_pull: float = 160.0
 ## How far toward the camera a full pull brings the grip, in radii (more = flatter flap).
 @export var hold_depth: float = 0.25
 ## Share of the pull lost at the top and bottom of the screen.
@@ -80,6 +84,8 @@ var _hand_velocity: Vector2 = Vector2.ZERO
 var _gripping: bool = false
 var _grip_skin: Vector2 = Vector2.ZERO
 var _grip_screen: Vector2 = Vector2.ZERO
+## The grip took the side: the hand lifts a flap instead of sliding the skin.
+var _grip_flap: bool = false
 ## While the skin rests, the cache is filled ahead a little every frame (rows from the middle out), so a sweep
 ## into fresh skin doesn't project hundreds of new cells in one frame.
 const WARM_BUDGET_USEC: int = 1500
@@ -229,26 +235,47 @@ func update_surface(delta: float, active: bool) -> void:
 			_gripping = true
 			_grip_skin = skin
 			_grip_screen = _hand_position
+			_grip_flap = absf(skin.x) >= deg_to_rad(flap_grip_angle)
 			shape.drag_from = skin
 			shape.drag = Vector2.ZERO
+			if _grip_flap:
+				pull.release()
+				shape.grip_v = skin.y   # the flap bulges most at the hand's row
+				_forget_projections()
 			_stretch_sound.play()
 	elif toggled and _gripping:
 		_gripping = false
-		if shape.drag.length() > max_drag * 0.3:
+		if shape.drag.length() > max_drag * 0.3 or pull.amount > 0.3:
 			_release_sound.play()
 	if _gripping:
 		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag)
-		# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
-		var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
-		shape.drag = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y).limit_length(max_drag)
+		if _grip_flap:
+			_lift_flap()
+		else:
+			# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
+			var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
+			shape.drag = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y).limit_length(max_drag)
 	else:
 		shape.drag = shape.drag * exp(-drag_return_rate * delta)
 		if shape.drag.length() < 0.2:
 			shape.drag = Vector2.ZERO
+		pull.update(delta, false, false, false, false)   # a let-go flap slides back
 	_sync_pull()
 	_place_hand()
-	if shape.drag == Vector2.ZERO:
+	if shape.drag == Vector2.ZERO and pull.amount <= 0.0:
 		_warm_projections()
+
+
+## A side grip: how far the hand went outward lifts the flap (`max_pull` = a full one), how far up or down tilts it
+## (the grip follows the hand: the shear is the hand's height over the grip).
+func _lift_flap() -> void:
+	var offset: Vector2 = _hand_position - _grip_screen
+	var side: int = -1 if _grip_skin.x < 0.0 else 1
+	var outward: float = maxf(0.0, offset.x * side)
+	pull.side = side
+	pull.holding = true
+	pull.amount = clampf(outward / maxf(max_pull, 1.0), 0.0, 1.0)
+	pull.angle = clampf(atan2(-offset.y, maxf(outward, 1.0)), -pull.max_angle, pull.max_angle)
 
 
 ## Projects cells ahead into the cache for at most WARM_BUDGET_USEC.
