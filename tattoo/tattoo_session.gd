@@ -49,7 +49,7 @@ const SURFACE_SCENES: Dictionary = {
 @export var pointer_leash: float = 220.0
 ## Skin that can be stretched (`Mechanics.skin_tension`, the arm) takes this share of the ink where it's slack, and
 ## `taut_ink` where the left hand pulls it tight (`SkinSurface.tension_at()` under the needle), in between by how taut.
-@export var slack_ink: float = 0.4
+@export var slack_ink: float = 0.1
 @export var taut_ink: float = 1.3
 ## Share of the mouse's own motion the machine follows (the session captures the mouse): 0.5 = half as
 ## sensitive; 1 uses the plain cursor position.
