@@ -47,6 +47,12 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var pan_edge: float = 40.0
 @export var pan_speed: float = 200.0
 @export var max_pan: float = 150.0
+## The mouse wheel scrolls the view along the whole arm: `scroll_step` px a notch, eased at `scroll_rate`, from
+## `scroll_min` (the shoulder) to `scroll_max` (the hand), 0 = the stencil in the middle.
+@export var scroll_step: float = 140.0
+@export var scroll_rate: float = 10.0
+@export var scroll_min: float = -1420.0
+@export var scroll_max: float = 850.0
 ## How quickly the view goes back to the middle once the skin is let go (per second).
 @export var pan_return_rate: float = 4.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
@@ -149,6 +155,10 @@ var _paper_stack: Node2D
 var _paper: Node2D
 ## How far down the arm the view looks, in pixels (negative: up).
 var _pan: float = 0.0
+## Its two parts: the wheel's scroll along the arm (and where it's heading) and a held pull pushed at the edge.
+var _scroll: float = 0.0
+var _scroll_target: float = 0.0
+var _grip_pan: float = 0.0
 ## The arm's centre on screen as cached projections need it (`_refresh_center()`).
 var _center_offset: Vector3 = Vector3.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
@@ -373,8 +383,8 @@ func supports_tasks() -> bool:
 
 func hint() -> String:
 	if MECHANICS.blood:
-		return "WASD — левая рука, пробел — тянуть кожу или взять салфетку (кровь вытирать ей)"
-	return "WASD — левая рука, пробел — держать и тянуть кожу"
+		return "WASD — левая рука, пробел — тянуть кожу или взять салфетку (кровь вытирать ей), колесо — вдоль руки"
+	return "WASD — левая рука, пробел — держать и тянуть кожу, колесо — вдоль руки"
 
 
 func update_surface(delta: float, active: bool) -> void:
@@ -530,6 +540,9 @@ func _find_hidden(canvas: InkCanvas) -> Vector2:
 
 func release() -> void:
 	_pan = 0.0
+	_scroll = 0.0
+	_scroll_target = 0.0
+	_grip_pan = 0.0
 	hand_locked = false
 	finish_paper()
 	_blood.clear()
@@ -544,23 +557,38 @@ func release() -> void:
 ## way) moves the view along the arm, up to `max_pan` either way, and the grip moves with the arm; let go and the
 ## view eases back to the middle (`pan_return_rate`).
 func _update_pan(delta: float, wanted: Vector2) -> void:
+	# the wheel's scroll along the arm, eased; it stays where it's left
+	_scroll = lerpf(_scroll, _scroll_target, 1.0 - exp(-scroll_rate * delta))
+	if absf(_scroll - _scroll_target) < 0.3:
+		_scroll = _scroll_target
 	if not _gripping:
-		# let go: the view eases back to the middle of the arm
-		_pan = _pan * exp(-pan_return_rate * delta)
-		if absf(_pan) < 0.5:
-			_pan = 0.0
-		return
-	var push: float = 0.0
-	if _hand_position.y <= pan_edge and wanted.y < 0.0:
-		push = -1.0
-	elif _hand_position.y >= size.y - pan_edge and wanted.y > 0.0:
-		push = 1.0
-	if push == 0.0:
-		return
+		# let go: the pull's own shift eases back
+		_grip_pan = _grip_pan * exp(-pan_return_rate * delta)
+		if absf(_grip_pan) < 0.5:
+			_grip_pan = 0.0
+	else:
+		var push: float = 0.0
+		if _hand_position.y <= pan_edge and wanted.y < 0.0:
+			push = -1.0
+		elif _hand_position.y >= size.y - pan_edge and wanted.y > 0.0:
+			push = 1.0
+		_grip_pan = clampf(_grip_pan + push * pan_speed * delta, -max_pan, max_pan)
 	var before: float = _pan
-	_pan = clampf(_pan + push * pan_speed * delta, -max_pan, max_pan)
+	_pan = clampf(_scroll + _grip_pan, scroll_min - max_pan, scroll_max + max_pan)
 	if _gripping:
-		_grip_screen.y -= _pan - before
+		_grip_screen.y -= _pan - before   # the held skin moves on screen with the view
+
+
+## The mouse wheel scrolls the view along the arm, shoulder to hand (`scroll_step` a notch, within
+## `scroll_min`..`scroll_max`).
+func _unhandled_input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button == null or not button.pressed or hand_locked or not is_visible_in_tree() or Transition.is_busy:
+		return
+	if button.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_scroll_target = clampf(_scroll_target - scroll_step, scroll_min, scroll_max)
+	elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_scroll_target = clampf(_scroll_target + scroll_step, scroll_min, scroll_max)
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
