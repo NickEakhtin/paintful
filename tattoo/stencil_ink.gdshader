@@ -15,8 +15,10 @@ uniform vec2 paint_texel = vec2(0.00390625);
 // How dark the first touch of the needle shows: ink appears with a crisp edge at once and darkens with every
 // pass until the spot is full (the logic still counts only full ink).
 uniform float first_pass = 0.35;
-// The film only shows past this dose (0: from the first touch, the round brush's look).
+// The film only shows past this dose (0: from the first touch, the round brush's look) and is solid from
+// `film_full` (1: only where the ink is full; lower: the middle of a single pass already closes up).
 uniform float film_from = 0.0;
+uniform float film_full = 1.0;
 // The session clock; only the ripple of wet ink moves with it.
 uniform float now = 0.0;
 uniform float dry_time = 6.0;
@@ -58,7 +60,7 @@ vec2 ink_layers(vec2 uv) {
 	// the rim of the ink, anti-aliased over one screen pixel whatever the dose: a fixed threshold made it a
 	// hard, stepped edge on a curve
 	float presence = smoothstep(0.0, max(fwidth(laid.r) * 1.5, 1e-4), laid.r);
-	float film = presence * mix(first_pass, 1.0, smoothstep(film_from, 1.0, min(laid.r, 1.0)));
+	float film = presence * mix(first_pass, 1.0, smoothstep(film_from, max(film_full, film_from + 0.01), min(laid.r, 1.0)));
 	// a dot's edge is where its soft rim crosses one half, anti-aliased over about a pixel
 	float rim = clamp(fwidth(laid.g) * 0.75, 1e-4, 0.5);
 	float dots = smoothstep(0.5 - rim, 0.5 + rim, laid.g);

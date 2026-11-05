@@ -3,12 +3,13 @@ extends Node
 ## The look of the ink at the screen's own resolution. InkCanvas counts ink on a coarse grid (progress, the 97%,
 ## the magnet, the tasks' blocks), which shows steps and blotches stretched over a big monitor. Two half-float
 ## buffers, as big as the stencil is drawn in real pixels, get the same stamps drawn at that resolution:
-## - `coverage` R, the film: every stamp as a smooth dab of the brush's shape (full at the centre, half at the
-##   edge; the brush's flat ellipse, skewed where the skin is curved or stretched), adding up like the ink in
-##   the logic;
-## - `coverage` G, the dots: a flat brush (`dots_per_dose` > 0) also drops round dots inside its ellipse, as many
-##   as the dose, thick and big in the middle, sparse and small towards its ends. The ink shader shows them black
-##   at once and lets the film close the gaps as the dose builds up;
+## - `coverage` R, the film: every stamp as a smooth dab of the brush's shape (the brush's flat ellipse, skewed
+##   where the skin is curved or stretched), adding up like the ink in the logic. With a flat brush the dab is
+##   full over its `core` and fades to nothing at the rim, so the middle of a stroke closes up solid first;
+## - `coverage` G, the dots: a flat brush (`dots_per_dose` > 0) also drops round dots, as many as the dose: dense
+##   and big over the core, thinning out and shrinking past it and scattering beyond the brush's rim up to
+##   `dot_spread`, like a spray. The ink shader shows them black at once and lets the film close the gaps as the
+##   dose builds up;
 ## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
 ## `resize()` (the window changed size mid-session) moves the ink into buffers of the new size; `resized` then
@@ -58,9 +59,16 @@ var wetness: Texture2D
 
 ## Dots per unit of a stamp's dose (InkCanvas amounts); 0: no dots, the film only (the round brush).
 var dots_per_dose: float = 0.0
-## Dots along the brush thin out as (1 - s^2)^this, s = -1..1 from end to end.
-var dot_concentration: float = 2.0
-## Dot radius in screen pixels in the brush's middle and at its ends.
+## Share of the brush (elliptic radius, 0..1) that is solid: the film dab is full and the dots densest inside it.
+var core: float = 0.0:
+	set(value):
+		core = clampf(value, 0.0, 0.95)
+		_shape_dab()
+## Dots scatter out to this many brush radii (1: only inside the brush).
+var dot_spread: float = 1.0
+## Past the core the dots thin out as (1 - x)^this, x = 0 at the core's rim .. 1 at `dot_spread`.
+var dot_falloff: float = 2.0
+## Dot radius in screen pixels over the core and at the far edge of the scatter.
 var dot_size_center: float = 2.4
 var dot_size_edge: float = 1.1
 ## Dot radius varies by this share either way.
@@ -98,12 +106,7 @@ var _undrawn_time: float = 0.0
 
 
 func _init() -> void:
-	# InkCanvas.stamp() lays amount * (1 - 0.5 * d^2 / r^2) inside the radius, nothing outside
-	var falloff: Gradient = Gradient.new()
-	falloff.offsets = PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 0.97, 1.0])   # a rim of a pixel or two, anti-aliased
-	falloff.colors = PackedColorArray([Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.969), Color(1, 1, 1, 0.875),
-			Color(1, 1, 1, 0.719), Color(1, 1, 1, 0.505), Color(1, 1, 1, 0.0)])
-	_dab.gradient = falloff
+	_shape_dab()
 	_dab.fill = GradientTexture2D.FILL_RADIAL
 	_dab.fill_from = Vector2(0.5, 0.5)
 	_dab.fill_to = Vector2(1.0, 0.5)
@@ -205,23 +208,50 @@ func texel() -> Vector2:
 
 ## Queues stamps and strokes (in cells, as InkCanvas keeps them) to be drawn this frame.
 func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
+	# the logic raises a thin brush's dose by 1 / thickness (InkBrush.dose_scale()); the film's dabs do the same,
+	# so the film builds up exactly as the logic counts
 	for dab: Array in dabs:
 		var basis: Transform2D = dab[1]
-		_pending.append([dab[0], basis, dab[2], false])
-		_add_dots(dab[0], dab[0], basis, dab[2], dab[3] if dab.size() > 4 else 0.0, dab[4] if dab.size() > 4 else 1.0)
+		var thick: float = dab[4] if dab.size() > 4 else 1.0
+		_pending.append([dab[0], basis, float(dab[2]) / maxf(thick, 0.001), false])
+		_add_dots(dab[0], dab[0], basis, dab[2], dab[3] if dab.size() > 4 else 0.0, thick)
 	for stroke: Array in strokes:
 		var from: Vector2 = stroke[0]
 		var to: Vector2 = stroke[1]
 		var basis: Transform2D = stroke[2]
+		var thick: float = stroke[5] if stroke.size() > 5 else 1.0
 		var spacing: float = maxf(minf(basis.x.length(), basis.y.length()) * STROKE_SPACING, 0.01)
 		var steps: int = clampi(ceili(from.distance_to(to) / spacing), 1, 512)
 		for i in steps:
-			_pending.append([from.lerp(to, float(i + 1) / steps), basis, float(stroke[3]) / steps, false])
+			_pending.append([from.lerp(to, float(i + 1) / steps), basis,
+					float(stroke[3]) / maxf(thick, 0.001) / steps, false])
 		_add_dots(from, to, basis, stroke[3], stroke[4] if stroke.size() > 5 else 0.0, stroke[5] if stroke.size() > 5 else 1.0)
 
 
-## Drops `amount * dots_per_dose` dots (rounded at random) at random spots of a segment, inside the brush.
-## `radius_px`: the brush's half length on screen (0: no dots), `thickness` as in `InkBrush`.
+## The film dab's profile over the elliptic radius: without a core, the logic's (InkCanvas.stamp() lays
+## amount * (1 - 0.5 * d^2 / r^2) inside the radius, nothing outside); with one, full over the core and easing down
+## to nothing at the rim, so a stroke is solid in the middle and soft at its sides.
+func _shape_dab() -> void:
+	var falloff: Gradient = Gradient.new()
+	if core <= 0.0:
+		falloff.offsets = PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 0.97, 1.0])   # a rim of a pixel or two, anti-aliased
+		falloff.colors = PackedColorArray([Color(1, 1, 1, 1.0), Color(1, 1, 1, 0.969), Color(1, 1, 1, 0.875),
+				Color(1, 1, 1, 0.719), Color(1, 1, 1, 0.505), Color(1, 1, 1, 0.0)])
+	else:
+		var offsets: PackedFloat32Array = PackedFloat32Array([0.0])
+		var colors: PackedColorArray = PackedColorArray([Color.WHITE])
+		for i in 9:
+			var x: float = i / 8.0
+			offsets.append(lerpf(core, 1.0, x))
+			colors.append(Color(1, 1, 1, 1.0 - smoothstep(0.0, 1.0, x)))
+		falloff.offsets = offsets
+		falloff.colors = colors
+	_dab.gradient = falloff
+
+
+## Drops `amount * dots_per_dose` dots (rounded at random) at random spots of a segment: dense over the brush's
+## core, thinning out past it to `dot_spread` brush radii. `radius_px`: the brush's half length on screen (0: no
+## dots), `thickness` as in `InkBrush`.
 func _add_dots(from: Vector2, to: Vector2, basis: Transform2D, amount: float, radius_px: float,
 		thickness: float) -> void:
 	if dots_per_dose <= 0.0 or radius_px <= 0.0 or amount <= 0.0:
@@ -231,13 +261,23 @@ func _add_dots(from: Vector2, to: Vector2, basis: Transform2D, amount: float, ra
 	# the brush's unit across is its half thickness: a dot of radius r screen px is r / radius_px along it and
 	# r / (thickness * radius_px) across it in brush units
 	thickness = maxf(thickness, 0.001)
+	var reach: float = maxf(dot_spread, core + 0.01)
 	for i in count:
-		var s: float = _rng.randf_range(-1.0, 1.0)
-		while _rng.randf() > pow(1.0 - s * s, dot_concentration):
-			s = _rng.randf_range(-1.0, 1.0)
-		var t: float = _rng.randf_range(-1.0, 1.0) * sqrt(1.0 - s * s)
+		# a spot in the brush's elliptic units (s along, t across), kept with the density at its radius
+		var s: float = 0.0
+		var t: float = 0.0
+		var x: float = 0.0
+		for attempt in 32:
+			s = _rng.randf_range(-reach, reach)
+			t = _rng.randf_range(-reach, reach)
+			var r: float = sqrt(s * s + t * t)
+			if r > reach:
+				continue
+			x = clampf((r - core) / (reach - core), 0.0, 1.0)
+			if _rng.randf() <= pow(1.0 - x, dot_falloff):
+				break
 		var centre: Vector2 = from.lerp(to, _rng.randf()) + basis.x * s + basis.y * t
-		var size: float = lerpf(dot_size_center, dot_size_edge, absf(s)) \
+		var size: float = lerpf(dot_size_center, dot_size_edge, x) \
 				* (1.0 + _rng.randf_range(-dot_size_jitter, dot_size_jitter))
 		var stretch: float = 1.0 + pow(_rng.randf(), 3.0) * (dot_stretch_max - 1.0)
 		var along: Vector2 = basis.x * (size * stretch / radius_px)

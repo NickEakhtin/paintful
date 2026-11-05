@@ -54,10 +54,14 @@ const SURFACE_SCENES: Dictionary = {
 ## Slower than this (pixels per second) the brush keeps its angle.
 @export var brush_min_speed: float = 30.0
 ## Dots the brush drops per second of inking.
-@export var dots_per_second: float = 260.0
-## Dots thin out towards the brush's ends as (1 - s^2)^this.
-@export var dot_concentration: float = 2.0
-## Dot radius in the brush's middle and at its ends, in pixels.
+@export var dots_per_second: float = 650.0
+## Solid middle of the brush (share of its radius): the ink closes up there first, the dots are densest.
+@export_range(0.0, 0.95) var brush_core: float = 0.45
+## Dots scatter out to this many brush radii, past the brush's rim, like a spray.
+@export_range(1.0, 3.0) var dot_spread: float = 1.6
+## Past the core the dots thin out as (1 - x)^this towards the spread's edge; higher is a tighter spray.
+@export var dot_falloff: float = 2.0
+## Dot radius over the core and at the spray's outer edge, in pixels.
 @export var dot_size_center: float = 2.0
 @export var dot_size_edge: float = 1.0
 ## Dot radius varies by this share either way.
@@ -65,7 +69,10 @@ const SURFACE_SCENES: Dictionary = {
 ## Some dots are stretched along the brush, up to this much.
 @export var dot_stretch_max: float = 2.0
 ## Share of full ink where the smooth film starts closing the gaps between the dots.
-@export_range(0.0, 0.95) var film_from: float = 0.65
+@export_range(0.0, 0.95) var film_from: float = 0.15
+## Share of full ink where the film is solid: a single pass at an easy pace lays about 0.4 in the brush's middle,
+## so the core of a stroke closes up at once while its sides stay a spray of dots.
+@export_range(0.05, 1.0) var film_full: float = 0.35
 
 @export_group("Feel")
 ## Radius of the dent under the working needle, in pixels.
@@ -268,6 +275,7 @@ func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
 		material.set_shader_parameter("dry_time", ink_dry_time)
 		if MECHANICS.flat_brush:
 			material.set_shader_parameter("film_from", film_from)
+			material.set_shader_parameter("film_full", film_full)
 			material.set_shader_parameter("first_pass", 0.0)   # below the dots the film fades in from nothing
 		_materials.append(material)
 		var rect: TextureRect = TextureRect.new()
@@ -520,7 +528,9 @@ func _setup_brush() -> void:
 	var flat: bool = MECHANICS.flat_brush
 	_brush.thickness = brush_thickness if flat else 1.0
 	_paint_view.dots_per_dose = dots_per_second / maxf(ink_rate, 0.001) if flat else 0.0
-	_paint_view.dot_concentration = dot_concentration
+	_paint_view.core = brush_core if flat else 0.0
+	_paint_view.dot_spread = dot_spread
+	_paint_view.dot_falloff = dot_falloff
 	_paint_view.dot_size_center = dot_size_center
 	_paint_view.dot_size_edge = dot_size_edge
 	_paint_view.dot_size_jitter = dot_size_jitter
