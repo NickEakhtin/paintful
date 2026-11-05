@@ -20,6 +20,10 @@ uniform float grip_v = 0.0;
 uniform float pull_side = 0.0;
 uniform float pull_amount = 0.0;
 uniform float pull_shear = 0.0;
+// The slide (ArmShape.slide()): skin around drag_from (theta, v) moves by drag (arc px at `radius`, px along).
+uniform vec2 drag_from = vec2(0.0);
+uniform vec2 drag = vec2(0.0);
+uniform float drag_radius = 160.0;
 
 // The ink layer covers theta -wrap..wrap and v -stencil_height/2..stencil_height/2.
 uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
@@ -90,6 +94,19 @@ vec3 place(float theta, float v) {
 	return vec3(on_flap.x * s, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
 }
 
+// Where skin point (theta, v) sits after the slide.
+vec2 slide(float theta, float v) {
+	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
+	float k = exp(-dot(d, d) / (drag_radius * drag_radius));
+	return vec2(theta + drag.x / radius * k, v + drag.y * k);
+}
+
+// The skin point's place on screen, slid first.
+vec3 place_slid(float theta, float v) {
+	vec2 at = slide(theta, v);
+	return place(at.x, at.y);
+}
+
 vec3 to_world(vec3 p) {
 	return vec3(p.x, -p.y, p.z);
 }
@@ -109,10 +126,10 @@ float noise(vec2 p) {
 void vertex() {
 	float theta = (UV.x * 2.0 - 1.0) * PI;
 	float v = (UV.y - 0.5) * arm_length * MESH_REACH;
-	vec3 here = to_world(place(theta, v));
+	vec3 here = to_world(place_slid(theta, v));
 	float e = 0.004;
-	vec3 along_theta = to_world(place(theta + e, v)) - to_world(place(theta - e, v));
-	vec3 along_v = to_world(place(theta, v + 1.0)) - to_world(place(theta, v - 1.0));
+	vec3 along_theta = to_world(place_slid(theta + e, v)) - to_world(place_slid(theta - e, v));
+	vec3 along_v = to_world(place_slid(theta, v + 1.0)) - to_world(place_slid(theta, v - 1.0));
 	VERTEX = here;
 	NORMAL = normalize(cross(along_v, along_theta));
 	stretch = length(along_theta) / (2.0 * e * radius_at(v));

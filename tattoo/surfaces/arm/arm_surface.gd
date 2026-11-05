@@ -2,9 +2,11 @@ class_name ArmSurface
 extends SkinSurface
 ## The forearm, seen straight on and filling the screen top to bottom. The stencil is the unwrapped skin
 ## (`theta` -wrap..wrap around the arm, `stencil_height` px along it), so its sides hide behind the
-## silhouettes. WASD (`hand_*`) is the artist's left hand: A / D grip the skin behind the left / right
-## silhouette and pull it out into a flat flap facing the camera, W / S tilt the pull.
-## The math is `ArmShape` (and its copy in `arm_skin.gdshader`), the hand logic `SkinPull`.
+## silhouettes. WASD (`hand_*`) move the artist's left hand over the screen; holding Space (`hand_wave`) grips the
+## skin under it and the hand drags it along, any way: the skin around the grip slides over the arm (up to
+## `max_drag` px, fading out over `drag_radius`), the stencil and ink with it, so skin from behind a silhouette
+## can be slid into view and inked. Let go and it slides back.
+## The math is `ArmShape` (and its copy in `arm_skin.gdshader`).
 
 @export_group("Shape")
 @export var radius: float = 210.0
@@ -23,6 +25,17 @@ extends SkinSurface
 @export var ink_soft_angle: float = 50.0
 ## ...and stops landing here.
 @export var ink_max_angle: float = 62.0
+
+@export_group("Hand")
+## How fast the left hand moves, pixels per second, and how quickly it gets there (per second).
+@export var hand_speed: float = 650.0
+@export var hand_acceleration: float = 12.0
+## Farthest the gripped skin is dragged from where it was taken, in pixels (half the old side pull's 220).
+@export var max_drag: float = 110.0
+## How far around the grip the skin moves along, in pixels (a gaussian; keep it over max_drag, or the skin folds).
+@export var drag_radius: float = 160.0
+## How quickly let-go skin slides back (per second, exponential).
+@export var drag_return_rate: float = 8.0
 
 @export_group("Pull")
 ## Where the fingers hold the skin, in degrees from the front line (behind the silhouette).
@@ -58,6 +71,14 @@ var _projected: PackedVector3Array = PackedVector3Array()
 var _projected_known: PackedByteArray = PackedByteArray()
 ## The pull the cache was filled for: side, amount, shear, grip row.
 var _projected_pull: Vector4 = Vector4.INF
+var _projected_from: Vector2 = Vector2.INF
+## The left hand: where it is (this control's pixels) and how fast it moves.
+var _hand_position: Vector2 = Vector2.ZERO
+var _hand_velocity: Vector2 = Vector2.ZERO
+## Holding the skin: the gripped skin point (theta, v) and where on screen the hand took it.
+var _gripping: bool = false
+var _grip_skin: Vector2 = Vector2.ZERO
+var _grip_screen: Vector2 = Vector2.ZERO
 ## While the skin rests, the cache is filled ahead a little every frame (rows from the middle out), so a sweep
 ## into fresh skin doesn't project hundreds of new cells in one frame.
 const WARM_BUDGET_USEC: int = 1500
@@ -90,6 +111,7 @@ func _ready() -> void:
 	_material.set_shader_parameter("stencil_height", stencil_height)
 	shape.apply_to(_material)
 	_hand.visible = false
+	_reset_hand.call_deferred()
 
 
 func setup(stencil: StencilData) -> void:
@@ -187,23 +209,44 @@ func supports_tasks() -> bool:
 
 
 func hint() -> String:
-	return "A / D — оттянуть кожу, W / S — наклон"
+	return "WASD — левая рука, пробел — держать и тянуть кожу"
 
 
 func update_surface(delta: float, active: bool) -> void:
-	var was_side: int = pull.side
-	var was_holding: bool = pull.holding
-	if active and not Transition.is_busy:
-		pull.update(delta, Input.is_action_pressed("hand_left"), Input.is_action_pressed("hand_right"),
-				Input.is_action_pressed("hand_up"), Input.is_action_pressed("hand_down"))
+	var can_use: bool = active and not Transition.is_busy
+	if _hand_position == Vector2.ZERO and size != Vector2.ZERO:
+		_reset_hand()
+	# the hand: WASD with a little inertia, kept on the screen
+	var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") if can_use else Vector2.ZERO
+	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
+	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
+	# Space grips the skin under the hand; while held, the hand drags it (no farther than max_drag)
+	var holding: bool = can_use and Input.is_action_pressed("hand_wave")
+	if holding and not _gripping:
+		var skin: Vector2 = shape.screen_to_skin(_hand_position - size * 0.5)
+		if skin.is_finite():
+			_gripping = true
+			_grip_skin = skin
+			_grip_screen = _hand_position
+			shape.drag_from = skin
+			shape.drag = Vector2.ZERO
+			_stretch_sound.play()
+	elif not holding and _gripping:
+		_gripping = false
+		if shape.drag.length() > max_drag * 0.3:
+			_release_sound.play()
+	if _gripping:
+		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag)
+		# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
+		var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
+		shape.drag = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y).limit_length(max_drag)
 	else:
-		pull.update(delta, false, false, false, false)
-	if was_side == 0 and pull.side != 0:
-		_stretch_sound.play()
-	elif was_holding and not pull.holding and pull.amount > 0.3:
-		_release_sound.play()
+		shape.drag = shape.drag * exp(-drag_return_rate * delta)
+		if shape.drag.length() < 0.2:
+			shape.drag = Vector2.ZERO
 	_sync_pull()
-	if pull.side == 0 and pull.amount < 0.001:
+	_place_hand()
+	if shape.drag == Vector2.ZERO:
 		_warm_projections()
 
 
@@ -254,7 +297,17 @@ func _find_hidden(canvas: InkCanvas) -> Vector2:
 
 func release() -> void:
 	pull.release()
+	_gripping = false
+	shape.drag = Vector2.ZERO
+	_reset_hand()
 	_sync_pull()
+
+
+## The hand rests low on the left of the arm, out of the stencil's way.
+func _reset_hand() -> void:
+	_hand_position = size * 0.5 + Vector2(-radius * 0.8, size.y * 0.3)
+	_hand_velocity = Vector2.ZERO
+	_place_hand()
 
 
 func _process(_delta: float) -> void:
@@ -268,24 +321,21 @@ func _sync_pull() -> void:
 	shape.side = pull.side
 	shape.amount = pull.amount
 	shape.shear = pull.shear(max_pull)
-	var pulled: Vector4 = Vector4(shape.side, shape.amount, shape.shear, shape.grip_v)
-	if pulled != _projected_pull:
+	var pulled: Vector4 = Vector4(shape.amount + shape.side * 10.0, shape.shear, shape.drag.x, shape.drag.y)
+	if pulled != _projected_pull or (shape.drag != Vector2.ZERO and _projected_from != shape.drag_from):
 		_projected_pull = pulled
+		_projected_from = shape.drag_from
 		_forget_projections()
 	shape.apply_to(_material)
-	_place_hand()
 
 
-## The placeholder hand sits outside the arm with its fingertips on the flap's edge, fingers toward the arm.
+## The placeholder hand: palm at `_hand_position`, fingers up; a little smaller and solid while gripping.
 func _place_hand() -> void:
-	_hand.visible = pull.side != 0 and pull.amount > 0.02
-	if not _hand.visible:
-		return
-	var grip: Vector2 = shape.grip_screen() + size * 0.5
-	var inward: Vector2 = Vector2(-pull.side, 0.0).rotated(-pull.angle * pull.side)
-	_hand.position = grip - inward * 78.0
-	_hand.rotation = inward.angle() + PI * 0.5
-	_hand.modulate.a = smoothstep(0.02, 0.3, pull.amount)
+	_hand.visible = true
+	_hand.position = _hand_position
+	_hand.rotation = 0.0
+	_hand.scale = Vector2.ONE * (0.85 if _gripping else 1.0)
+	_hand.modulate.a = 1.0 if _gripping else 0.75
 
 
 func _forget_projections() -> void:
@@ -317,6 +367,7 @@ func _apply_exports() -> void:
 	shape.hold_depth = hold_depth
 	shape.grip_bulge = grip_bulge
 	shape.bulge_spread = bulge_spread
+	shape.drag_radius = drag_radius
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)
 	shape.ink_max_angle = deg_to_rad(ink_max_angle)
 	pull.max_angle = deg_to_rad(max_pull_angle)

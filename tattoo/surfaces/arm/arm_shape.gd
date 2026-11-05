@@ -13,6 +13,12 @@ extends RefCounted
 ## the fingers) and the vertical drag grows with the square of the way out, so the flap joins the arm
 ## without a crease in the light. The shape stays convex, so a skin point is visible exactly where it
 ## faces the camera. `arm_skin.gdshader` repeats these formulas: keep the two in sync.
+##
+## Sliding (the left hand gripping anywhere): the skin around a held point `drag_from` (theta, v) slides over the
+## arm by `drag` (along the arc at `radius`, and along the arm, in pixels), fading out with distance
+## (gaussian over `drag_radius`). Skin coordinates stay on the skin, so the stencil and the ink go with it; a point
+## is shown where it slid to, so skin from behind a silhouette can be slid into view (and take ink) or front skin
+## pushed away. Kept invertible: `drag` stays under about 1.1 × `drag_radius`.
 
 ## Radius at the arm's centre, in pixels.
 var radius: float = 210.0
@@ -43,6 +49,10 @@ var side: int = 0
 var amount: float = 0.0
 ## Vertical drag of the grip at a full-width row, in pixels (negative = up).
 var shear: float = 0.0
+## The held skin point (theta, v), how far it slid (arc pixels, pixels along the arm) and how far the slide reaches.
+var drag_from: Vector2 = Vector2.ZERO
+var drag: Vector2 = Vector2.ZERO
+var drag_radius: float = 160.0
 
 
 ## Arm radius at row `v`.
@@ -59,17 +69,51 @@ func bulge_at(v: float) -> float:
 
 ## Screen point (x, y, z) of skin point (theta, v), in pixels from the arm's centre.
 func skin_to_screen(theta: float, v: float) -> Vector3:
-	return _place(theta, v)[0]
+	var at: Vector2 = slide(theta, v)
+	return _place(at.x, at.y)[0]
 
 
 ## How squarely the skin at (theta, v) faces the camera: 1 straight on, 0 edge-on, negative = hidden.
 func facing(theta: float, v: float) -> float:
-	return _place(theta, v)[1]
+	var at: Vector2 = slide(theta, v)
+	return _place(at.x, at.y)[1]
+
+
+## Where skin point (theta, v) sits on the arm after the slide, as (theta, v).
+func slide(theta: float, v: float) -> Vector2:
+	if drag == Vector2.ZERO:
+		return Vector2(theta, v)
+	var k: float = _slide_weight(theta, v)
+	return Vector2(theta + drag.x / radius * k, v + drag.y * k)
+
+
+## The skin point that slid to (theta, v): slide()'s inverse, by a few rounds.
+func unslide(theta: float, v: float) -> Vector2:
+	if drag == Vector2.ZERO:
+		return Vector2(theta, v)
+	var skin: Vector2 = Vector2(theta, v)
+	for i in 8:
+		var k: float = _slide_weight(skin.x, skin.y)
+		skin = Vector2(theta - drag.x / radius * k, v - drag.y * k)
+	return skin
+
+
+## The bare arm's skin point (theta, v) under a screen point, ignoring pulls and slides; past the silhouette
+## clamped just inside it.
+func rest_skin(point: Vector2) -> Vector2:
+	var r: float = radius_at(point.y)
+	return Vector2(asin(clampf(point.x / r, -0.995, 0.995)), point.y)
+
+
+func _slide_weight(theta: float, v: float) -> float:
+	var d: Vector2 = Vector2((theta - drag_from.x) * radius, v - drag_from.y)
+	return exp(-d.length_squared() / (drag_radius * drag_radius))
 
 
 ## Screen point plus how much ink lands there (0..1), as (x, y, ink).
 func project(theta: float, v: float) -> Vector3:
-	var placed: Array = _place(theta, v)
+	var at: Vector2 = slide(theta, v)
+	var placed: Array = _place(at.x, at.y)
 	var point: Vector3 = placed[0]
 	return Vector3(point.x, point.y, ink_factor(placed[1]))
 
@@ -97,7 +141,7 @@ func screen_to_skin(point: Vector2) -> Vector2:
 	solved = _solve_row(point.x, v)
 	if solved.z < 0.0:
 		return Vector2.INF
-	return Vector2(solved.x, v)
+	return unslide(solved.x, v)
 
 
 ## The grip point Q of row `v` in the pulled side's frame (x outward, y = z toward the camera).
@@ -141,6 +185,9 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("pull_side", float(side))
 	material.set_shader_parameter("pull_amount", amount)
 	material.set_shader_parameter("pull_shear", shear)
+	material.set_shader_parameter("drag_from", drag_from)
+	material.set_shader_parameter("drag", drag)
+	material.set_shader_parameter("drag_radius", drag_radius)
 
 
 func _side_sign() -> float:
