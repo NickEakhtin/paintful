@@ -39,8 +39,12 @@ const SURFACE_SCENES: Dictionary = {
 @export_range(0.0, 1.0) var magnet_strength: float = 0.85
 ## How fast the needle catches up with the mouse (per second); higher is snappier, lower calmer. It follows
 ## through two smoothing stages (each twice this fast): the same lag as one, but the needle eases into a move and
-## out of it instead of starting at once. 4.2 is about 240 ms behind (14 was 70 ms, 42 nearly the raw mouse).
-@export var needle_follow: float = 4.2
+## out of it instead of starting at once. 2.2 is about 450 ms behind, a heavy machine (4.2 was 240 ms, 14 was
+## 70 ms, 42 nearly the raw mouse).
+@export var needle_follow: float = 2.2
+## The machine's own weight on top of the tasks' (`TattooMachine.weight`): its top swings slower and wider, as a
+## mass 1 + this times the bare machine's. 0.9: 90% heavier.
+@export var machine_mass: float = 0.9
 ## Seconds fresh ink takes to dry from wet gloss to matte.
 @export var ink_dry_time: float = 6.0
 
@@ -521,7 +525,7 @@ func _update_needle(delta: float) -> void:
 	_needle_lead = _needle_lead.lerp(desired, follow)
 	_steady_needle = _steady_needle.lerp(_needle_lead, follow)
 	var offset: Vector2 = Vector2.ZERO
-	var weight: float = 0.0
+	var weight: float = machine_mass
 	for modifier in _modifiers:
 		offset += modifier.needle_offset()
 		weight += modifier.machine_weight()
