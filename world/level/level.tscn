@@ -41,6 +41,7 @@ transform = Transform3D(-0.9898387, 0.14217448, 0.0024174128, 0.11474254, 0.7885
 light_color = Color(0.41406584, 0.41406578, 0.41406578, 1)
 light_energy = 1.599
 light_bake_mode = 1
+shadow_enabled = true
 shadow_normal_bias = 2.204
 shadow_blur = 1.684
 sky_mode = 1

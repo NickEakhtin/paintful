@@ -27,7 +27,7 @@ func _ready() -> void:
 		mesh = null                         # nothing to draw; the flash light below still works
 	_flash_light = DirectionalLight3D.new()
 	_flash_light.light_color = Color(0.75, 0.82, 1.0)
-	_flash_light.shadow_enabled = false     # shadows off for speed (the window bars no longer throw them)
+	_flash_light.shadow_enabled = true      # so the window bars throw shadows into the room
 	_flash_light.visible = false
 	add_child(_flash_light)
 	_lightning_loop()

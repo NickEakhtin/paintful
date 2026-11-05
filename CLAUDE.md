@@ -51,7 +51,6 @@
 - The art is his (Hyper3D Rodin models through his pipeline, `tools/art/pipeline/README.md`; model notes in `docs/models.md`); binaries live in Git LFS (`git lfs install` once per clone). How his project was merged in: `docs/plan_visual_merge.md`.
 - `art/models/<name>/`: one folder per model with its textures; `art/catalog.tscn` shows every model in rows. `art/materials/`, `art/characters/`, `art/paintings/`, `art/props/`; `art/concepts/` is ignored by Godot.
 - `world/props/<name>/` and `world/fx/<name>/`: his props and effects as our scenes. Interactive ones use our `Interactable` (cabinets, wall cabinet and station cart build theirs from the models' bounds on start; the basement hatch emits `descend_requested(player)` when someone listens, otherwise it just opens and closes). Builders of his ground, roots, ruins and the volcano: `tools/art/props/`.
-- Lighting is cheap on purpose: no light casts shadows (studio lamps, the sun in `level.tscn`, the sky's lightning flash), the studio's `FireFlicker` is disabled (`process_mode` 4: the warm lamps no longer breathe) and `CandleSpot.flicker` is off (steady candles), so no light changes every frame. The session's 3D views (machine, arm, ink cap) have no MSAA.
 - His models carry no collision; a scene adds a `scene_collision.gd` node (see Level) or a prop builds its own. Anything you hand the player to pick up needs its top above any auto box under it (or the box skipped), or the ray hits the box first.
 
 ## Level (`world/`)
