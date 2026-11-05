@@ -89,7 +89,9 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var fold_rate: float = 8.0
 ## The taut patch round a slide's grip reaches this many `drag_radius`es; a flap's taut band along the arm this
 ## many of its `bulge_spread`s.
-@export var tension_spread: float = 0.8
+@export var tension_spread: float = 0.55
+## How far from a fold or the bump (past it) a slide still smooths it, in `drag_radius`es.
+@export var fold_reach_spread: float = 0.8
 @export var drag_return_rate: float = 8.0
 
 @export_group("Pull")
@@ -670,7 +672,7 @@ func _update_fold(delta: float) -> void:
 			# how far the grip is from the crease: past its band along the arm, past its ends round it
 			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - fold.x) - fold.z, 0.0) * radius,
 					maxf(absf(shape.drag_from.y - fold.y) - fold.w * 0.5, 0.0))
-			var reach: float = shape.drag_radius * tension_spread
+			var reach: float = shape.drag_radius * fold_reach_spread
 			opening = clampf(along / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
 		var target: float = (1.0 - opening) if fold_enabled else 0.0
 		var settled: float = lerpf(shape.fold_amounts[i], target, 1.0 - exp(-fold_rate * delta))
@@ -685,7 +687,7 @@ func _update_fold(delta: float) -> void:
 			var middle: float = b.y + (b.w - shape.bump_overhang) * 0.5 if shape.bump_up else b.y + span * 0.5
 			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - b.x) - b.z, 0.0) * radius,
 					maxf(absf(shape.drag_from.y - middle) - span * 0.5, 0.0))
-			var reach: float = shape.drag_radius * tension_spread
+			var reach: float = shape.drag_radius * fold_reach_spread
 			flat = clampf(shape.drag.length() / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
 		var full: float = 1.0 - flat
 		var eased: float = lerpf(shape.bump_amount, full, 1.0 - exp(-fold_rate * delta))
