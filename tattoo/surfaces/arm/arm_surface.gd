@@ -34,6 +34,11 @@ extends SkinSurface
 @export var max_drag: float = 160.0
 ## Share of the hand's footprint (round its middle) that keeps ink off the skin under it.
 @export_range(0.1, 1.0) var hand_block_scale: float = 0.55
+## Pushing the hand against the top or bottom of the screen (within `pan_edge` px of it) moves the view along the
+## arm at `pan_speed` px/s, at most `max_pan` px either way.
+@export var pan_edge: float = 40.0
+@export var pan_speed: float = 420.0
+@export var max_pan: float = 300.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -114,6 +119,8 @@ var _projected_fold: PackedFloat32Array = PackedFloat32Array()
 var _projected_bump: float = -1.0
 ## The left hand: where it is (this control's pixels) and how fast it moves.
 var _hand_position: Vector2 = Vector2.ZERO
+## How far down the arm the view looks, in pixels (negative: up).
+var _pan: float = 0.0
 var _hand_velocity: Vector2 = Vector2.ZERO
 ## Holding the skin: the gripped skin point (theta, v) and where on screen the hand took it.
 var _gripping: bool = false
@@ -191,17 +198,26 @@ func project(cell: Vector2) -> Vector3:
 			and not _projected.is_empty():
 		var index: int = y * grid.x + x
 		if _projected_known[index] == 0:
-			_projected[index] = _project_now(cell)
+			_projected[index] = _place_cell(cell)
 			_projected_known[index] = 1
-		return _projected[index]
+		return _projected[index] + _center3()
 	return _project_now(cell)
 
 
 func _project_now(cell: Vector2) -> Vector3:
+	return _place_cell(cell) + _center3()
+
+
+## A cell centre placed on the arm, relative to the arm's centre (the cache keeps these, so panning the view
+## doesn't drop it).
+func _place_cell(cell: Vector2) -> Vector3:
 	var skin: Vector2 = _cell_to_skin(cell)
-	var placed: Vector3 = shape.project(skin.x, skin.y)
+	return shape.project(skin.x, skin.y)
+
+
+func _center3() -> Vector3:
 	var center: Vector2 = _center()
-	return Vector3(placed.x + center.x, placed.y + center.y, placed.z)
+	return Vector3(center.x, center.y, 0.0)
 
 
 func pixels_per_cell() -> float:
@@ -262,12 +278,13 @@ func update_surface(delta: float, active: bool) -> void:
 	var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") if can_use else Vector2.ZERO
 	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
+	_update_pan(delta, wanted)
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
 	if toggled and not _gripping:
-		var skin: Vector2 = shape.screen_to_skin(_hand_position - size * 0.5)
+		var skin: Vector2 = shape.screen_to_skin(_arm_point(_hand_position))
 		if not skin.is_finite():
-			skin = _side_grab(_hand_position - size * 0.5)
+			skin = _side_grab(_arm_point(_hand_position))
 		if skin.is_finite():
 			_gripping = true
 			_grip_skin = skin
@@ -291,7 +308,7 @@ func update_surface(delta: float, active: bool) -> void:
 			_slide_side_grip()
 		else:
 			# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
-			var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
+			var target: Vector2 = shape.rest_skin(_arm_point(_hand_position))
 			shape.drag = Vector2((target.x - _grip_skin.x) * radius,
 					target.y - shape.skin_row(_grip_skin.x, _grip_skin.y)).limit_length(max_drag)
 	else:
@@ -322,8 +339,8 @@ func _slide_side_grip() -> void:
 	var side: float = -1.0 if _grip_skin.x < 0.0 else 1.0
 	var inward: float = minf(offset.x * side, 0.0) * side
 	var way: Vector2 = Vector2(inward, offset.y * (1.0 - pull.amount))
-	var base: Vector2 = shape.rest_skin(_grip_screen - size * 0.5)
-	var target: Vector2 = shape.rest_skin(_grip_screen + way - size * 0.5)
+	var base: Vector2 = shape.rest_skin(_arm_point(_grip_screen))
+	var target: Vector2 = shape.rest_skin(_arm_point(_grip_screen + way))
 	shape.drag = Vector2((target.x - base.x) * radius, target.y - base.y).limit_length(max_drag)
 
 
@@ -351,7 +368,7 @@ func _warm_projections() -> void:
 		_warm_cursor += 1
 		var index: int = row * grid.x + column
 		if _projected_known[index] == 0:
-			_projected[index] = _project_now(Vector2(column + 0.5, row + 0.5))
+			_projected[index] = _place_cell(Vector2(column + 0.5, row + 0.5))
 			_projected_known[index] = 1
 		if _warm_cursor % 64 == 0 and Time.get_ticks_usec() > until:
 			return
@@ -385,11 +402,28 @@ func _find_hidden(canvas: InkCanvas) -> Vector2:
 
 
 func release() -> void:
+	_pan = 0.0
 	pull.release()
 	_gripping = false
 	shape.drag = Vector2.ZERO
 	_reset_hand()
 	_sync_pull()
+
+
+## The hand pushing against the top or bottom of the screen (within `pan_edge`, keys held that way) moves the view
+## along the arm, up to `max_pan` either way; it stays there until pushed back. A held grip moves with the arm.
+func _update_pan(delta: float, wanted: Vector2) -> void:
+	var push: float = 0.0
+	if _hand_position.y <= pan_edge and wanted.y < 0.0:
+		push = -1.0
+	elif _hand_position.y >= size.y - pan_edge and wanted.y > 0.0:
+		push = 1.0
+	if push == 0.0:
+		return
+	var before: float = _pan
+	_pan = clampf(_pan + push * pan_speed * delta, -max_pan, max_pan)
+	if _gripping:
+		_grip_screen.y -= _pan - before
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
@@ -403,6 +437,7 @@ func _process(_delta: float) -> void:
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
 		_camera.size = view_size.y
+	_camera.position.y = -_pan   # the view's y is up: looking lower down the arm
 	(_background.material as ShaderMaterial).set_shader_parameter("size", view_size)
 
 
@@ -508,8 +543,14 @@ func _forget_projections() -> void:
 	_warm_cursor = 0
 
 
+## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
-	return get_global_rect().get_center()
+	return get_global_rect().get_center() - Vector2(0.0, _pan)
+
+
+## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
+func _arm_point(local: Vector2) -> Vector2:
+	return local - size * 0.5 + Vector2(0.0, _pan)
 
 
 func _skin_to_cell(skin: Vector2) -> Vector2:
