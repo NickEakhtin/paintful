@@ -24,6 +24,9 @@ uniform float pull_shear = 0.0;
 uniform vec2 drag_from = vec2(0.0);
 uniform vec2 drag = vec2(0.0);
 uniform float drag_radius = 160.0;
+// The swell (ArmShape.radius_here()): pulled outward near a silhouette, the arm's radius grows around swell_at.
+uniform float swell = 0.0;
+uniform vec2 swell_at = vec2(0.0);
 
 // The ink layer covers theta -wrap..wrap and v -stencil_height/2..stencil_height/2.
 uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
@@ -48,6 +51,16 @@ varying float stretch;
 
 float radius_at(float v) {
 	return radius * mix(taper_top, taper_bottom, clamp(v / arm_length + 0.5, 0.0, 1.0));
+}
+
+float radius_here(float theta, float v) {
+	float r = radius_at(v);
+	if (swell <= 0.0) {
+		return r;
+	}
+	vec2 d = vec2((theta - swell_at.x) * radius, v - swell_at.y);
+	float on_side = smoothstep(0.0, 0.35, theta * sign(swell_at.x));
+	return r + swell * exp(-dot(d, d) / (drag_radius * drag_radius)) * on_side;
 }
 
 float bulge_at(float v) {
@@ -77,7 +90,7 @@ float tangent_angle(float v) {
 
 // Screen-space point (x right, y down, z toward the camera) of skin point (theta, v).
 vec3 place(float theta, float v) {
-	float r = radius_at(v);
+	float r = radius_here(theta, v);
 	float s = pull_side < 0.0 ? -1.0 : 1.0;
 	float local = theta * s;
 	float t_angle = tangent_angle(v);
