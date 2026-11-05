@@ -8,6 +8,14 @@ extends SkinSurface
 ## can be slid into view and inked. Let go (Space again) and it slides back.
 ## The math is `ArmShape` (and its copy in `arm_skin.gdshader`).
 
+
+## The left hand holding a paper towel asks the session to throw it in the bin (Space).
+signal paper_discard_requested
+
+const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
+const PAPER_STACK: Script = preload("res://tattoo/blood/paper_stack.gd")
+const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
+
 @export_group("Shape")
 @export var radius: float = 210.0
 @export var taper_top: float = 1.1
@@ -41,6 +49,8 @@ extends SkinSurface
 @export var max_pan: float = 150.0
 ## How quickly the view goes back to the middle once the skin is let go (per second).
 @export var pan_return_rate: float = 4.0
+## The wet paper towel wipes blood over this radius round the palm (skin pixels).
+@export var wipe_radius: float = 42.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -128,6 +138,13 @@ var _ink_low: float = 0.0
 var _ink_high: float = 1.0
 ## The left hand: where it is (this control's pixels) and how fast it moves.
 var _hand_position: Vector2 = Vector2.ZERO
+var _hand_previous: Vector2 = Vector2.ZERO
+## The left hand holds a wet paper towel (wipes blood, doesn't pull); `hand_locked` freezes it (the bin).
+var holding_paper: bool = false
+var hand_locked: bool = false
+var _blood: BloodLayer
+var _paper_stack: Node2D
+var _paper: Node2D
 ## How far down the arm the view looks, in pixels (negative: up).
 var _pan: float = 0.0
 ## The arm's centre on screen as cached projections need it (`_refresh_center()`).
@@ -172,6 +189,21 @@ func _ready() -> void:
 	shape.apply_to(_material)
 	_hand.visible = false
 	_reset_hand.call_deferred()
+	# blood on the skin (look only) and the wet paper towels that wipe it
+	_blood = BloodLayer.new()
+	_blood.name = "Blood"
+	_ink_layer.add_child(_blood)
+	_paper_stack = PAPER_STACK.new()
+	_paper_stack.name = "PaperStack"
+	add_child(_paper_stack)
+	move_child(_paper_stack, _hand.get_index())
+	_paper_stack.visible = MECHANICS.blood
+	_paper = PAPER_IN_HAND.new()
+	_paper.name = "Paper"
+	_paper.visible = false
+	_hand.add_child(_paper)
+	resized.connect(_place_paper_stack)
+	_place_paper_stack.call_deferred()
 
 
 func setup(stencil: StencilData) -> void:
@@ -338,12 +370,14 @@ func supports_tasks() -> bool:
 
 
 func hint() -> String:
+	if MECHANICS.blood:
+		return "WASD — левая рука, пробел — тянуть кожу или взять салфетку (кровь вытирать ей)"
 	return "WASD — левая рука, пробел — держать и тянуть кожу"
 
 
 func update_surface(delta: float, active: bool) -> void:
 	_refresh_center()
-	var can_use: bool = active and not Transition.is_busy
+	var can_use: bool = active and not Transition.is_busy and not hand_locked
 	if _hand_position == Vector2.ZERO and size != Vector2.ZERO:
 		_reset_hand()
 	# the hand: WASD with a little inertia, kept on the screen
@@ -354,6 +388,22 @@ func update_surface(delta: float, active: bool) -> void:
 	_refresh_center()
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
+	var before: Vector2 = _hand_previous
+	_hand_previous = _hand_position
+	_paper_stack.hovered = not holding_paper and not _gripping and _paper_stack.visible \
+			and _paper_stack.rect.grow(20.0).has_point(_hand_position)
+	if holding_paper:
+		# with a paper towel the hand wipes blood instead of pulling: Space sends the paper to the bin
+		_wipe(_hand_position.distance_to(before))
+		if toggled:
+			paper_discard_requested.emit()
+		toggled = false
+	elif toggled and _paper_stack.hovered:
+		holding_paper = true
+		_paper.stained = 0.0
+		_paper.visible = true
+		_stretch_sound.play()
+		toggled = false
 	if toggled and not _gripping:
 		var skin: Vector2 = shape.screen_to_skin(_arm_point(_hand_position))
 		if not skin.is_finite():
@@ -390,6 +440,8 @@ func update_surface(delta: float, active: bool) -> void:
 			shape.drag = Vector2.ZERO
 		pull.update(delta, false, false, false, false)   # a let-go flap slides back
 	_update_fold(delta)
+	_blood.spawning = MECHANICS.blood
+	_blood.update(delta)
 	_sync_pull()
 	_place_hand()
 	if shape.drag == Vector2.ZERO and pull.amount <= 0.0:
@@ -476,6 +528,9 @@ func _find_hidden(canvas: InkCanvas) -> Vector2:
 
 func release() -> void:
 	_pan = 0.0
+	hand_locked = false
+	finish_paper()
+	_blood.clear()
 	pull.release()
 	_gripping = false
 	shape.drag = Vector2.ZERO
@@ -536,6 +591,45 @@ func _sync_pull() -> void:
 		_projected_from = shape.drag_from
 		_forget_projections()
 	shape.apply_to(_material)
+
+
+func note_ink(canvas: InkCanvas) -> void:
+	if not MECHANICS.blood:
+		return
+	var scale: Vector2 = Vector2(_ink_layer.size) / Vector2(grid)
+	for dab in canvas.dabs:
+		_blood.note_fresh((dab[0] as Vector2) * scale)
+	for stroke in canvas.strokes:
+		_blood.note_fresh((stroke[1] as Vector2) * scale)
+
+
+## The paper towel went into the bin: the hand is empty again.
+func finish_paper() -> void:
+	holding_paper = false
+	_paper.visible = false
+	_paper.stained = 0.0
+
+
+## How bloody the paper in the hand is, 0 .. 1.
+func paper_stain() -> float:
+	return _paper.stained if holding_paper else 0.0
+
+
+## The skin under the palm loses the blood the hand rubs over (`moved` px this frame).
+func _wipe(moved: float) -> void:
+	if moved <= 0.0:
+		return
+	var skin: Vector2 = shape.screen_to_skin(_arm_point(_hand_position))
+	if not skin.is_finite():
+		return
+	var layer: Vector2 = Vector2(_ink_layer.size)
+	var at: Vector2 = Vector2((skin.x / _wrap + 1.0) * 0.5 * layer.x, (skin.y / stencil_height + 0.5) * layer.y)
+	var taken: float = _blood.wipe(at, wipe_radius, moved)
+	_paper.stained += taken * 0.12
+
+
+func _place_paper_stack() -> void:
+	_paper_stack.rect = Rect2(28.0, size.y * 0.62, 150.0, 90.0)
 
 
 func has_tension() -> bool:

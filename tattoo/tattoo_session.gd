@@ -11,6 +11,7 @@ signal finished(result: SessionResult)
 
 const INK_SHADER: Shader = preload("res://tattoo/stencil_ink.gdshader")
 const ROULETTE_SCENE: PackedScene = preload("res://ui/roulette/roulette.tscn")
+const PAPER_BALL: Script = preload("res://tattoo/blood/paper_ball.gd")
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 ## Skin scenes by `StencilData.surface`; anything else uses the flat panel already in the scene.
 const SURFACE_SCENES: Dictionary = {
@@ -227,6 +228,9 @@ var _edge_frame_level: float = 0.0
 var _edge_frame_held: float = 0.0
 ## Where the brush last crossed the stencil's edge, in viewport pixels: the specks fly off there.
 var _edge_contact: Vector2 = Vector2.ZERO
+## The left hand's paper towel is on its way to the bin: the view is at the table, waiting for the throw.
+var _discarding: bool = false
+var _throw_ready: bool = false
 var _edge_frame_hold_until: float = -1.0
 ## The session clock until which a hard push at the edge keeps the machine stopped.
 var _edge_stall_until: float = -1.0
@@ -276,6 +280,8 @@ var _brush_angle2: float = 0.0
 @onready var _thin_cartridge: NeedleCartridge = $View/ThinNeedle
 @onready var _edge_frame: ColorRect = $EdgeFrame
 @onready var _edge_motes: EdgeMotes = $EdgeMotes
+@onready var _trash_bin: Node2D = $View/TrashBin
+@onready var _paper_throw: AudioStreamPlayer = $PaperThrow
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _cry: AudioStreamPlayer = $Cry
 @onready var _ink_cap: InkCap = $View/InkCap
@@ -453,6 +459,7 @@ func _process(delta: float) -> void:
 		_overheat()
 		return
 	_update_ink_display()
+	_surface.note_ink(canvas)
 	_flush_ink()
 	_hud.show_progress(canvas)
 	_hud.show_tasks(_modifiers)
@@ -478,7 +485,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		skip()
 	elif _running and event.is_action_pressed("highlight"):
 		_ping_highlight()
-	elif _running and event.is_action_pressed("turn_to_ink"):
+	elif _running and event.is_action_pressed("turn_to_ink") and not _discarding:
 		_turn(not _at_table)
 	# The delay keeps the end of the last stroke from closing the panel at once.
 	elif _waiting_for_close and event.is_action_pressed("use") \
@@ -1062,6 +1069,61 @@ func _update_ink_display() -> void:
 
 ## A quick swing with a horizontal smear to the side table or back, on Q.
 ## The machine never moves by itself: it stays under the mouse the whole time.
+## The left hand brought a bloody paper towel (Space): the view swings to the table, Space throws the crumpled towel
+## at the bin (a real physics ball, aimed with a little error), and once it lies still the view swings back.
+func _on_paper_discard() -> void:
+	if _discarding or _turning or not _running:
+		return
+	_discarding = true
+	var arm: ArmSurface = _surface as ArmSurface
+	arm.hand_locked = true
+	_place_trash_bin()
+	await _turn(true)
+	_throw_ready = true
+	while _throw_ready and _running:
+		if Input.is_action_just_pressed("hand_wave") and not Transition.is_busy:
+			_throw_ready = false
+		await get_tree().process_frame
+	if not _running:
+		_discarding = false
+		return
+	var ball: RigidBody2D = PAPER_BALL.new()
+	_view.add_child(ball)
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	ball.global_position = Vector2(screen.x * 0.1, screen.y * 0.45)
+	# a high lob: drops into the bin's opening after `flight` s, give or take a hand's error (no air drag, so the
+	# arc is the one aimed)
+	var flight: float = 1.4
+	var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
+	var target: Vector2 = _trash_bin.target() + Vector2(randf_range(-22.0, 22.0), 0.0)
+	var lob: Vector2 = (target - ball.global_position) / flight - Vector2(0.0, 0.5 * gravity * flight)
+	ball.linear_velocity = lob
+	ball.angular_velocity = randf_range(-8.0, 8.0)
+	_paper_throw.play()
+	var waited: float = 0.0
+	while waited < 4.0 and _running:
+		await get_tree().physics_frame
+		waited += get_physics_process_delta_time()
+		if waited > 0.6 and (ball.sleeping or ball.linear_velocity.length() < 8.0):
+			break
+	if _trash_bin.holds(ball.global_position):
+		_trash_bin.balls += 1
+	await get_tree().create_timer(0.25).timeout
+	ball.queue_free()
+	arm.finish_paper()
+	await _turn(false)
+	arm.hand_locked = false
+	_discarding = false
+
+
+## The bin's place beside the side table, in `View` pixels.
+func _place_trash_bin() -> void:
+	var table: Control = $View/SideTable
+	var rect: Rect2 = Rect2(table.position, table.size)
+	var floor_y: float = minf(rect.end.y, _view.size.y - 24.0)   # the floor stays on screen in a small window
+	_trash_bin.build(Vector2(rect.end.x + 100.0, floor_y))
+
+
 func _turn(to_table: bool) -> void:
 	if _turning:
 		return
@@ -1131,6 +1193,8 @@ func _setup_surface() -> void:
 		skin.visible = false
 		_canvas_rect.visible = false
 		_redness.visible = false
+		if _surface.has_signal("paper_discard_requested"):
+			_surface.connect("paper_discard_requested", _on_paper_discard)
 	_surface.setup(stencil)
 
 

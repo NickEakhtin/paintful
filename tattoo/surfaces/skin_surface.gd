@@ -89,6 +89,12 @@ func tension_at(_screen_point: Vector2) -> float:
 	return 1.0
 
 
+## The skin learns where ink just landed (the canvas's new `dabs` and `strokes`, before the look takes them): fresh
+## ink can bleed. Called by the session every frame.
+func note_ink(_canvas: InkCanvas) -> void:
+	pass
+
+
 ## The artist's left hand lying on the skin: a rect in viewport pixels whose inscribed ellipse takes no ink and
 ## pushes the needle away; an empty rect when there is no hand.
 func hand_rect() -> Rect2:

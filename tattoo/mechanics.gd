@@ -33,3 +33,6 @@ extends Resource
 @export var edge_kick: bool = true
 ## Stretchable skin (the arm) takes ink well only where the left hand pulls it taut, poorly where it's slack.
 @export var skin_tension: bool = true
+## Now and then blood wells up on fresh ink, swells and runs; the left hand wipes it with a wet paper towel and
+## throws the towel in the bin. Look only.
+@export var blood: bool = true
