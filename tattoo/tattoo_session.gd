@@ -94,9 +94,9 @@ const SURFACE_SCENES: Dictionary = {
 @export_group("Feel")
 ## Half length of the dent under the working needle, in pixels (as the brush's); it has the brush's shape and
 ## turns with it.
-@export var press_radius: float = 30.0
+@export var press_radius: float = 45.0
 ## How far the picture is pulled into the dent, in pixels (deep enough to read through the retro filter).
-@export var press_depth: float = 9.0
+@export var press_depth: float = 12.0
 ## Light and shade on the dent's walls: the side facing the lamp lighter, the other darker, by this share.
 @export var press_shade: float = 0.35
 ## Pink halo around the tip; alpha is its strength.
