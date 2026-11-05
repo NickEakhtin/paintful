@@ -53,6 +53,13 @@ var shear: float = 0.0
 var drag_from: Vector2 = Vector2.ZERO
 var drag: Vector2 = Vector2.ZERO
 var drag_radius: float = 160.0
+## A fold across the arm: the skin band of `fold_width` px from `fold_v` - fold_width / 2 is bunched into
+## `fold_closed_width` px on the arm and turned inward, so it takes no ink. `fold` 1 = closed, 0 = smoothed out.
+## Applied before the slide (skin -> fold -> slide -> arm). `arm_skin.gdshader` repeats it.
+var fold_v: float = 40.0
+var fold_width: float = 70.0
+var fold_closed_width: float = 8.0
+var fold: float = 0.0
 
 
 ## Arm radius at row `v`.
@@ -81,20 +88,57 @@ func facing(theta: float, v: float) -> float:
 
 ## Where skin point (theta, v) sits on the arm after the slide, as (theta, v).
 func slide(theta: float, v: float) -> Vector2:
+	var row: float = fold_place(v)
 	if drag == Vector2.ZERO:
-		return Vector2(theta, v)
+		return Vector2(theta, row)
 	var k: float = _slide_weight(theta, v)
-	return Vector2(theta + drag.x / radius * k, v + drag.y * k)
+	return Vector2(theta + drag.x / radius * k, row + drag.y * k)
+
+
+## Skin row `v` -> its row on the arm with the fold bunched up: the band is squeezed, the skin beyond it pulled in
+## half the slack from either side.
+func fold_place(v: float) -> float:
+	var slack: float = _fold_slack()
+	if slack <= 0.0:
+		return v
+	var t: float = clampf((v - (fold_v - fold_width * 0.5)) / fold_width, 0.0, 1.0)
+	return v - slack * t + slack * 0.5
+
+
+## fold_place()'s inverse.
+func fold_unplace(row: float) -> float:
+	var slack: float = _fold_slack()
+	if slack <= 0.0:
+		return row
+	var start: float = fold_v - fold_width * 0.5
+	if row <= start + slack * 0.5:
+		return row - slack * 0.5
+	if row >= start + fold_width - slack * 0.5:
+		return row + slack * 0.5
+	return (row - slack * 0.5 - slack * start / fold_width) / (1.0 - slack / fold_width)
+
+
+## How deep skin row `v` is tucked into the fold, 0..1 (soft at the band's edges).
+func fold_hidden(v: float) -> float:
+	if fold <= 0.0:
+		return 0.0
+	var start: float = fold_v - fold_width * 0.5
+	var t: float = (v - start) / fold_width
+	return fold * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t))
+
+
+func _fold_slack() -> float:
+	return maxf(0.0, fold_width - fold_closed_width) * clampf(fold, 0.0, 1.0)
 
 
 ## The skin point that slid to (theta, v): slide()'s inverse, by a few rounds.
 func unslide(theta: float, v: float) -> Vector2:
 	if drag == Vector2.ZERO:
-		return Vector2(theta, v)
-	var skin: Vector2 = Vector2(theta, v)
+		return Vector2(theta, fold_unplace(v))
+	var skin: Vector2 = Vector2(theta, fold_unplace(v))
 	for i in 24:   # each round cuts the error by about 0.86 × drag / drag_radius: 24 get under a tenth of a pixel
 		var k: float = _slide_weight(skin.x, skin.y)
-		skin = Vector2(theta - drag.x / radius * k, v - drag.y * k)
+		skin = Vector2(theta - drag.x / radius * k, fold_unplace(v - drag.y * k))
 	return skin
 
 
@@ -115,7 +159,7 @@ func project(theta: float, v: float) -> Vector3:
 	var at: Vector2 = slide(theta, v)
 	var placed: Array = _place(at.x, at.y)
 	var point: Vector3 = placed[0]
-	return Vector3(point.x, point.y, ink_factor(placed[1]))
+	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(v)))
 
 
 ## 1 where the skin faces the camera squarely enough to take ink, fading to 0 toward the silhouette.
@@ -188,6 +232,10 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("drag_from", drag_from)
 	material.set_shader_parameter("drag", drag)
 	material.set_shader_parameter("drag_radius", drag_radius)
+	material.set_shader_parameter("fold_v", fold_v)
+	material.set_shader_parameter("fold_width", fold_width)
+	material.set_shader_parameter("fold_closed_width", fold_closed_width)
+	material.set_shader_parameter("fold", fold)
 
 
 func _side_sign() -> float:

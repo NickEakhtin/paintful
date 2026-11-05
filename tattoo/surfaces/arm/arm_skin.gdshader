@@ -24,6 +24,14 @@ uniform float pull_shear = 0.0;
 uniform vec2 drag_from = vec2(0.0);
 uniform vec2 drag = vec2(0.0);
 uniform float drag_radius = 160.0;
+// The fold across the arm (ArmShape.fold_*): the band is bunched up and tucked in by `fold` (1 closed, 0 smooth).
+uniform float fold_v = 40.0;
+uniform float fold_width = 70.0;
+uniform float fold_closed_width = 8.0;
+uniform float fold = 0.0;
+// How dark the crease is, and how much the bunched lips either side of it catch the light.
+uniform float fold_shade = 0.6;
+uniform float fold_lip = 0.12;
 
 // The ink layer covers theta -wrap..wrap and v -stencil_height/2..stencil_height/2.
 uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
@@ -52,6 +60,7 @@ uniform vec4 hint_color : source_color = vec4(1.0, 0.72, 0.2, 1.0);
 
 varying vec2 skin_uv;
 varying float skin_theta;
+varying float skin_v;
 varying float stretch;
 
 float radius_at(float v) {
@@ -102,11 +111,28 @@ vec3 place(float theta, float v) {
 	return vec3(on_flap.x * s, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
 }
 
-// Where skin point (theta, v) sits after the slide.
+float fold_slack() {
+	return max(0.0, fold_width - fold_closed_width) * clamp(fold, 0.0, 1.0);
+}
+
+// Skin row -> its row on the arm with the fold bunched up (ArmShape.fold_place()).
+float fold_place(float v) {
+	float slack = fold_slack();
+	float t = clamp((v - (fold_v - fold_width * 0.5)) / fold_width, 0.0, 1.0);
+	return v - slack * t + slack * 0.5;
+}
+
+// How deep skin row `v` is tucked into the fold (ArmShape.fold_hidden()).
+float fold_hidden(float v) {
+	float t = (v - (fold_v - fold_width * 0.5)) / fold_width;
+	return fold * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
+}
+
+// Where skin point (theta, v) sits after the fold and the slide.
 vec2 slide(float theta, float v) {
 	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
 	float k = exp(-dot(d, d) / (drag_radius * drag_radius));
-	return vec2(theta + drag.x / radius * k, v + drag.y * k);
+	return vec2(theta + drag.x / radius * k, fold_place(v) + drag.y * k);
 }
 
 // The skin point's place on screen, slid first.
@@ -145,6 +171,7 @@ void vertex() {
 	stretch = length(along_theta) / (2.0 * e * radius_at(v));
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
 	skin_theta = theta;
+	skin_v = v;
 }
 
 void fragment() {
@@ -170,6 +197,14 @@ void fragment() {
 	if (skin_uv.x >= 0.0 && skin_uv.x <= 1.0 && skin_uv.y >= 0.0 && skin_uv.y <= 1.0) {
 		ink = texture(ink_layer, skin_uv);
 	}
+	// the fold: the tucked band goes dark (its ink with it), the bunched lips either side catch the light
+	float hidden = fold_hidden(skin_v);
+	float start = fold_v - fold_width * 0.5;
+	float lip_width = fold_width * 0.18;
+	float lips = exp(-pow((skin_v - start) / lip_width, 2.0)) + exp(-pow((skin_v - start - fold_width) / lip_width, 2.0));
+	skin *= 1.0 - fold_shade * hidden;
+	skin += vec3(fold_lip) * lips * fold;
+	ink.a *= 1.0 - 0.85 * hidden;
 	// The arm darkens and reddens toward its silhouette, like skin turning away from the lamp.
 	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
