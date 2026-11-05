@@ -57,6 +57,8 @@ var shear: float = 0.0
 var drag_from: Vector2 = Vector2.ZERO
 var drag: Vector2 = Vector2.ZERO
 var drag_radius: float = 160.0
+## The same reach along the arm (the surface makes it taller for a grip near a silhouette, so the whole side moves).
+var drag_radius_v: float = 160.0
 ## How much the arm swells, and where (theta, v); share of an outward drag at the silhouette that swells it.
 var swell: float = 0.0
 var swell_at: Vector2 = Vector2.ZERO
@@ -76,9 +78,9 @@ func radius_here(theta: float, v: float) -> float:
 	var r: float = radius_at(v)
 	if swell <= 0.0:
 		return r
-	var d: Vector2 = Vector2((theta - swell_at.x) * radius, v - swell_at.y)
+	var d: Vector2 = Vector2((theta - swell_at.x) * radius / drag_radius, (v - swell_at.y) / drag_radius_v)
 	var on_side: float = smoothstep(0.0, 0.35, theta * signf(swell_at.x))
-	return r + swell * exp(-d.length_squared() / (drag_radius * drag_radius)) * on_side
+	return r + swell * exp(-d.length_squared()) * on_side
 
 
 ## The swell from the drag: how far the grip was pulled outward, times how close to a silhouette it was taken.
@@ -137,8 +139,8 @@ func rest_skin(point: Vector2) -> Vector2:
 
 
 func _slide_weight(theta: float, v: float) -> float:
-	var d: Vector2 = Vector2((theta - drag_from.x) * radius, v - drag_from.y)
-	return exp(-d.length_squared() / (drag_radius * drag_radius))
+	var d: Vector2 = Vector2((theta - drag_from.x) * radius / drag_radius, (v - drag_from.y) / drag_radius_v)
+	return exp(-d.length_squared())
 
 
 ## Screen point plus how much ink lands there (0..1), as (x, y, ink).
@@ -219,6 +221,7 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("drag_from", drag_from)
 	material.set_shader_parameter("drag", drag)
 	material.set_shader_parameter("drag_radius", drag_radius)
+	material.set_shader_parameter("drag_radius_v", drag_radius_v)
 	material.set_shader_parameter("swell", swell)
 	material.set_shader_parameter("swell_at", swell_at)
 
