@@ -32,6 +32,8 @@ extends SkinSurface
 @export var hand_acceleration: float = 12.0
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
+## Share of the hand's footprint (round its middle) that keeps ink off the skin under it.
+@export_range(0.1, 1.0) var hand_block_scale: float = 0.55
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -458,7 +460,10 @@ const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 func hand_rect() -> Rect2:
 	if not _hand.visible:
 		return Rect2()
-	return _hand.get_global_transform() * HAND_SHAPE
+	var shape_rect: Rect2 = HAND_SHAPE
+	var middle: Vector2 = shape_rect.get_center()
+	shape_rect = Rect2(middle - shape_rect.size * 0.5 * hand_block_scale, shape_rect.size * hand_block_scale)
+	return _hand.get_global_transform() * shape_rect
 
 
 ## The placeholder hand: palm at `_hand_position`, fingers up; a little smaller and solid while gripping.

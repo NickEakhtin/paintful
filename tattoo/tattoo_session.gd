@@ -78,8 +78,6 @@ const SURFACE_SCENES: Dictionary = {
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
 @export var edge_push: float = 450.0
-## How hard a brush on the artist's own left hand is pushed out of it, pixels at full.
-@export var hand_push: float = 300.0
 ## Within this many pixels of the stencil's edge the thick needle lays ink only by distance / margin (none right at
 ## the edge; the dots still fly), so it can't fill the edge evenly: that's the thin needle's job.
 @export var edge_margin: float = 24.0
@@ -948,23 +946,17 @@ func _swap_needle(thin: bool) -> void:
 
 
 ## How much of the working brush is past the stencil's edge (`Mechanics.edge_kick`): the skin shakes and the
-## machine is pushed back toward the drawing. The thin needle feels it `thin_edge_factor` as much. A brush on the
-## artist's own left hand (`SkinSurface.hand_rect()`) is pushed straight out of it, by either needle, full strength.
+## machine is pushed back toward the drawing. The thin needle feels it `thin_edge_factor` as much. The artist's own
+## left hand only keeps ink off (`_update_ink_blocks()`): no push, frame or specks there.
 func _update_edge(delta: float, inking: bool) -> void:
 	var target: Vector2 = Vector2.ZERO
 	_edge_amount = 0.0
 	if MECHANICS.edge_kick and inking:
 		var outside: float = _brush_outside()
-		var on_hand: float = _brush_on_hand()
 		if outside > 0.0:
 			_edge_amount = outside * (thin_edge_factor if _thin else 1.0)
 			var toward: Vector2 = _to_screen(_stencil_center) - _machine.needle
 			target = toward.normalized() * edge_push * _edge_amount
-		if on_hand > 0.0:
-			# the needle never goes into the artist's own hand, thin or thick: pushed straight out of it
-			var away: Vector2 = _machine.needle - _surface.hand_rect().get_center()
-			target += (away.normalized() if away.length() > 0.5 else Vector2.RIGHT) * hand_push * on_hand
-			_edge_amount = maxf(_edge_amount, on_hand)
 		if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
 			_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
 		if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
@@ -992,7 +984,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the
-## artist's hand count for `_brush_on_hand()` instead, so the hand doesn't push toward the stencil's middle).
+## artist's hand don't count: the hand covering the stencil isn't its edge).
 ## Also finds where the brush crosses the edge (`_edge_contact`, between an inside and an outside point, or the
 ## needle when all of it is out).
 func _brush_outside() -> float:
@@ -1017,18 +1009,6 @@ func _brush_outside() -> float:
 		previous = point
 	_edge_contact = crossings / crossing_count if crossing_count > 0 else _machine.needle
 	return outside / 5.0
-
-
-## Share of the same five points that are on the artist's left hand.
-func _brush_on_hand() -> float:
-	var hand: Rect2 = _surface.hand_rect()
-	if not hand.has_area():
-		return 0.0
-	var on_hand: int = 0
-	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
-		if _in_ellipse(_machine.needle + _brush.axis * _brush.radius_px * s, hand):
-			on_hand += 1
-	return on_hand / 5.0
 
 
 ## Whether a point is inside the ellipse inscribed in a rect (false for an empty rect).
