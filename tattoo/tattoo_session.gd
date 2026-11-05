@@ -560,6 +560,14 @@ func _update_ink_blocks() -> void:
 		for rect in modifier.ink_blocks():
 			var from: Vector2 = _to_cell(rect.position)
 			canvas.blocked.append(Rect2(from, _to_cell(rect.end) - from))
+	# the artist's own left hand on the skin: its ellipse, measured in cells around the hand's middle
+	var hand: Rect2 = _surface.hand_rect()
+	if hand.has_area():
+		var middle: Vector2 = _to_cell(hand.get_center())
+		if middle.is_finite():
+			var half: Vector2 = Vector2(_surface.cells_within(middle, hand.size.x * 0.5).x,
+					_surface.cells_within(middle, hand.size.y * 0.5).y)
+			canvas.blocked.append(Rect2(middle - half, half * 2.0))
 
 
 func _apply_skin_offset() -> void:
@@ -905,22 +913,29 @@ func _swap_needle(thin: bool) -> void:
 
 
 ## How much of the working brush is past the stencil's edge (`Mechanics.edge_kick`): the skin shakes and the
-## machine is pushed back toward the drawing. The thin needle feels it `thin_edge_factor` as much.
+## machine is pushed back toward the drawing. The thin needle feels it `thin_edge_factor` as much. A brush on the
+## artist's own left hand (`SkinSurface.hand_rect()`) is pushed straight out of it, by either needle, full strength.
 func _update_edge(delta: float, inking: bool) -> void:
 	var target: Vector2 = Vector2.ZERO
 	_edge_amount = 0.0
 	if MECHANICS.edge_kick and inking:
 		var outside: float = _brush_outside()
+		var on_hand: float = _brush_on_hand()
 		if outside > 0.0:
 			_edge_amount = outside * (thin_edge_factor if _thin else 1.0)
 			var toward: Vector2 = _to_screen(_stencil_center) - _machine.needle
 			target = toward.normalized() * edge_push * _edge_amount
-			if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
-				_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
-			if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
-				_edge_sound_at = canvas.time
-				_wince.pitch_scale = randf_range(1.15, 1.35)
-				_wince.play()
+		if on_hand > 0.0:
+			# the needle never goes into the artist's own hand, thin or thick: pushed straight out of it
+			var away: Vector2 = _machine.needle - _surface.hand_rect().get_center()
+			target += (away.normalized() if away.length() > 0.5 else Vector2.RIGHT) * edge_push * on_hand
+			_edge_amount = maxf(_edge_amount, on_hand)
+		if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
+			_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
+		if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
+			_edge_sound_at = canvas.time
+			_wince.pitch_scale = randf_range(1.15, 1.35)
+			_wince.play()
 	var rate: float = edge_rate if target != Vector2.ZERO else edge_return
 	_edge_push = _edge_push.lerp(target, 1.0 - exp(-rate * delta))
 	# the view shakes like a camera (the machine stays under the mouse); the swing owns it while turning
@@ -932,14 +947,39 @@ func _update_edge(delta: float, inking: bool) -> void:
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 
 
-## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil.
+## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the
+## artist's hand count for `_brush_on_hand()` instead, so the hand doesn't push toward the stencil's middle).
 func _brush_outside() -> float:
 	var outside: int = 0
+	var hand: Rect2 = _surface.hand_rect()
 	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
-		var cell: Vector2 = _surface.to_cell(_machine.needle + _brush.axis * _brush.radius_px * s)
+		var point: Vector2 = _machine.needle + _brush.axis * _brush.radius_px * s
+		if _in_ellipse(point, hand):
+			continue
+		var cell: Vector2 = _surface.to_cell(point)
 		if not cell.is_finite() or not canvas.is_stencil(cell):
 			outside += 1
 	return outside / 5.0
+
+
+## Share of the same five points that are on the artist's left hand.
+func _brush_on_hand() -> float:
+	var hand: Rect2 = _surface.hand_rect()
+	if not hand.has_area():
+		return 0.0
+	var on_hand: int = 0
+	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+		if _in_ellipse(_machine.needle + _brush.axis * _brush.radius_px * s, hand):
+			on_hand += 1
+	return on_hand / 5.0
+
+
+## Whether a point is inside the ellipse inscribed in a rect (false for an empty rect).
+static func _in_ellipse(point: Vector2, rect: Rect2) -> bool:
+	if not rect.has_area():
+		return false
+	var offset: Vector2 = (point - rect.get_center()) / (rect.size * 0.5)
+	return offset.length_squared() <= 1.0
 
 
 ## Centre of the stencil's cells, in cells.

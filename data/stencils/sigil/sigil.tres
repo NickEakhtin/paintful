@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="StencilData" format=3]
+[gd_resource type="Resource" script_class="StencilData" format=3 uid="uid://006werbmld1p"]
 
-[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
-[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
-[ext_resource type="Texture2D" path="res://data/stencils/sigil/outer_ring.png" id="3_outer"]
-[ext_resource type="Texture2D" path="res://data/stencils/sigil/inner_ring.png" id="4_inner"]
-[ext_resource type="Texture2D" path="res://data/stencils/sigil/star.png" id="5_star"]
-[ext_resource type="Texture2D" path="res://data/stencils/sigil/dots.png" id="6_dots"]
+[ext_resource type="Script" uid="uid://cnrpyox8u6lpn" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://bwlacs1cgivi1" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" uid="uid://w8q6cuxkbosq" path="res://data/stencils/sigil/outer_ring.png" id="3_outer"]
+[ext_resource type="Texture2D" uid="uid://cksm1akuxh6xc" path="res://data/stencils/sigil/inner_ring.png" id="4_inner"]
+[ext_resource type="Texture2D" uid="uid://g4l4wucwacsb" path="res://data/stencils/sigil/star.png" id="5_star"]
+[ext_resource type="Texture2D" uid="uid://pbpobc3ss3k2" path="res://data/stencils/sigil/dots.png" id="6_dots"]
 
 [sub_resource type="Resource" id="part_outer"]
 script = ExtResource("2_part")

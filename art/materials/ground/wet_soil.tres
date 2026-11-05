@@ -38,4 +38,4 @@ shader_parameter/wet_roughness = 0.45
 shader_parameter/dry_roughness = 0.85
 shader_parameter/grain_depth = 1.0
 shader_parameter/ignore_hole = false
-shader_parameter/hole = Vector3(33.983772, -18.269142, 1.74)
+shader_parameter/hole = Vector3(33.858116, -17.757286, 1.74)

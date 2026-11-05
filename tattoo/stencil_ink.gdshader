@@ -2,7 +2,8 @@ shader_type canvas_item;
 // Draws one stencil part: the faint transfer turns into ink where coverage grows.
 // Edges come from the full-resolution part texture, the ink's shape and its wetness from InkPaint (`paint`,
 // `wet`: the logic's stamps drawn at the screen's resolution), so strokes stay crisp on any monitor.
-// `paint` R is the film (the smooth dose), G the dots of the flat brush: a dot is black at once, the film
+// `paint` R is the film (the smooth dose), B the thick needle's capped film by the stencil's edge, G the dots
+// of the flat brush: a dot is black at once, the film
 // shows from `film_from` and closes the gaps between them as the dose builds up to full.
 // Fresh ink is wet: deep black with a glossy sheen (a window reflection plus a bright rim
 // where it beads at the edges); over `dry_time` it dries to flat, slightly grey matte.
@@ -54,9 +55,16 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// The thick needle's film near the stencil's edge (`paint` B) shows no more than this: a faint grey under its
+// dots, never solid. Only another needle's film (R) fills the strip.
+float edge_film_cap() {
+	return mix(film_from, film_full, 0.3);
+}
+
 // Ink at `uv` from the screen-resolution dabs: (film, dots), each 0..1.
 vec2 ink_layers(vec2 uv) {
-	vec2 laid = texture(paint, uv).rg;
+	vec3 laid_ink = texture(paint, uv).rgb;
+	vec2 laid = vec2(laid_ink.r + min(laid_ink.b, edge_film_cap()), laid_ink.g);
 	// the rim of the ink, anti-aliased over one screen pixel whatever the dose: a fixed threshold made it a
 	// hard, stepped edge on a curve
 	float presence = smoothstep(0.0, max(fwidth(laid.r) * 1.5, 1e-4), laid.r);
@@ -82,7 +90,8 @@ float wetness(vec2 uv) {
 // Height of the ink surface: the film's smooth dose (dots and the crisp rim would each bead up into a bubble),
 // wet ink a little higher than dry as its own layer.
 float ink_at(float shape, vec2 uv) {
-	float film = max(smoothstep(0.0, 1.0, min(texture(paint, uv).r, 1.0)), done);
+	vec3 laid_ink = texture(paint, uv).rgb;
+	float film = max(smoothstep(0.0, 1.0, min(laid_ink.r + min(laid_ink.b, edge_film_cap()), 1.0)), done);
 	return film * shape * (1.0 + wet_height * wetness(uv));
 }
 

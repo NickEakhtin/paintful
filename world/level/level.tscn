@@ -1,34 +1,35 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bf1fa8qywmyxd"]
 
-[ext_resource type="Script" path="res://world/level/day_flow.gd" id="1_day_flow"]
-[ext_resource type="Resource" path="res://data/clients/anton.tres" id="7_anton"]
-[ext_resource type="Resource" path="res://data/clients/marina.tres" id="8_marina"]
-[ext_resource type="Resource" path="res://data/clients/gleb.tres" id="9_gleb"]
-[ext_resource type="Script" path="res://characters/client/client_data.gd" id="10_client_data"]
-[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="15_stencil_data"]
-[ext_resource type="Resource" path="res://data/stencils/arm_square/arm_square.tres" id="16_square"]
-[ext_resource type="Resource" path="res://data/dialogues/random_hello.tres" id="19_hello"]
-[ext_resource type="Resource" path="res://data/dialogues/random_bye.tres" id="20_bye"]
-[ext_resource type="AudioStream" path="res://placeholders/sounds/chop.wav" id="21_chop"]
-[ext_resource type="Script" path="res://world/lighting/day_night.gd" id="2_day_night"]
+[ext_resource type="Script" uid="uid://cngubu1yr2coj" path="res://world/level/day_flow.gd" id="1_day_flow"]
+[ext_resource type="Script" uid="uid://dkwlmi108fdjs" path="res://world/lighting/day_night.gd" id="2_day_night"]
 [ext_resource type="PackedScene" path="res://world/studio/studio.tscn" id="3_studio"]
 [ext_resource type="PackedScene" path="res://world/basement/basement.tscn" id="4_basement"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="5_player"]
 [ext_resource type="NavigationMesh" path="res://world/level/level_navmesh.tres" id="6_navmesh"]
-[ext_resource type="Environment" path="res://world/level/environment.tres" id="22_environment"]
-[ext_resource type="Script" path="res://world/level/level_switch.gd" id="23_level_switch"]
+[ext_resource type="Resource" path="res://data/clients/anton.tres" id="7_anton"]
+[ext_resource type="Resource" path="res://data/clients/marina.tres" id="8_marina"]
+[ext_resource type="Resource" path="res://data/clients/gleb.tres" id="9_gleb"]
+[ext_resource type="Script" uid="uid://bo1j04c0brju1" path="res://characters/client/client_data.gd" id="10_client_data"]
+[ext_resource type="Script" uid="uid://cnrpyox8u6lpn" path="res://tattoo/stencil_data.gd" id="15_stencil_data"]
+[ext_resource type="Resource" uid="uid://dynd48otjqri0" path="res://data/stencils/arm_square/arm_square.tres" id="16_square"]
+[ext_resource type="Resource" uid="uid://dq4y8nfsqs88u" path="res://data/dialogues/random_hello.tres" id="19_hello"]
+[ext_resource type="Resource" uid="uid://blwmb7lvuedk8" path="res://data/dialogues/random_bye.tres" id="20_bye"]
+[ext_resource type="AudioStream" uid="uid://dk7cowcunwp45" path="res://placeholders/sounds/chop.wav" id="21_chop"]
+[ext_resource type="Environment" uid="uid://cxiaj4h6or6ms" path="res://world/level/environment.tres" id="22_environment"]
+[ext_resource type="Script" uid="uid://b768ko2uf7lrq" path="res://world/level/level_switch.gd" id="23_level_switch"]
 
-[node name="Level" type="Node3D"]
+[node name="Level" type="Node3D" unique_id=136819865]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=109750312]
 environment = ExtResource("22_environment")
 
-[node name="Studio" parent="." instance=ExtResource("3_studio")]
+[node name="Studio" parent="." unique_id=1880109431 instance=ExtResource("3_studio")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12265766, -0.09821701, 0.025513649)
 
-[node name="Basement" parent="." instance=ExtResource("4_basement")]
+[node name="Basement" parent="." unique_id=122328114 instance=ExtResource("4_basement")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12565601, -0.25061452, 0.51185703)
 
-
-[node name="Lighting" type="Node3D" parent="." node_paths=PackedStringArray("sun", "environment", "studio", "keep_lit", "sky")]
+[node name="Lighting" type="Node3D" parent="." unique_id=158346145 node_paths=PackedStringArray("sun", "environment", "studio", "keep_lit", "sky")]
 script = ExtResource("2_day_night")
 sun = NodePath("Sun")
 environment = NodePath("../WorldEnvironment")
@@ -36,7 +37,7 @@ studio = NodePath("../Studio")
 keep_lit = [NodePath("../Studio/StreetProps"), NodePath("../Studio/Decor/TattooSign"), NodePath("../Studio/SkySphere")]
 sky = NodePath("../Studio/SkySphere")
 
-[node name="Sun" type="DirectionalLight3D" parent="Lighting"]
+[node name="Sun" type="DirectionalLight3D" parent="Lighting" unique_id=1326168865]
 transform = Transform3D(-0.9898387, 0.14217448, 0.0024174128, 0.11474254, 0.7885815, 0.6041304, 0.083985604, 0.59826905, -0.796882, 0.33125532, 2.554284, 1.7492366)
 light_color = Color(0.41406584, 0.41406578, 0.41406578, 1)
 light_energy = 1.599
@@ -46,42 +47,43 @@ shadow_normal_bias = 2.204
 shadow_blur = 1.684
 sky_mode = 1
 
-[node name="Navigation" type="NavigationRegion3D" parent="."]
+[node name="Navigation" type="NavigationRegion3D" parent="." unique_id=261873569]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0021669865, 0, -0.00086021423)
 navigation_mesh = ExtResource("6_navmesh")
 
-[node name="Points" type="Node3D" parent="."]
+[node name="Points" type="Node3D" parent="." unique_id=1623897495]
 
-[node name="Street" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0, -2.2)
+[node name="Street" type="Marker3D" parent="Points" unique_id=1067670238]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2.2)
 
-[node name="Entrance" type="Marker3D" parent="Points"]
+[node name="Entrance" type="Marker3D" parent="Points" unique_id=2145948061]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.85, 0, -1.1)
 
-[node name="ReceptionWait" type="Marker3D" parent="Points"]
+[node name="ReceptionWait" type="Marker3D" parent="Points" unique_id=2134918472]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -2.5, 0, 1.3)
 
-[node name="ChairSeat" type="Marker3D" parent="Points"]
+[node name="ChairSeat" type="Marker3D" parent="Points" unique_id=622805134]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.7, 0, 2.3)
 
-[node name="BenchWait" type="Marker3D" parent="Points"]
+[node name="BenchWait" type="Marker3D" parent="Points" unique_id=586328538]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3, 0, 2.2)
 
-[node name="RitualCenter" type="Marker3D" parent="Points"]
+[node name="RitualCenter" type="Marker3D" parent="Points" unique_id=1796884585]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.6, 0.25, -15.6)
 
-[node name="Exit" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0, -2.2)
+[node name="Exit" type="Marker3D" parent="Points" unique_id=765171431]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2.2)
 
-[node name="BasementLanding" type="Marker3D" parent="Points"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0.0, -11.3)
+[node name="BasementLanding" type="Marker3D" parent="Points" unique_id=1890800293]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0, -11.3)
 
-[node name="StudioLanding" type="Marker3D" parent="Points"]
+[node name="StudioLanding" type="Marker3D" parent="Points" unique_id=809653621]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.35, 0, 7.4)
 
-[node name="Player" parent="." instance=ExtResource("5_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0.0, -11.3)
+[node name="Player" parent="." unique_id=1824443981 instance=ExtResource("5_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.5, 0, -11.3)
 
-[node name="LevelSwitch" type="Node" parent="." node_paths=PackedStringArray("player", "hatch", "studio", "basement", "basement_landing", "studio_landing", "basement_exit")]
+[node name="LevelSwitch" type="Node" parent="." unique_id=1133563492 node_paths=PackedStringArray("player", "hatch", "studio", "basement", "basement_landing", "studio_landing", "basement_exit")]
 script = ExtResource("23_level_switch")
 player = NodePath("../Player")
 hatch = NodePath("../Studio/BasementHatch")
@@ -91,9 +93,12 @@ basement_landing = NodePath("../Points/BasementLanding")
 studio_landing = NodePath("../Points/StudioLanding")
 basement_exit = NodePath("../Basement/Gameplay/BasementExit")
 
-[node name="DayFlow" type="Node" parent="." node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "level_switch", "ritual_circle", "altar_slot", "altar", "altar_glow", "head_wall", "skull", "altar_lift", "chop_sound")]
+[node name="DayFlow" type="Node" parent="." unique_id=1633626001 node_paths=PackedStringArray("player", "day_night", "points", "entrance", "open_sign", "workstation", "seat_point", "level_switch", "ritual_circle", "altar_slot", "altar", "altar_glow", "skull", "altar_lift", "head_wall", "chop_sound")]
 script = ExtResource("1_day_flow")
 clients = Array[ExtResource("10_client_data")]([ExtResource("7_anton"), ExtResource("8_marina"), ExtResource("9_gleb")])
+random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_square")])
+random_greeting = ExtResource("19_hello")
+random_farewell = ExtResource("20_bye")
 player = NodePath("../Player")
 day_night = NodePath("../Lighting")
 points = NodePath("../Points")
@@ -101,9 +106,6 @@ entrance = NodePath("../Studio/Gameplay/EntranceDoor")
 open_sign = NodePath("../Studio/Gameplay/OpenSign")
 workstation = NodePath("../Studio/Gameplay/Workstation")
 seat_point = NodePath("../Studio/Gameplay/SeatPoint")
-random_stencils = Array[ExtResource("15_stencil_data")]([ExtResource("16_square")])
-random_greeting = ExtResource("19_hello")
-random_farewell = ExtResource("20_bye")
 level_switch = NodePath("../LevelSwitch")
 ritual_circle = NodePath("../Basement/Gameplay/Circle")
 altar_slot = NodePath("../Basement/Gameplay/AltarSlot")
@@ -114,6 +116,6 @@ altar_lift = NodePath("../Basement/Decor/Volcano/AltarLift")
 head_wall = NodePath("../Basement/Gameplay/HeadWall")
 chop_sound = NodePath("Chop")
 
-[node name="Chop" type="AudioStreamPlayer" parent="DayFlow"]
+[node name="Chop" type="AudioStreamPlayer" parent="DayFlow" unique_id=1657526594]
 stream = ExtResource("21_chop")
 volume_db = -2.0

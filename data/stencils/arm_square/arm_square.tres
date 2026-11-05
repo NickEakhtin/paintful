@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="StencilData" format=3]
+[gd_resource type="Resource" script_class="StencilData" format=3 uid="uid://dynd48otjqri0"]
 
-[ext_resource type="Script" path="res://tattoo/stencil_data.gd" id="1_data"]
-[ext_resource type="Script" path="res://tattoo/stencil_part.gd" id="2_part"]
-[ext_resource type="Texture2D" path="res://data/stencils/arm_square/square.png" id="3_square"]
+[ext_resource type="Script" uid="uid://cnrpyox8u6lpn" path="res://tattoo/stencil_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://bwlacs1cgivi1" path="res://tattoo/stencil_part.gd" id="2_part"]
+[ext_resource type="Texture2D" uid="uid://3e3mrlai5qr4" path="res://data/stencils/arm_square/square.png" id="3_square"]
 
 [sub_resource type="Resource" id="part_square"]
 script = ExtResource("2_part")

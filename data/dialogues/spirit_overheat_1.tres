@@ -1,11 +1,10 @@
-[gd_resource type="Resource" script_class="DialogueData" format=3]
+[gd_resource type="Resource" script_class="DialogueData" format=3 uid="uid://cfqir7yb7tfl8"]
 
-[ext_resource type="Script" path="res://dialogue/dialogue_data.gd" id="1_data"]
-[ext_resource type="Script" path="res://dialogue/dialogue_line.gd" id="2_line"]
+[ext_resource type="Script" uid="uid://b2psvr8vt6uso" path="res://dialogue/dialogue_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://nhjw8ow0368n" path="res://dialogue/dialogue_line.gd" id="2_line"]
 
 [sub_resource type="Resource" id="line_1"]
 script = ExtResource("2_line")
-speaker = 0
 text = "Ты что, собираешься сделать в нём дырку?"
 
 [resource]

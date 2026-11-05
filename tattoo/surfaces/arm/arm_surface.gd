@@ -357,6 +357,16 @@ func _sync_pull() -> void:
 	shape.apply_to(_material)
 
 
+## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.
+const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
+
+
+func hand_rect() -> Rect2:
+	if not _hand.visible:
+		return Rect2()
+	return _hand.get_global_transform() * HAND_SHAPE
+
+
 ## The placeholder hand: palm at `_hand_position`, fingers up; a little smaller and solid while gripping.
 func _place_hand() -> void:
 	_hand.visible = true

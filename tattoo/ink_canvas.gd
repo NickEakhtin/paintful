@@ -26,8 +26,12 @@ var _in_stroke: bool = false
 ## Set when ink was taken off; the look wipes itself and clears this.
 var cleared: bool = false
 ## Within this many cells of the stencil's edge a stamp lays only distance / edge_margin of its ink (none right at
-## the edge), so a brush can't fill the edge evenly; 0: off. The session sets it for the thick needle.
+## the edge), and never fills a cell there past `edge_cap`, however many passes: a brush can't fill the edge at
+## all; 0: off. The session sets it for the thick needle.
 var edge_margin: float = 0.0
+## Most ink a stamp within `edge_margin` brings a cell up to (below full, so the part can't complete without
+## another brush there).
+var edge_cap: float = 0.5
 ## Every stencil cell's distance from the stencil's edge in cells (R float, up to EDGE_REACH), for the look.
 var edge_texture: ImageTexture
 
@@ -120,10 +124,12 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 			if placed.z <= 0.0:
 				continue
 			var share: float = brush.weight(Vector2(placed.x, placed.y) - tip)
-			if edge_margin > 0.0:
-				share *= minf(_edge_distance[cell] / edge_margin, 1.0)
+			var limit: float = 1.0
+			if edge_margin > 0.0 and _edge_distance[cell] < edge_margin:
+				share *= _edge_distance[cell] / edge_margin
+				limit = edge_cap
 			if share > 0.0 and not _is_blocked(point):
-				laid += _add_ink(cell, dose * placed.z * share)
+				laid += _add_ink(cell, dose * placed.z * share, limit)
 	return laid
 
 
@@ -193,10 +199,12 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 						var sum_i: float = (float(i0) + i1) * n * 0.5
 						var sum_i2: float = _sum_squares(i1) - _sum_squares(i0 - 1)
 						share = n - 0.5 * (quad * sum_i2 - 2.0 * lin * sum_i + const_e * n)
-			if edge_margin > 0.0:
-				share *= minf(_edge_distance[cell] / edge_margin, 1.0)
+			var limit: float = 1.0
+			if edge_margin > 0.0 and _edge_distance[cell] < edge_margin:
+				share *= _edge_distance[cell] / edge_margin
+				limit = edge_cap
 			if share > 0.0 and not _is_blocked(point):
-				laid += _add_ink(cell, dose * placed.z * share)
+				laid += _add_ink(cell, dose * placed.z * share, limit)
 	return laid
 
 
@@ -304,11 +312,12 @@ func _is_blocked(point: Vector2) -> bool:
 	return false
 
 
-func _add_ink(cell: int, amount: float) -> float:
+## Adds ink to a cell, never past `limit` (1: full).
+func _add_ink(cell: int, amount: float, limit: float = 1.0) -> float:
 	var before: float = _ink[cell]
-	if before >= 1.0:
+	if before >= limit:
 		return 0.0
-	var after: float = minf(1.0, before + amount)
+	var after: float = minf(limit, before + amount)
 	_set_ink(cell, after)
 	if after >= 1.0:
 		var part: int = _part_of[cell]

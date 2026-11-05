@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="Mechanics" format=3]
+[gd_resource type="Resource" script_class="Mechanics" format=3 uid="uid://hj6oo200vt5a"]
 
-[ext_resource type="Script" path="res://tattoo/mechanics.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://dvtoo6cf58mxn" path="res://tattoo/mechanics.gd" id="1_script"]
 
 [resource]
 script = ExtResource("1_script")

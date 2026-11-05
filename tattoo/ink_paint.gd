@@ -10,6 +10,8 @@ extends Node
 ##   and big over the core, thinning out and shrinking past it and scattering beyond the brush's rim up to
 ##   `dot_spread`, like a spray. The ink shader shows them black at once and lets the film close the gaps as the
 ##   dose builds up;
+## - `coverage` B, the capped film: the thick needle's film within the stencil's edge margin (`set_edge()`), which
+##   the ink shader never lets close up;
 ## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
 ## `resize()` (the window changed size mid-session) moves the ink into buffers of the new size; `resized` then
@@ -43,8 +45,9 @@ render_mode %s;
 // ellipses where new ink doesn't land: centre and half size, in buffer pixels
 uniform vec4 blocks[%d];
 uniform int block_count = 0;
-// near the stencil's edge the film (R) is laid only by distance / edge_margin, as the logic lays ink; the dots (G)
-// stay, so the thick needle leaves a ragged spray there. edge_map: distance from the edge in cells.
+// near the stencil's edge the film is laid only by distance / edge_margin, as the logic lays ink, and into B instead
+// of R: the ink shader caps B, so the thick needle's film never fills the strip however many passes; the dots (G)
+// stay, so it leaves a ragged spray there. edge_map: distance from the edge in cells.
 uniform sampler2D edge_map : filter_linear;
 uniform float edge_margin = 0.0;
 uniform vec2 buffer_size = vec2(1.0);
@@ -57,7 +60,11 @@ void fragment() {
 	}
 	vec4 color = texture(TEXTURE, UV) * COLOR;
 	if (edge_margin > 0.0) {
-		color.r *= clamp(texture(edge_map, FRAGCOORD.xy / buffer_size).r / edge_margin, 0.0, 1.0);
+		float near = texture(edge_map, FRAGCOORD.xy / buffer_size).r / edge_margin;
+		if (near < 1.0) {
+			color.b = color.r * max(near, 0.0);
+			color.r = 0.0;
+		}
 	}
 	COLOR = color;
 }
