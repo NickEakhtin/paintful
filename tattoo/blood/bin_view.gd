@@ -18,6 +18,10 @@ signal throw_finished(in_bin: bool)
 @export var flight: float = 0.75
 @export var aim_error: float = 0.025
 @export var swing_error: float = 0.0004
+## A ball that lands in the basket makes it wobble: a spin round its axis and a tilt (degrees), over `wobble_time` s.
+@export var wobble_spin: float = 18.0
+@export var wobble_tilt: float = 6.0
+@export var wobble_time: float = 0.9
 ## The basket: radius at the top and bottom, height (m).
 @export var bin_top_radius: float = 0.2
 @export var bin_bottom_radius: float = 0.16
@@ -58,6 +62,11 @@ var _hand_motion: Vector2 = Vector2.ZERO
 var _ball: RigidBody3D
 var _wait: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _bin_visual: Node3D
+## Time into the basket's wobble, -1 while still.
+var _wobble: float = -1.0
+## The ball in flight has gone into the basket.
+var _ball_hit: bool = false
 
 
 func _ready() -> void:
@@ -127,6 +136,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	_wobble_basket(delta)
 	if armed:
 		var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") \
 				if not Transition.is_busy else Vector2.ZERO
@@ -145,10 +155,33 @@ func _process(delta: float) -> void:
 		# on the floor outside the basket: a miss, no need to wait for it to stop rolling
 		var at: Vector3 = _ball.global_position
 		var missed: bool = at.y < BALL_RADIUS * 1.6 and Vector2(at.x, at.z).length() > bin_top_radius + BALL_RADIUS
+		if not _ball_hit and _is_inside(at) and at.y < bin_height * 0.75:
+			_ball_hit = true
+			_wobble = 0.0   # it went in: the basket wobbles right away
 		if settled or missed or _wait > 4.0 or at.y < -1.0:
 			var inside: bool = _is_inside(_ball.global_position)
+			if inside:
+				# it stays in the basket and wobbles with it
+				_ball.freeze = true
+				_ball.reparent(_bin_visual)
 			_ball = null
 			throw_finished.emit(inside)
+
+
+## A hit: the basket gives a little kicked spin round its axis and a rocking tilt, dying out over
+## `wobble_time` (not physics, just a nod).
+func _wobble_basket(delta: float) -> void:
+	if _wobble < 0.0 or _bin_visual == null:
+		return
+	_wobble += delta
+	var fade: float = exp(-_wobble * 4.5 / wobble_time)
+	var spin: float = deg_to_rad(wobble_spin) * fade * sin(_wobble * 11.0)
+	var tilt: float = deg_to_rad(wobble_tilt) * fade * sin(_wobble * 17.0 + 0.6)
+	_bin_visual.transform = Transform3D(Basis(Vector3.UP, spin) * Basis(Vector3(1.0, 0.0, 0.4).normalized(), tilt),
+			Vector3.ZERO)
+	if _wobble > wobble_time:
+		_wobble = -1.0
+		_bin_visual.transform = Transform3D.IDENTITY
 
 
 func _draw() -> void:
@@ -178,6 +211,7 @@ func _throw() -> void:
 			+ _hand_motion * swing_error
 	target += Vector3(miss.x, 0.0, miss.y)
 	var gravity: Vector3 = Vector3.DOWN * float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+	_ball_hit = false
 	_ball.global_position = start
 	_ball.linear_velocity = (target - start) / flight - gravity * 0.5 * flight
 	_ball.angular_velocity = Vector3(_rng.randf_range(-6, 6), _rng.randf_range(-6, 6), _rng.randf_range(-6, 6))
@@ -288,6 +322,9 @@ func _build_world() -> void:
 func _build_bin() -> void:
 	var bin: StaticBody3D = StaticBody3D.new()
 	_world_root.add_child(bin)
+	_bin_visual = Node3D.new()
+	_bin_visual.name = "Visual"
+	bin.add_child(_bin_visual)
 	var side: MeshInstance3D = MeshInstance3D.new()
 	var cylinder: CylinderMesh = CylinderMesh.new()
 	cylinder.top_radius = bin_top_radius
@@ -302,7 +339,7 @@ func _build_bin() -> void:
 	wire.shader.code = WIRE_SHADER
 	side.material_override = wire
 	side.position.y = bin_height * 0.5
-	bin.add_child(side)
+	_bin_visual.add_child(side)
 	var dark: StandardMaterial3D = StandardMaterial3D.new()
 	dark.albedo_color = Color(0.32, 0.32, 0.35)
 	dark.metallic = 0.7
@@ -314,7 +351,7 @@ func _build_bin() -> void:
 	rim.mesh = torus
 	rim.material_override = dark
 	rim.position.y = bin_height
-	bin.add_child(rim)
+	_bin_visual.add_child(rim)
 	var base: MeshInstance3D = MeshInstance3D.new()
 	var disc: CylinderMesh = CylinderMesh.new()
 	disc.top_radius = bin_bottom_radius
@@ -324,7 +361,7 @@ func _build_bin() -> void:
 	base.material_override = dark
 	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	base.position.y = 0.005
-	bin.add_child(base)
+	_bin_visual.add_child(base)
 	# collision: a base and 20 slanted wall slats
 	var base_shape: CollisionShape3D = CollisionShape3D.new()
 	var base_box: CylinderShape3D = CylinderShape3D.new()
