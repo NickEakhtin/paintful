@@ -5,6 +5,8 @@ extends CanvasLayer
 ## the CPU's draw submission and the GPU, the mouse motion events that came in per frame (average and most), the
 ## objects and draw calls drawn, the window and render size and the video memory. Off by default; costs nothing
 ## while hidden (the GPU timing is measured only while shown).
+## While it's shown every line also goes to `user://diagnostics.csv` (one row per `refresh`, with how fast the mouse
+## moved and what was on screen), so a long play can be read afterwards; each F8 starts a new run in the file.
 
 ## How often the numbers update, in seconds.
 @export var refresh: float = 0.5
@@ -23,6 +25,11 @@ var _motion_this_frame: int = 0
 var _motion_sum: int = 0
 var _motion_most: int = 0
 var _last_usec: int = 0
+var _mouse_travel: float = 0.0
+var _log: FileAccess
+var _log_start: int = 0
+
+const LOG_PATH: String = "user://diagnostics.csv"
 
 
 func _ready() -> void:
@@ -47,6 +54,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_motion_this_frame += 1
+		_mouse_travel += (event as InputEventMouseMotion).relative.length()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -56,6 +64,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), visible)
 		_reset()
 		_last_usec = Time.get_ticks_usec()
+		if visible:
+			_open_log()
+		elif _log != null:
+			_log.close()
+			_log = null
 
 
 func _process(_delta: float) -> void:
@@ -91,9 +104,53 @@ func _process(_delta: float) -> void:
 		"окно %d×%d, рендер %d×%d, видеопамять %d МБ" % [window.x, window.y, roundi(render.x), roundi(render.y),
 				roundi(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0)],
 	])
+	lines.append("запись: %s" % ProjectSettings.globalize_path(LOG_PATH))
 	_label.text = "\n".join(lines)
+	_write_log(n)
 	_panel.size = _label.get_minimum_size() + Vector2(16, 8)
 	_reset()
+
+
+func _open_log() -> void:
+	var exists: bool = FileAccess.file_exists(LOG_PATH)
+	_log = FileAccess.open(LOG_PATH, FileAccess.READ_WRITE if exists else FileAccess.WRITE)
+	if _log == null:
+		return
+	_log.seek_end()
+	_log_start = Time.get_ticks_msec()
+	_log.store_line("# run %s, window %s, %s" % [Time.get_datetime_string_from_system(), get_window().size,
+			"fullscreen" if get_window().mode >= Window.MODE_FULLSCREEN else "windowed"])
+	_log.store_line("time_s,frame_avg_ms,frame_worst_ms,fps,process_ms,physics_ms,draw_cpu_ms,gpu_ms,mouse_events_avg,mouse_events_max,mouse_px_per_s,objects,draw_calls,where")
+
+
+func _write_log(frames: float) -> void:
+	if _log == null:
+		return
+	var seconds: float = (Time.get_ticks_msec() - _log_start) / 1000.0
+	_log.store_line("%.1f,%.2f,%.2f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d,%d,%d,%s" % [seconds, _frame_sum / frames,
+			_frame_worst, roundi(Engine.get_frames_per_second()), _process_sum / frames, _physics_sum / frames,
+			_draw_sum / frames, _gpu_sum / frames, _motion_sum / frames, _motion_most, roundi(_mouse_travel / refresh),
+			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), _where()])
+	_log.flush()
+
+
+## What's going on, in a word or two: the scene, and in a tattoo session where its view is and what the hand does.
+func _where() -> String:
+	var scene: Node = get_tree().current_scene
+	var text: String = scene.name if scene != null else "?"
+	var sessions: Array[Node] = get_tree().root.find_children("*", "TattooSession", true, false)
+	if not sessions.is_empty():
+		var session: Node = sessions[0]
+		text += " session"
+		if session.get(&"_discarding"):
+			text += " basket"
+		elif session.get(&"_at_table"):
+			text += " table"
+		var machine: Node = session.get(&"_machine")
+		if machine != null and machine.get(&"working"):
+			text += " inking"
+	return text
 
 
 func _reset() -> void:
@@ -106,4 +163,5 @@ func _reset() -> void:
 	_draw_sum = 0.0
 	_motion_sum = 0
 	_motion_most = 0
+	_mouse_travel = 0.0
 	_wait = minf(_wait, refresh)
