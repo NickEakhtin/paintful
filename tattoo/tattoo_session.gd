@@ -42,6 +42,11 @@ const SURFACE_SCENES: Dictionary = {
 ## out of it instead of starting at once. 2.2 is about 450 ms behind, a heavy machine (4.2 was 240 ms, 14 was
 ## 70 ms, 42 nearly the raw mouse).
 @export var needle_follow: float = 2.2
+## Over the skin the needle never moves faster than this (pixels per second): the skin drags on it. The mouse
+## can't run off either: it stays within `pointer_leash` pixels of the needle, so a fast flick just meets
+## resistance and nothing jumps when it stops. 0: no limit.
+@export var max_skin_speed: float = 450.0
+@export var pointer_leash: float = 220.0
 ## Share of the mouse's own motion the machine follows (the session captures the mouse): 0.5 = half as
 ## sensitive; 1 uses the plain cursor position.
 @export var mouse_sensitivity: float = 0.5
@@ -593,7 +598,13 @@ func _update_needle(delta: float) -> void:
 		desired = _machine.pointer.lerp(_to_screen(target), pull)
 	var follow: float = 1.0 - exp(-needle_follow * 2.0 * delta)
 	_needle_lead = _needle_lead.lerp(desired, follow)
+	var previous: Vector2 = _steady_needle
 	_steady_needle = _steady_needle.lerp(_needle_lead, follow)
+	if max_skin_speed > 0.0 and _surface.is_on_skin(previous):
+		# the skin drags: no faster than max_skin_speed, and the mouse is held on a leash behind the needle
+		_steady_needle = previous + (_steady_needle - previous).limit_length(max_skin_speed * delta)
+		_needle_lead = _steady_needle + (_needle_lead - _steady_needle).limit_length(pointer_leash)
+		_machine.pointer = _steady_needle + (_machine.pointer - _steady_needle).limit_length(pointer_leash)
 	var offset: Vector2 = Vector2.ZERO
 	var weight: float = machine_mass
 	for modifier in _modifiers:
