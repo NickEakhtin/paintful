@@ -4,7 +4,7 @@ extends GPUParticles2D
 ## burns (like the dust out of the basement hatch). The session sets `level` (0..1): how many fly.
 
 ## Specks alive at a full level.
-@export var count: int = 900
+@export var count: int = 9000
 @export var color: Color = Color(0.72, 0.32, 1.0)
 ## Seconds a speck lives.
 @export var life: float = 3.0
@@ -13,13 +13,13 @@ extends GPUParticles2D
 @export var burst_max: float = 760.0
 @export var brake: float = 520.0
 ## How fast they rise once the burst is spent (pixels per second per second) and how much they swirl.
-@export var rise: float = 140.0
+@export var rise: float = 350.0
 @export var swirl: float = 0.9
 ## Speck size in pixels.
 @export var size_min: float = 4.0
 @export var size_max: float = 8.0
 ## How many points along the screen's edges they come from.
-const POINTS: int = 512
+const POINTS: int = 2048
 
 ## 0..1: share of `count` emitted.
 var level: float = 0.0:
