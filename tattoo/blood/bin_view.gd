@@ -177,8 +177,11 @@ func _wobble_basket(delta: float) -> void:
 	var fade: float = exp(-_wobble * 4.5 / wobble_time)
 	var spin: float = deg_to_rad(wobble_spin) * fade * sin(_wobble * 11.0)
 	var tilt: float = deg_to_rad(wobble_tilt) * fade * sin(_wobble * 17.0 + 0.6)
+	# tilted about the base's middle, one edge of the base would sink into the floor: lift it by as much, so the
+	# basket rocks on its rim instead
+	var lift: float = bin_bottom_radius * sin(absf(tilt)) + 0.005 * absf(sin(tilt))
 	_bin_visual.transform = Transform3D(Basis(Vector3.UP, spin) * Basis(Vector3(1.0, 0.0, 0.4).normalized(), tilt),
-			Vector3.ZERO)
+			Vector3(0.0, lift, 0.0))
 	if _wobble > wobble_time:
 		_wobble = -1.0
 		_bin_visual.transform = Transform3D.IDENTITY
