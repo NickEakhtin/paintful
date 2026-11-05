@@ -3,7 +3,7 @@ extends Node
 ## Cmd+Ctrl+F switch between fullscreen and a window. The choice is kept in `user://settings.cfg`.
 ## `--windowed` / `--fullscreen` after `--` on the command line win over the saved choice (tests take screenshots
 ## in a window): `Godot --path . res://_test/x.tscn -- --windowed`. Godot keeps its own `--windowed` to itself.
-## Low resolution (on by default, F10 switches, saved too): the whole game renders at its base size (1280x720,
+## Low resolution (off by default, F10 switches, saved too): the whole game renders at its base size (1280x720,
 ## widened to the screen's shape) and is stretched to the window, instead of at the window's own pixels.
 
 const SETTINGS_PATH: String = "user://settings.cfg"
@@ -14,7 +14,7 @@ const WINDOWED_SHARE: float = 0.75
 
 var fullscreen: bool = true
 ## The game renders at the base size and is stretched to the window (`set_low_resolution()`).
-var low_resolution: bool = true
+var low_resolution: bool = false
 
 
 func _ready() -> void:
@@ -25,14 +25,14 @@ func _ready() -> void:
 	window.min_size = MIN_SIZE.min(DisplayServer.screen_get_usable_rect(window.current_screen).size)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.has("--windowed") or args.has("--fullscreen"):
-		set_low_resolution(not args.has("--full-resolution"), false)
+		set_low_resolution(args.has("--low-resolution"), false)
 		fullscreen = args.has("--fullscreen")
 		if fullscreen:
 			window.mode = Window.MODE_FULLSCREEN
 		return
 	var settings: ConfigFile = ConfigFile.new()
 	settings.load(SETTINGS_PATH)
-	set_low_resolution(settings.get_value("display", "low_resolution", true), false)
+	set_low_resolution(settings.get_value("display", "low_resolution", false), false)
 	set_fullscreen(settings.get_value("display", "fullscreen", true), false)
 
 
