@@ -2,13 +2,14 @@ extends CanvasLayer
 ## The colleague's grimy low-fi filter (retro_post.gdshader) over the 3D world only: it sits under every UI layer
 ## (HUD, dialogues, the tattoo session, the black fades), so text and the session stay sharp.
 ## A game pixel is a whole number of screen pixels, as retro 3D games do it (a fractional one makes uneven
-## pixels): as big as fits `min_rows` game pixels in the window height, at most `max_pixel_size`. So 720p and
-## 1080p get 360 rows (2 and 3 px), 1440p 480, 4K 720: bigger monitors show finer pixels, never a blurry stretch.
+## pixels): as big as fits `min_rows` game pixels in the window height, at most `max_pixel_size`. So 1080p gets
+## 540 rows (2 px), a MacBook's 1120 560, 1440p and 4K 480 and 720 (3 px), 720p its own 720 (1 px): bigger
+## monitors show finer pixels, never a blurry stretch.
 ## The 3D world is rendered at exactly one pixel per game pixel and without MSAA: the filter samples one point per
 ## game pixel anyway, so it looks the same and costs far less (a 4K screen renders 1280x720).
 
 ## Fewest game pixels from the top of the window to the bottom.
-@export var min_rows: int = 360
+@export var min_rows: int = 480
 ## Largest game pixel, in screen pixels.
 @export var max_pixel_size: int = 3
 
