@@ -66,6 +66,13 @@ func hint() -> String:
 	return ""
 
 
+## The cell-centre projections this skin has cached, for brushes to read without a call per cell:
+## [PackedVector3Array (relative to `offset`), PackedByteArray (1 = known), Vector3 offset], indexed y * grid.x + x;
+## [] when there's no cache. Misses go through project().
+func cached_projections() -> Array:
+	return []
+
+
 ## Whether this skin can be stretched (`tension_at()` means something); the flat panel can't.
 func has_tension() -> bool:
 	return false

@@ -112,6 +112,12 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 	var tip: Vector2 = Vector2(middle.x, middle.y)
 	var dose: float = amount * brush.dose_scale()
 	var laid: float = 0.0
+	var cache: Array = surface.cached_projections()
+	var use_cache: bool = cache.size() == 3
+	var cached: PackedVector3Array = cache[0] if use_cache else PackedVector3Array()
+	var known: PackedByteArray = cache[1] if use_cache else PackedByteArray()
+	var cache_offset: Vector3 = cache[2] if use_cache else Vector3.ZERO
+	var blocks: PackedVector4Array = _block_ellipses()
 	if not _in_stroke and middle.z > 0.0:
 		dabs.append([center, _brush_basis(surface, center, brush), amount * middle.z, brush.radius_px, brush.thickness])
 	for y in range(y0, y1 + 1):
@@ -120,7 +126,11 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 			if _part_of[cell] < 0:
 				continue
 			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
-			var placed: Vector3 = surface.project(point)
+			var placed: Vector3
+			if use_cache and known[cell] == 1:
+				placed = cached[cell] + cache_offset
+			else:
+				placed = surface.project(point)
 			if placed.z <= 0.0:
 				continue
 			var share: float = brush.weight(Vector2(placed.x, placed.y) - tip)
@@ -128,7 +138,7 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 			if edge_margin > 0.0 and _edge_distance[cell] < edge_margin:
 				share *= _edge_distance[cell] / edge_margin
 				limit = edge_cap
-			if share > 0.0 and not _is_blocked(point):
+			if share > 0.0 and not _blocked_at(blocks, point):
 				laid += _add_ink(cell, dose * placed.z * share, limit)
 	return laid
 
@@ -166,17 +176,38 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 	var y1: int = mini(size.y - 1, ceili(high.y))
 	var dose: float = amount / steps * brush.dose_scale()
 	var laid: float = 0.0
+	# the surface's cached projections, read in place (a call per cell was most of a stroke's time); misses (rare,
+	# the cache warms by itself) go through project()
+	var cache: Array = surface.cached_projections()
+	var use_cache: bool = cache.size() == 3
+	var cached: PackedVector3Array = cache[0] if use_cache else PackedVector3Array()
+	var known: PackedByteArray = cache[1] if use_cache else PackedByteArray()
+	var cache_offset: Vector3 = cache[2] if use_cache else Vector3.ZERO
+	var blocks: PackedVector4Array = _block_ellipses()
+	var seg: Vector2 = to - from
+	var seg_len_sq: float = maxf(seg.length_squared(), 1e-9)
+	var reach_sq: float = reach_cells * reach_cells
 	for y in range(y0, y1 + 1):
+		var py: float = y + 0.5
 		for x in range(x0, x1 + 1):
 			var cell: int = y * size.x + x
 			if _part_of[cell] < 0:
 				continue
-			var point: Vector2 = Vector2(x + 0.5, y + 0.5)
-			if point.distance_to(Geometry2D.get_closest_point_to_segment(point, from, to)) > reach_cells:
-				continue   # out of every stamp's reach: no projection needed
-			var placed: Vector3 = surface.project(point)
+			# out of every stamp's reach: no projection needed (the closest point on the segment, inline)
+			var px: float = x + 0.5
+			var t: float = clampf(((px - from.x) * seg.x + (py - from.y) * seg.y) / seg_len_sq, 0.0, 1.0)
+			var gx: float = px - (from.x + seg.x * t)
+			var gy: float = py - (from.y + seg.y * t)
+			if gx * gx + gy * gy > reach_sq:
+				continue
+			var placed: Vector3
+			if use_cache and known[cell] == 1:
+				placed = cached[cell] + cache_offset
+			else:
+				placed = surface.project(Vector2(px, py))
 			if placed.z <= 0.0:
 				continue
+			var point: Vector2 = Vector2(px, py)
 			# stamp i's offset in ellipse units is (pa - i step_a, pb - i step_b); its weight 1 - e(i) / 2 where
 			# e(i) <= 1. The stamps inside are a run of i, and the sum of a quadratic over a run has a closed form.
 			var offset: Vector2 = Vector2(placed.x, placed.y) - tip0
@@ -203,7 +234,7 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 			if edge_margin > 0.0 and _edge_distance[cell] < edge_margin:
 				share *= _edge_distance[cell] / edge_margin
 				limit = edge_cap
-			if share > 0.0 and not _is_blocked(point):
+			if share > 0.0 and not _blocked_at(blocks, point):
 				laid += _add_ink(cell, dose * placed.z * share, limit)
 	return laid
 
@@ -302,6 +333,25 @@ func clear_part(index: int) -> void:
 ## The brush at `cell` in cells, for the look.
 func _brush_basis(surface: SkinSurface, cell: Vector2, brush: InkBrush) -> Transform2D:
 	return surface.brush_basis(cell, brush.axis * brush.radius_px, brush.across() * brush.half_thickness())
+
+
+## `blocked` as (centre, 1 / half size) per ellipse, worked out once per brush call.
+func _block_ellipses() -> PackedVector4Array:
+	var ellipses: PackedVector4Array = PackedVector4Array()
+	for rect in blocked:
+		var half: Vector2 = (rect.size * 0.5).max(Vector2.ONE * 1e-6)
+		var centre: Vector2 = rect.get_center()
+		ellipses.append(Vector4(centre.x, centre.y, 1.0 / half.x, 1.0 / half.y))
+	return ellipses
+
+
+static func _blocked_at(ellipses: PackedVector4Array, point: Vector2) -> bool:
+	for e in ellipses:
+		var dx: float = (point.x - e.x) * e.z
+		var dy: float = (point.y - e.y) * e.w
+		if dx * dx + dy * dy <= 1.0:
+			return true
+	return false
 
 
 func _is_blocked(point: Vector2) -> bool:

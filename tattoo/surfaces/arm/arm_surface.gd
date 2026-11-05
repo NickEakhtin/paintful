@@ -219,6 +219,12 @@ func _place_cell(cell: Vector2) -> Vector3:
 
 
 
+func cached_projections() -> Array:
+	if _projected.is_empty():
+		return []
+	return [_projected, _projected_known, _center_offset]
+
+
 func pixels_per_cell() -> float:
 	return 2.0 * _wrap * radius / grid.x
 
