@@ -22,9 +22,11 @@ const FINGERS: Dictionary = {
 }
 ## The fist's bend at each joint, knuckle out (degrees, toward the palm).
 const FINGER_BEND: Array[float] = [82.0, 98.0, 62.0]
-const THUMB_BEND: Array[float] = [12.0, 32.0, 30.0]
-## The thumb also swings across the palm from its root (degrees round the palm's normal).
-const THUMB_SWING: float = 18.0
+## Where the thumb's joints go in a fist (its middle joint, its last joint, its tip; model space): it rises along the
+## index finger's side, its last joint lies in front of the index finger's middle bone and the tip reaches the middle
+## finger's, pressed to the curled fingers (as a sculpted fist reference the user brought). Each bone turns to aim
+## at its point (the bones keep their length).
+const THUMB_FIST: Array[Vector3] = [Vector3(0.071, 0.183, 0.046), Vector3(0.05, 0.245, 0.07), Vector3(0.0, 0.265, 0.068)]
 ## A vertex this close to a finger's bones (m) follows them; fading out over the last part.
 const CAPTURE: float = 0.06
 ## The thumb is thicker and its outer side far from its bones.
@@ -143,18 +145,21 @@ func _pose() -> void:
 	if _skeleton == null:
 		return
 	for finger: String in _bones:
+		if finger == "thumb":
+			continue
 		var chain: Array = _bones[finger]
 		for i in 3:
-			var rotation: Quaternion
-			if finger == "thumb":
-				var joints: Array = FINGERS["thumb"]
-				var along: Vector3 = ((joints[i + 1] as Vector3) - (joints[i] as Vector3)).normalized()
-				# a thumb folds across the palm (round the palm's normal) and only a little toward it
-				var toward_palm: Vector3 = along.cross(Vector3.BACK).normalized()
-				var axis: Vector3 = (Vector3.BACK * 0.85 + toward_palm * 0.4).normalized()
-				rotation = Quaternion(axis, deg_to_rad(THUMB_BEND[i]) * fist)
-				if i == 0:
-					rotation = Quaternion(Vector3.BACK, deg_to_rad(THUMB_SWING) * fist) * rotation
-			else:
-				rotation = Quaternion(Vector3.RIGHT, deg_to_rad(FINGER_BEND[i]) * fist)
-			_skeleton.set_bone_pose_rotation(chain[i], rotation)
+			_skeleton.set_bone_pose_rotation(chain[i], Quaternion(Vector3.RIGHT, deg_to_rad(FINGER_BEND[i]) * fist))
+	# the thumb: each bone's turn in model space aims it at its point in a full fist, eased by `fist`; a bone's own
+	# rotation is that turn less its parent's
+	var joints: Array = FINGERS["thumb"]
+	var thumb: Array = _bones["thumb"]
+	var at: Vector3 = joints[0]
+	var parent_turn: Quaternion = Quaternion.IDENTITY
+	for i in 3:
+		var rest: Vector3 = (joints[i + 1] as Vector3) - (joints[i] as Vector3)
+		var aim: Quaternion = Quaternion(rest.normalized(), (THUMB_FIST[i] - at).normalized())
+		at += aim * rest
+		var turn: Quaternion = Quaternion.IDENTITY.slerp(aim, fist)
+		_skeleton.set_bone_pose_rotation(thumb[i], parent_turn.inverse() * turn)
+		parent_turn = turn
