@@ -62,6 +62,13 @@ var weight: float = 0.0
 var pointer: Vector2 = Vector2.ZERO
 ## Share of the mouse's motion the pointer follows while the mouse is captured: 0.5 = half as sensitive.
 var mouse_sensitivity: float = 1.0
+## Screen pixels per rendered pixel of the model: the session's retro filter samples one point per game pixel,
+## so the 3D renders at the game pixel's size, without MSAA (2: a quarter of the pixels, 3: a ninth). 1: real pixels.
+var render_divisor: int = 1:
+	set(value):
+		render_divisor = maxi(value, 1)
+		if is_node_ready():
+			_view.msaa_3d = Viewport.MSAA_DISABLED if render_divisor > 1 else Viewport.MSAA_4X
 ## Set: where the hand wants the needle. Get: where the needle actually is.
 var needle: Vector2:
 	set(value):
@@ -200,7 +207,7 @@ func top_position() -> Vector2:
 ## Window pixels per viewport pixel (2 on a 1440p screen, 3 on 4K): the model is rendered at the window's own
 ## resolution, so it stays sharp on any monitor, and its sprite is drawn back at viewport size.
 func _pixel_scale() -> float:
-	return maxf(1.0, get_viewport().get_final_transform().get_scale().x)
+	return maxf(1.0, get_viewport().get_final_transform().get_scale().x) / render_divisor
 
 
 ## Puts the model so its needle tip touches the skin plane right under `screen_point`.

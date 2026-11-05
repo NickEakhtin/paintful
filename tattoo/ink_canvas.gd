@@ -125,22 +125,18 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 	var facing: float = surface.project(to).z
 	if facing > 0.0:
 		strokes.append([from, to, _brush_basis(surface, to, brush), amount * facing, brush.radius_px, brush.thickness])
-	# the stamps' centres on screen, and how far along the stroke each lies
-	var tips: PackedVector2Array = PackedVector2Array()
-	tips.resize(steps)
-	for i in steps:
-		var middle: Vector3 = surface.project(from.lerp(to, float(i + 1) / steps))
-		tips[i] = Vector2(middle.x, middle.y)
-	var path: Vector2 = tips[steps - 1] - tips[0]
-	var along: Vector2 = path.normalized() if path.length() > 0.001 else Vector2.ZERO
-	var positions: PackedFloat32Array = PackedFloat32Array()
-	positions.resize(steps)
-	for i in steps:
-		positions[i] = (tips[i] - tips[0]).dot(along)
-	positions.sort()   # a path that bends on curved skin may step back a hair
-	# how far the brush reaches along the stroke, with a pixel to spare
-	var extent: float = sqrt(pow(brush.radius_px * brush.axis.dot(along), 2.0) \
-			+ pow(brush.half_thickness() * brush.across().dot(along), 2.0)) + 1.0
+	# the stamps' centres on screen: the first one and the step between them (straight on screen; on curved skin a
+	# short stroke bends by a hair)
+	var first_tip: Vector3 = surface.project(from.lerp(to, 1.0 / steps))
+	var last_tip: Vector3 = surface.project(to)
+	var tip0: Vector2 = Vector2(first_tip.x, first_tip.y)
+	var step_px: Vector2 = (Vector2(last_tip.x, last_tip.y) - tip0) / maxf(steps - 1, 1)
+	# in the brush's ellipse units (InkBrush.weight(): full at the centre, half on the rim)
+	var unit_along: Vector2 = brush.axis / brush.radius_px
+	var unit_across: Vector2 = brush.across() / maxf(brush.half_thickness(), 0.001)
+	var step_a: float = step_px.dot(unit_along)
+	var step_b: float = step_px.dot(unit_across)
+	var quad: float = step_a * step_a + step_b * step_b   # e(i) = quad i^2 - 2 lin i + const
 	# every cell any stamp can reach: within the brush's reach (in cells) of the segment between the ends
 	var reach: Vector2 = surface.cells_within(from, brush.radius_px).max(surface.cells_within(to, brush.radius_px))
 	var reach_cells: float = maxf(reach.x, reach.y) + 1.0
@@ -163,19 +159,36 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 			var placed: Vector3 = surface.project(point)
 			if placed.z <= 0.0:
 				continue
-			var screen: Vector2 = Vector2(placed.x, placed.y)
-			var first: int = 0
-			var last: int = steps - 1
-			if along != Vector2.ZERO:
-				var at: float = (screen - tips[0]).dot(along)
-				first = maxi(0, positions.bsearch(at - extent) - 1)
-				last = mini(steps - 1, positions.bsearch(at + extent, false))
+			# stamp i's offset in ellipse units is (pa - i step_a, pb - i step_b); its weight 1 - e(i) / 2 where
+			# e(i) <= 1. The stamps inside are a run of i, and the sum of a quadratic over a run has a closed form.
+			var offset: Vector2 = Vector2(placed.x, placed.y) - tip0
+			var pa: float = offset.dot(unit_along)
+			var pb: float = offset.dot(unit_across)
+			var lin: float = pa * step_a + pb * step_b
+			var const_e: float = pa * pa + pb * pb
 			var share: float = 0.0
-			for i in range(first, last + 1):
-				share += brush.weight(screen - tips[i])
+			if quad < 1e-9:
+				if const_e <= 1.0:
+					share = steps * (1.0 - 0.5 * const_e)
+			else:
+				var room: float = lin * lin - quad * (const_e - 1.0)
+				if room >= 0.0:
+					var root: float = sqrt(room)
+					var i0: int = maxi(0, ceili((lin - root) / quad))
+					var i1: int = mini(steps - 1, floori((lin + root) / quad))
+					if i1 >= i0:
+						var n: float = i1 - i0 + 1
+						var sum_i: float = (float(i0) + i1) * n * 0.5
+						var sum_i2: float = _sum_squares(i1) - _sum_squares(i0 - 1)
+						share = n - 0.5 * (quad * sum_i2 - 2.0 * lin * sum_i + const_e * n)
 			if share > 0.0 and not _is_blocked(point):
 				laid += _add_ink(cell, dose * placed.z * share)
 	return laid
+
+
+## 0^2 + 1^2 + ... + n^2.
+static func _sum_squares(n: int) -> float:
+	return 0.0 if n < 0 else float(n) * (n + 1) * (2 * n + 1) / 6.0
 
 
 ## Centre of the nearest stencil cell that still needs ink, or Vector2.INF if none within `radius`.

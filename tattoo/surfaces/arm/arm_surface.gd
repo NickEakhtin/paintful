@@ -52,6 +52,17 @@ var _wrap: float = 0.0
 var _highlight: float = 0.0
 ## Which sides hide unfinished stencil, found when a ping starts: (left, right), 0 or 1.
 var _hidden_left_right: Vector2 = Vector2.ZERO
+## project() of every cell centre, filled as cells are asked for and dropped when the skin moves (a pull, the
+## arm's place on screen): a stroke projects hundreds of cells a frame, mostly the same ones again.
+var _projected: PackedVector3Array = PackedVector3Array()
+var _projected_known: PackedByteArray = PackedByteArray()
+## The pull the cache was filled for: side, amount, shear, grip row.
+var _projected_pull: Vector4 = Vector4.INF
+## While the skin rests, the cache is filled ahead a little every frame (rows from the middle out), so a sweep
+## into fresh skin doesn't project hundreds of new cells in one frame.
+const WARM_BUDGET_USEC: int = 1500
+var _warm_cursor: int = 0
+var _warm_rows: PackedInt32Array = PackedInt32Array()
 
 @onready var _background: ColorRect = $Background
 @onready var _view_viewport: SubViewport = $View3D/Viewport
@@ -68,6 +79,7 @@ var _hidden_left_right: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_apply_exports()
+	item_rect_changed.connect(_forget_projections)
 	# The lamp up and to the left, as for the wet ink's highlight; a warm fill from the lower right.
 	_key_light.look_at_from_position(Vector3(-600.0, 700.0, 900.0), Vector3.ZERO)
 	_fill_light.look_at_from_position(Vector3(900.0, -250.0, 500.0), Vector3.ZERO)
@@ -82,6 +94,16 @@ func _ready() -> void:
 
 func setup(stencil: StencilData) -> void:
 	super(stencil)
+	_projected.resize(grid.x * grid.y)
+	_projected_known.resize(grid.x * grid.y)
+	_warm_rows.clear()
+	var middle: int = grid.y / 2
+	_warm_rows.append(middle)   # the middle row first, then outward
+	for d in range(1, grid.y):
+		for row in [middle - d, middle + d]:
+			if row >= 0 and row < grid.y:
+				_warm_rows.append(row)
+	_forget_projections()
 	if not stencil.parts.is_empty():
 		_ink_layer.size = Vector2i(stencil.parts[0].texture.get_size())
 
@@ -98,6 +120,20 @@ func to_cell(screen_point: Vector2) -> Vector2:
 
 
 func project(cell: Vector2) -> Vector3:
+	# a cell centre: from the cache while the skin stays put
+	var x: int = int(cell.x)
+	var y: int = int(cell.y)
+	if cell.x - x == 0.5 and cell.y - y == 0.5 and x >= 0 and y >= 0 and x < grid.x and y < grid.y \
+			and not _projected.is_empty():
+		var index: int = y * grid.x + x
+		if _projected_known[index] == 0:
+			_projected[index] = _project_now(cell)
+			_projected_known[index] = 1
+		return _projected[index]
+	return _project_now(cell)
+
+
+func _project_now(cell: Vector2) -> Vector3:
 	var skin: Vector2 = _cell_to_skin(cell)
 	var placed: Vector3 = shape.project(skin.x, skin.y)
 	var center: Vector2 = _center()
@@ -167,6 +203,26 @@ func update_surface(delta: float, active: bool) -> void:
 	elif was_holding and not pull.holding and pull.amount > 0.3:
 		_release_sound.play()
 	_sync_pull()
+	if pull.side == 0 and pull.amount < 0.001:
+		_warm_projections()
+
+
+## Projects cells ahead into the cache for at most WARM_BUDGET_USEC.
+func _warm_projections() -> void:
+	var total: int = grid.x * grid.y
+	if _projected.is_empty() or _warm_cursor >= total:
+		return
+	var until: int = Time.get_ticks_usec() + WARM_BUDGET_USEC
+	while _warm_cursor < total:
+		var row: int = _warm_rows[_warm_cursor / grid.x]
+		var column: int = _warm_cursor % grid.x
+		_warm_cursor += 1
+		var index: int = row * grid.x + column
+		if _projected_known[index] == 0:
+			_projected[index] = _project_now(Vector2(column + 0.5, row + 0.5))
+			_projected_known[index] = 1
+		if _warm_cursor % 64 == 0 and Time.get_ticks_usec() > until:
+			return
 
 
 ## A ping also lights up the silhouette on each side that still hides unfinished stencil, so it's
@@ -212,6 +268,10 @@ func _sync_pull() -> void:
 	shape.side = pull.side
 	shape.amount = pull.amount
 	shape.shear = pull.shear(max_pull)
+	var pulled: Vector4 = Vector4(shape.side, shape.amount, shape.shear, shape.grip_v)
+	if pulled != _projected_pull:
+		_projected_pull = pulled
+		_forget_projections()
 	shape.apply_to(_material)
 	_place_hand()
 
@@ -228,6 +288,11 @@ func _place_hand() -> void:
 	_hand.modulate.a = smoothstep(0.02, 0.3, pull.amount)
 
 
+func _forget_projections() -> void:
+	_projected_known.fill(0)
+	_warm_cursor = 0
+
+
 func _center() -> Vector2:
 	return get_global_rect().get_center()
 
@@ -241,6 +306,7 @@ func _cell_to_skin(cell: Vector2) -> Vector2:
 
 
 func _apply_exports() -> void:
+	_forget_projections()
 	_wrap = deg_to_rad(wrap_angle)
 	shape.radius = radius
 	shape.taper_top = taper_top

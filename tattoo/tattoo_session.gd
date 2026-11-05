@@ -281,6 +281,8 @@ func _fit_retro() -> void:
 		height = int(get_viewport().get_visible_rect().size.y)
 	var pixel: int = clampi(height / maxi(retro_min_rows, 1), 1, retro_max_pixel)
 	(_retro.material as ShaderMaterial).set_shader_parameter("pixel_size", float(pixel))
+	# the filter keeps one point per game pixel: the machine's 3D needn't be finer
+	_machine.render_divisor = pixel if retro_filter else 1
 
 
 func _resize_paint() -> void:
