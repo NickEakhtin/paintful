@@ -97,6 +97,8 @@ const SURFACE_SCENES: Dictionary = {
 @export var press_radius: float = 45.0
 ## How far the picture is pulled into the dent, in pixels (deep enough to read through the retro filter).
 @export var press_depth: float = 12.0
+## The dent is this many times wider across than the brush (keeping the brush's length and turn).
+@export var press_widen: float = 2.0
 ## Light and shade on the dent's walls: the side facing the lamp lighter, the other darker, by this share.
 @export var press_shade: float = 0.35
 ## Pink halo around the tip; alpha is its strength.
@@ -673,7 +675,7 @@ func _update_skin_press(delta: float) -> void:
 	var material: ShaderMaterial = _press_rect.material
 	material.set_shader_parameter("tip", _machine.needle - _press_rect.get_global_rect().position)
 	material.set_shader_parameter("axis", _brush.axis)
-	material.set_shader_parameter("thickness", _brush.thickness)
+	material.set_shader_parameter("thickness", minf(_brush.thickness * press_widen, 1.0))
 	material.set_shader_parameter("press", smoothstep(0.0, 1.0, _press))
 	material.set_shader_parameter("shake", shake)
 
