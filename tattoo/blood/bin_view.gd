@@ -11,6 +11,8 @@ signal throw_finished(in_bin: bool)
 ## The left hand's speed and how quickly it gets there, as on the skin.
 @export var hand_speed: float = 650.0
 @export var hand_acceleration: float = 12.0
+## The mouse moves the hand too (the session captures it): screen px per px of mouse motion.
+@export var mouse_sensitivity: float = 0.8
 ## The throw: the ball lands on the floor point under the hand after `flight` s, off by up to `aim_error` m, plus
 ## the hand's own motion when it lets go (`swing_error` m per px/s): a still hand aimed over the basket goes in.
 @export var flight: float = 0.75
@@ -50,6 +52,9 @@ var _world_root: Node3D
 var _hand: Node2D
 var _hand_position: Vector2 = Vector2.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
+## Mouse motion since the last frame, and the hand's measured speed (px/s).
+var _mouse_move: Vector2 = Vector2.ZERO
+var _hand_motion: Vector2 = Vector2.ZERO
 var _ball: RigidBody3D
 var _wait: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -92,6 +97,8 @@ func arm_throw() -> void:
 	armed = true
 	_hand_position = Vector2(size.x * 0.3, size.y * 0.72)
 	_hand_velocity = Vector2.ZERO
+	_hand_motion = Vector2.ZERO
+	_mouse_move = Vector2.ZERO
 	_hand.visible = true
 	_hand.position = _hand_position
 	wake()
@@ -114,12 +121,21 @@ func clear_balls() -> void:
 			node.queue_free()
 
 
+func _input(event: InputEvent) -> void:
+	if armed and event is InputEventMouseMotion and not Transition.is_busy:
+		_mouse_move += (event as InputEventMouseMotion).relative
+
+
 func _process(delta: float) -> void:
 	if armed:
 		var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") \
 				if not Transition.is_busy else Vector2.ZERO
 		_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
-		_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
+		var before: Vector2 = _hand_position
+		_hand_position = (_hand_position + _hand_velocity * delta + _mouse_move * mouse_sensitivity).clamp(Vector2.ZERO, size)
+		_mouse_move = Vector2.ZERO
+		# how fast the hand really moves (keys and mouse), smoothed: a throw on the move goes astray
+		_hand_motion = _hand_motion.lerp((_hand_position - before) / maxf(delta, 0.0001), 1.0 - exp(-12.0 * delta))
 		_hand.position = _hand_position
 		if Input.is_action_just_pressed("use") and not Transition.is_busy:
 			_throw()
@@ -136,7 +152,7 @@ func _draw() -> void:
 	if not armed:
 		return
 	var font: Font = ThemeDB.fallback_font
-	var text: String = "WASD — прицелиться рукой над корзиной, ЛКМ — бросить"
+	var text: String = "Мышь или WASD — прицелиться рукой над корзиной, ЛКМ — бросить"
 	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
 	var at: Vector2 = Vector2((size.x - width) * 0.5, size.y - 70.0)
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, 6, Color.BLACK)
@@ -156,7 +172,7 @@ func _throw() -> void:
 	var start: Vector3 = from + aim * 0.45
 	var target: Vector3 = from + aim * (-from.y / minf(aim.y, -0.05))
 	var miss: Vector2 = Vector2.from_angle(_rng.randf() * TAU) * aim_error * sqrt(_rng.randf()) \
-			+ _hand_velocity * swing_error
+			+ _hand_motion * swing_error
 	target += Vector3(miss.x, 0.0, miss.y)
 	var gravity: Vector3 = Vector3.DOWN * float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 	_ball.global_position = start
