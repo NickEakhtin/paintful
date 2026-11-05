@@ -275,6 +275,7 @@ var _brush_angle2: float = 0.0
 @onready var _thick_cartridge: NeedleCartridge = $View/ThickNeedle
 @onready var _thin_cartridge: NeedleCartridge = $View/ThinNeedle
 @onready var _edge_frame: ColorRect = $EdgeFrame
+@onready var _edge_motes: EdgeMotes = $EdgeMotes
 @onready var _heartbeat: AudioStreamPlayer = $Heartbeat
 @onready var _cry: AudioStreamPlayer = $Cry
 @onready var _ink_cap: InkCap = $View/InkCap
@@ -983,6 +984,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 	_edge_frame_level = lerpf(_edge_frame_level, frame_target, 1.0 - exp(-edge_frame_rate * delta))
 	_edge_frame.visible = _edge_frame_level > 0.01
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
+	_edge_motes.level = _edge_frame_level if _edge_frame.visible else 0.0
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the
