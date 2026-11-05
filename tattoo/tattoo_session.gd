@@ -47,6 +47,10 @@ const SURFACE_SCENES: Dictionary = {
 ## resistance and nothing jumps when it stops. 0: no limit.
 @export var max_skin_speed: float = 450.0
 @export var pointer_leash: float = 220.0
+## Skin that can be stretched (`Mechanics.skin_tension`, the arm) takes this share of the ink where it's slack, and
+## `taut_ink` where the left hand pulls it tight (`SkinSurface.tension_at()` under the needle), in between by how taut.
+@export var slack_ink: float = 0.4
+@export var taut_ink: float = 1.3
 ## Share of the mouse's own motion the machine follows (the session captures the mouse): 0.5 = half as
 ## sensitive; 1 uses the plain cursor position.
 @export var mouse_sensitivity: float = 0.5
@@ -642,11 +646,12 @@ func _paint(delta: float) -> void:
 	_update_flow(delta, inking and _ink_left > 0.0 and on_skin and canvas.is_stencil(cell))
 	if inking and _ink_left > 0.0 and on_skin:
 		_brush.radius_px = _needle_radius() * (1.0 + flow_brush_bonus * _flow.strength())
+		var dose: float = ink_rate * delta * _tension_factor()
 		var laid: float
 		if _was_inking:
-			laid = canvas.stroke_on(_surface, _last_cell, cell, _brush, ink_rate * delta)
+			laid = canvas.stroke_on(_surface, _last_cell, cell, _brush, dose)
 		else:
-			laid = canvas.stamp_on(_surface, cell, _brush, ink_rate * delta)
+			laid = canvas.stamp_on(_surface, cell, _brush, dose)
 		if MECHANICS.ink_supply:
 			_ink_left = maxf(0.0, _ink_left - laid)
 	_update_edge(delta, inking and on_skin)
@@ -654,6 +659,14 @@ func _paint(delta: float) -> void:
 	# Off the skin the stroke breaks, so it never joins two far-apart points.
 	_was_inking = inking and on_skin
 	_heat_skin(inking, delta)
+
+
+## How well the skin under the needle takes ink now: `slack_ink` .. `taut_ink` by its tension; 1 on skin that
+## can't be stretched or with `Mechanics.skin_tension` off.
+func _tension_factor() -> float:
+	if not MECHANICS.skin_tension or not _surface.has_tension():
+		return 1.0
+	return lerpf(slack_ink, taut_ink, _surface.tension_at(_machine.needle))
 
 
 ## The brush's shape and the dots' look, from the exports (`Mechanics.flat_brush` off: the old round brush).

@@ -31,3 +31,5 @@ extends Resource
 ## Inking past the stencil's edge with the needle shakes the skin and pushes the machine back toward the
 ## drawing (the thick needle hard, the thin one gently).
 @export var edge_kick: bool = true
+## Stretchable skin (the arm) takes ink well only where the left hand pulls it taut, poorly where it's slack.
+@export var skin_tension: bool = true

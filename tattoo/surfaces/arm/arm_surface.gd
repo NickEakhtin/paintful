@@ -40,6 +40,8 @@ extends SkinSurface
 ## closer to the front the skin slides.
 @export var flap_grip_angle: float = 40.0
 ## How quickly let-go skin slides back (per second, exponential).
+## The taut patch round a slide's grip reaches this many `drag_radius`es.
+@export var tension_spread: float = 1.3
 @export var drag_return_rate: float = 8.0
 
 @export_group("Pull")
@@ -355,6 +357,31 @@ func _sync_pull() -> void:
 		_projected_from = shape.drag_from
 		_forget_projections()
 	shape.apply_to(_material)
+
+
+func has_tension() -> bool:
+	return true
+
+
+## Skin round a slide's grip is taut by how far it was dragged (over a gaussian a little wider than the slide);
+## a lifted flap tightens its side and the front next to it by the flap's amount, most at the hand's row. Holding
+## without moving tightens nothing.
+func tension_at(screen_point: Vector2) -> float:
+	var skin: Vector2 = shape.screen_to_skin(screen_point - _center())
+	if not skin.is_finite():
+		return 0.0
+	var tension: float = 0.0
+	if shape.drag != Vector2.ZERO:
+		var reach: float = shape.drag_radius * tension_spread
+		var d: Vector2 = Vector2((skin.x - shape.drag_from.x) * shape.radius, skin.y - shape.drag_from.y)
+		tension = clampf(shape.drag.length() / maxf(max_drag, 1.0), 0.0, 1.0) \
+				* exp(-d.length_squared() / (reach * reach))
+	if shape.side != 0 and shape.amount > 0.0:
+		var local: float = skin.x * shape.side   # angle toward the pulled side
+		var row: float = (skin.y - shape.grip_v) / shape.bulge_spread
+		var flap: float = shape.amount * smoothstep(-0.35, deg_to_rad(flap_grip_angle), local) * exp(-0.5 * row * row)
+		tension = maxf(tension, flap)
+	return clampf(tension, 0.0, 1.0)
 
 
 ## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.

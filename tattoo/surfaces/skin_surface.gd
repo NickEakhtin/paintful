@@ -66,6 +66,16 @@ func hint() -> String:
 	return ""
 
 
+## Whether this skin can be stretched (`tension_at()` means something); the flat panel can't.
+func has_tension() -> bool:
+	return false
+
+
+## How taut the skin under a screen point is, 0 (slack) .. 1 (pulled tight).
+func tension_at(_screen_point: Vector2) -> float:
+	return 1.0
+
+
 ## The artist's left hand lying on the skin: a rect in viewport pixels whose inscribed ellipse takes no ink and
 ## pushes the needle away; an empty rect when there is no hand.
 func hand_rect() -> Rect2:
