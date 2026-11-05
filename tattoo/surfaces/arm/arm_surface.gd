@@ -42,12 +42,15 @@ extends SkinSurface
 ## closer to the front the skin slides.
 @export var flap_grip_angle: float = 40.0
 ## How quickly let-go skin slides back (per second, exponential).
-## One fold across the arm (`ArmShape.fold_*`): skin tucked into it takes no ink until it's pulled smooth.
+## Short folds across the arm (`ArmShape.folds`): skin tucked into one takes no ink until it's pulled smooth.
 @export var fold_enabled: bool = true
-## Row of the fold's middle (px from the arm's centre, down positive), skin hidden in it, and its width on the arm.
-@export var fold_row: float = 40.0
-@export var fold_depth: float = 70.0
+## Each fold: (degrees round the arm of its middle, its middle row in px from the arm's centre (down positive),
+## half its length round the arm in degrees, skin px tucked in). Two at most; they mustn't overlap round the arm.
+@export var folds: Array[Vector4] = [Vector4(-30.0, -90.0, 22.0, 60.0), Vector4(32.0, 110.0, 20.0, 60.0)]
+## Width of a closed fold on the arm, in pixels.
 @export var fold_closed: float = 8.0
+## How far beyond a fold the skin is drawn in toward it, in pixels (the rest of the arm stays put).
+@export var fold_spread: float = 70.0
 ## Share of `max_drag` (pulling away from the fold along the arm) that smooths it out fully; pulls any other way
 ## count this much.
 @export var fold_open_at: float = 0.6
@@ -94,7 +97,7 @@ var _projected_known: PackedByteArray = PackedByteArray()
 ## The pull the cache was filled for: side, amount, shear, grip row.
 var _projected_pull: Vector4 = Vector4.INF
 var _projected_from: Vector2 = Vector2.INF
-var _projected_fold: float = -1.0
+var _projected_fold: PackedFloat32Array = PackedFloat32Array()
 ## The left hand: where it is (this control's pixels) and how fast it moves.
 var _hand_position: Vector2 = Vector2.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
@@ -276,7 +279,7 @@ func update_surface(delta: float, active: bool) -> void:
 			# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
 			var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
 			shape.drag = Vector2((target.x - _grip_skin.x) * radius,
-					target.y - shape.fold_place(_grip_skin.y)).limit_length(max_drag)
+					target.y - shape.fold_place(_grip_skin.x, _grip_skin.y)).limit_length(max_drag)
 	else:
 		shape.drag = shape.drag * exp(-drag_return_rate * delta)
 		if shape.drag.length() < 0.2:
@@ -395,8 +398,8 @@ func _sync_pull() -> void:
 	shape.shear = pull.shear(max_pull)
 	var pulled: Vector4 = Vector4(shape.amount + shape.side * 10.0, shape.shear, shape.drag.x, shape.drag.y)
 	if pulled != _projected_pull or (shape.drag != Vector2.ZERO and _projected_from != shape.drag_from) \
-			or shape.fold != _projected_fold:
-		_projected_fold = shape.fold
+			or shape.fold_amounts != _projected_fold:
+		_projected_fold = shape.fold_amounts.duplicate()
 		_projected_pull = pulled
 		_projected_from = shape.drag_from
 		_forget_projections()
@@ -431,20 +434,21 @@ func tension_at(screen_point: Vector2) -> float:
 ## The fold smooths out while the skin near it is pulled away from it along the arm (a pull any other way counts
 ## `fold_side_share` as much), fully at `fold_open_at` of `max_drag`; let go and it bunches up again.
 func _update_fold(delta: float) -> void:
-	if not fold_enabled:
-		shape.fold = 0.0
-		return
-	var opening: float = 0.0
-	if shape.drag != Vector2.ZERO:
-		var away: float = shape.drag.y * (-1.0 if shape.drag_from.y < shape.fold_v else 1.0)
-		var along: float = maxf(away, 0.0) + (shape.drag.length() - absf(shape.drag.y)) * fold_side_share \
-				+ maxf(-away, 0.0) * fold_side_share
-		var gap: float = absf(shape.drag_from.y - shape.fold_v) - shape.fold_width * 0.5
-		var near: float = exp(-pow(maxf(gap, 0.0) / (shape.drag_radius * tension_spread), 2.0))
-		opening = clampf(along / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * near
-	var target: float = 1.0 - opening
-	var settled: float = lerpf(shape.fold, target, 1.0 - exp(-fold_rate * delta))
-	shape.fold = target if absf(settled - target) < 0.002 else settled
+	for i in shape.folds.size():
+		var fold: Vector4 = shape.folds[i]
+		var opening: float = 0.0
+		if fold_enabled and shape.drag != Vector2.ZERO:
+			var away: float = shape.drag.y * (-1.0 if shape.drag_from.y < fold.y else 1.0)
+			var along: float = maxf(away, 0.0) + (shape.drag.length() - absf(shape.drag.y)) * fold_side_share \
+					+ maxf(-away, 0.0) * fold_side_share
+			# how far the grip is from the crease: past its band along the arm, past its ends round it
+			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - fold.x) - fold.z, 0.0) * radius,
+					maxf(absf(shape.drag_from.y - fold.y) - fold.w * 0.5, 0.0))
+			var reach: float = shape.drag_radius * tension_spread
+			opening = clampf(along / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
+		var target: float = (1.0 - opening) if fold_enabled else 0.0
+		var settled: float = lerpf(shape.fold_amounts[i], target, 1.0 - exp(-fold_rate * delta))
+		shape.fold_amounts[i] = target if absf(settled - target) < 0.002 else settled
 
 
 ## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.
@@ -496,10 +500,13 @@ func _apply_exports() -> void:
 	shape.grip_bulge = grip_bulge
 	shape.bulge_spread = bulge_spread
 	shape.drag_radius = drag_radius
-	shape.fold_v = fold_row
-	shape.fold_width = fold_depth
+	shape.folds.clear()
+	for fold: Vector4 in folds.slice(0, 2):
+		shape.folds.append(Vector4(deg_to_rad(fold.x), fold.y, deg_to_rad(fold.z), fold.w))
+	shape.fold_amounts.resize(shape.folds.size())
+	shape.fold_amounts.fill(1.0 if fold_enabled else 0.0)
 	shape.fold_closed_width = fold_closed
-	shape.fold = 1.0 if fold_enabled else 0.0
+	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)
 	shape.ink_max_angle = deg_to_rad(ink_max_angle)
 	pull.max_angle = deg_to_rad(max_pull_angle)

@@ -53,13 +53,16 @@ var shear: float = 0.0
 var drag_from: Vector2 = Vector2.ZERO
 var drag: Vector2 = Vector2.ZERO
 var drag_radius: float = 160.0
-## A fold across the arm: the skin band of `fold_width` px from `fold_v` - fold_width / 2 is bunched into
-## `fold_closed_width` px on the arm and turned inward, so it takes no ink. `fold` 1 = closed, 0 = smoothed out.
-## Applied before the slide (skin -> fold -> slide -> arm). `arm_skin.gdshader` repeats it.
-var fold_v: float = 40.0
-var fold_width: float = 70.0
+## Short folds across the arm, each (theta of its middle, its middle row, half its length round the arm in
+## radians, skin px tucked in): that band of skin is bunched into `fold_closed_width` px on the arm and turned
+## inward, so it takes no ink; the crease fades out toward its ends. `fold_amounts[i]` 1 = closed, 0 = smoothed
+## out. Folds must not overlap round the arm (at any theta at most one counts). Applied before the slide
+## (skin -> fold -> slide -> arm). `arm_skin.gdshader` repeats it (two folds at most).
+var folds: Array[Vector4] = []
+var fold_amounts: PackedFloat32Array = PackedFloat32Array()
 var fold_closed_width: float = 8.0
-var fold: float = 0.0
+## How far beyond a fold the skin is drawn in toward it, in pixels.
+var fold_spread: float = 70.0
 
 
 ## Arm radius at row `v`.
@@ -88,57 +91,93 @@ func facing(theta: float, v: float) -> float:
 
 ## Where skin point (theta, v) sits on the arm after the slide, as (theta, v).
 func slide(theta: float, v: float) -> Vector2:
-	var row: float = fold_place(v)
+	var row: float = fold_place(theta, v)
 	if drag == Vector2.ZERO:
 		return Vector2(theta, row)
 	var k: float = _slide_weight(theta, v)
 	return Vector2(theta + drag.x / radius * k, row + drag.y * k)
 
 
-## Skin row `v` -> its row on the arm with the fold bunched up: the band is squeezed, the skin beyond it pulled in
-## half the slack from either side.
-func fold_place(v: float) -> float:
-	var slack: float = _fold_slack()
-	if slack <= 0.0:
+## Skin point (theta, v) -> its row on the arm with the fold there bunched up: the band is squeezed and the skin
+## next to it pulled in half the slack from either side, easing off over `fold_spread` px (stretched a little), so
+## the rest of the arm stays put.
+func fold_place(theta: float, v: float) -> float:
+	var index: int = _fold_at(theta)
+	if index < 0:
 		return v
-	var t: float = clampf((v - (fold_v - fold_width * 0.5)) / fold_width, 0.0, 1.0)
-	return v - slack * t + slack * 0.5
+	return v + _fold_shift(folds[index], _fold_slack(index, theta), v)
 
 
-## fold_place()'s inverse.
-func fold_unplace(row: float) -> float:
-	var slack: float = _fold_slack()
+## fold_place()'s inverse along the row (theta doesn't move): the map only moves a row by up to half the slack and
+## keeps the order of rows, so halving the bracket finds it (24 rounds: under a thousandth of a pixel).
+func fold_unplace(theta: float, row: float) -> float:
+	var index: int = _fold_at(theta)
+	if index < 0:
+		return row
+	var fold: Vector4 = folds[index]
+	var slack: float = _fold_slack(index, theta)
 	if slack <= 0.0:
 		return row
-	var start: float = fold_v - fold_width * 0.5
-	if row <= start + slack * 0.5:
-		return row - slack * 0.5
-	if row >= start + fold_width - slack * 0.5:
-		return row + slack * 0.5
-	return (row - slack * 0.5 - slack * start / fold_width) / (1.0 - slack / fold_width)
+	var low: float = row - slack
+	var high: float = row + slack
+	for i in 24:
+		var middle: float = (low + high) * 0.5
+		if middle + _fold_shift(fold, slack, middle) < row:
+			low = middle
+		else:
+			high = middle
+	return (low + high) * 0.5
 
 
-## How deep skin row `v` is tucked into the fold, 0..1 (soft at the band's edges).
-func fold_hidden(v: float) -> float:
-	if fold <= 0.0:
+## How far skin row `v` moves along the arm for a fold with `slack` px taken up: +slack/2 at the band's top down to
+## -slack/2 at its bottom, easing to nothing `fold_spread` px beyond it.
+func _fold_shift(fold: Vector4, slack: float, v: float) -> float:
+	var start: float = fold.y - fold.w * 0.5
+	var end: float = start + fold.w
+	if v < start:
+		return slack * 0.5 * (1.0 - smoothstep(0.0, fold_spread, start - v))
+	if v > end:
+		return -slack * 0.5 * (1.0 - smoothstep(0.0, fold_spread, v - end))
+	return slack * 0.5 - slack * (v - start) / fold.w
+
+
+## How deep skin point (theta, v) is tucked into a fold, 0..1 (soft at the band's edges and the crease's ends).
+func fold_hidden(theta: float, v: float) -> float:
+	var index: int = _fold_at(theta)
+	if index < 0:
 		return 0.0
-	var start: float = fold_v - fold_width * 0.5
-	var t: float = (v - start) / fold_width
-	return fold * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t))
+	var fold: Vector4 = folds[index]
+	var t: float = (v - (fold.y - fold.w * 0.5)) / fold.w
+	return fold_amounts[index] * _fold_reach(fold, theta) * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t))
 
 
-func _fold_slack() -> float:
-	return maxf(0.0, fold_width - fold_closed_width) * clampf(fold, 0.0, 1.0)
+## The fold round the arm at `theta`, or -1.
+func _fold_at(theta: float) -> int:
+	for i in folds.size():
+		if absf(theta - folds[i].x) < folds[i].z and i < fold_amounts.size() and fold_amounts[i] > 0.0:
+			return i
+	return -1
+
+
+## 1 along the crease, easing to 0 at its ends.
+func _fold_reach(fold: Vector4, theta: float) -> float:
+	return 1.0 - smoothstep(0.5, 1.0, absf(theta - fold.x) / fold.z)
+
+
+func _fold_slack(index: int, theta: float) -> float:
+	var fold: Vector4 = folds[index]
+	return maxf(0.0, fold.w - fold_closed_width) * clampf(fold_amounts[index], 0.0, 1.0) * _fold_reach(fold, theta)
 
 
 ## The skin point that slid to (theta, v): slide()'s inverse, by a few rounds.
 func unslide(theta: float, v: float) -> Vector2:
 	if drag == Vector2.ZERO:
-		return Vector2(theta, fold_unplace(v))
-	var skin: Vector2 = Vector2(theta, fold_unplace(v))
+		return Vector2(theta, fold_unplace(theta, v))
+	var skin: Vector2 = Vector2(theta, fold_unplace(theta, v))
 	for i in 24:   # each round cuts the error by about 0.86 × drag / drag_radius: 24 get under a tenth of a pixel
 		var k: float = _slide_weight(skin.x, skin.y)
-		skin = Vector2(theta - drag.x / radius * k, fold_unplace(v - drag.y * k))
+		var skin_theta: float = theta - drag.x / radius * k
+		skin = Vector2(skin_theta, fold_unplace(skin_theta, v - drag.y * k))
 	return skin
 
 
@@ -159,7 +198,7 @@ func project(theta: float, v: float) -> Vector3:
 	var at: Vector2 = slide(theta, v)
 	var placed: Array = _place(at.x, at.y)
 	var point: Vector3 = placed[0]
-	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(v)))
+	return Vector3(point.x, point.y, ink_factor(placed[1]) * (1.0 - fold_hidden(theta, v)))
 
 
 ## 1 where the skin faces the camera squarely enough to take ink, fading to 0 toward the silhouette.
@@ -232,10 +271,13 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("drag_from", drag_from)
 	material.set_shader_parameter("drag", drag)
 	material.set_shader_parameter("drag_radius", drag_radius)
-	material.set_shader_parameter("fold_v", fold_v)
-	material.set_shader_parameter("fold_width", fold_width)
+	for i in 2:
+		var fold: Vector4 = folds[i] if i < folds.size() else Vector4(0.0, 0.0, 0.0001, 1.0)
+		var amount: float = fold_amounts[i] if i < fold_amounts.size() and i < folds.size() else 0.0
+		material.set_shader_parameter("fold_%d" % i, fold)
+		material.set_shader_parameter("fold_amount_%d" % i, amount)
 	material.set_shader_parameter("fold_closed_width", fold_closed_width)
-	material.set_shader_parameter("fold", fold)
+	material.set_shader_parameter("fold_spread", fold_spread)
 
 
 func _side_sign() -> float:

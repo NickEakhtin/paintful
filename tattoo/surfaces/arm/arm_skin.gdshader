@@ -24,11 +24,14 @@ uniform float pull_shear = 0.0;
 uniform vec2 drag_from = vec2(0.0);
 uniform vec2 drag = vec2(0.0);
 uniform float drag_radius = 160.0;
-// The fold across the arm (ArmShape.fold_*): the band is bunched up and tucked in by `fold` (1 closed, 0 smooth).
-uniform float fold_v = 40.0;
-uniform float fold_width = 70.0;
+// Two short folds (ArmShape.folds): (theta of the middle, middle row, half length in radians, skin px tucked in),
+// bunched up and tucked in by their amounts (1 closed, 0 smooth).
+uniform vec4 fold_0 = vec4(0.0, 0.0, 0.0001, 1.0);
+uniform vec4 fold_1 = vec4(0.0, 0.0, 0.0001, 1.0);
+uniform float fold_amount_0 = 0.0;
+uniform float fold_amount_1 = 0.0;
 uniform float fold_closed_width = 8.0;
-uniform float fold = 0.0;
+uniform float fold_spread = 70.0;
 // How dark the crease is, and how much the bunched lips either side of it catch the light.
 uniform float fold_shade = 0.6;
 uniform float fold_lip = 0.12;
@@ -111,28 +114,64 @@ vec3 place(float theta, float v) {
 	return vec3(on_flap.x * s, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
 }
 
-float fold_slack() {
-	return max(0.0, fold_width - fold_closed_width) * clamp(fold, 0.0, 1.0);
+// The fold at `theta` (ArmShape._fold_at()): its vec4 in `f`, its amount returned (0: none).
+float fold_at(float theta, out vec4 f) {
+	if (fold_amount_0 > 0.0 && abs(theta - fold_0.x) < fold_0.z) {
+		f = fold_0;
+		return fold_amount_0;
+	}
+	if (fold_amount_1 > 0.0 && abs(theta - fold_1.x) < fold_1.z) {
+		f = fold_1;
+		return fold_amount_1;
+	}
+	f = vec4(0.0, 0.0, 1.0, 1.0);
+	return 0.0;
 }
 
-// Skin row -> its row on the arm with the fold bunched up (ArmShape.fold_place()).
-float fold_place(float v) {
-	float slack = fold_slack();
-	float t = clamp((v - (fold_v - fold_width * 0.5)) / fold_width, 0.0, 1.0);
-	return v - slack * t + slack * 0.5;
+float fold_reach(vec4 f, float theta) {
+	return 1.0 - smoothstep(0.5, 1.0, abs(theta - f.x) / f.z);
 }
 
-// How deep skin row `v` is tucked into the fold (ArmShape.fold_hidden()).
-float fold_hidden(float v) {
-	float t = (v - (fold_v - fold_width * 0.5)) / fold_width;
-	return fold * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
+// Skin point -> its row on the arm with the fold there bunched up (ArmShape.fold_place()).
+float fold_place(float theta, float v) {
+	vec4 f;
+	float amount = fold_at(theta, f);
+	if (amount <= 0.0) {
+		return v;
+	}
+	float slack = max(0.0, f.w - fold_closed_width) * clamp(amount, 0.0, 1.0) * fold_reach(f, theta);
+	float start = f.y - f.w * 0.5;
+	float end = start + f.w;
+	if (v < start) {
+		return v + slack * 0.5 * (1.0 - smoothstep(0.0, fold_spread, start - v));
+	}
+	if (v > end) {
+		return v - slack * 0.5 * (1.0 - smoothstep(0.0, fold_spread, v - end));
+	}
+	return v + slack * 0.5 - slack * (v - start) / f.w;
+}
+
+// How deep skin point is tucked into a fold (ArmShape.fold_hidden()); `lips` gets the bunched rims' light.
+float fold_hidden(float theta, float v, out float lips) {
+	vec4 f;
+	float amount = fold_at(theta, f);
+	lips = 0.0;
+	if (amount <= 0.0) {
+		return 0.0;
+	}
+	float reach = fold_reach(f, theta);
+	float start = f.y - f.w * 0.5;
+	float t = (v - start) / f.w;
+	float lip_width = f.w * 0.18;
+	lips = (exp(-pow((v - start) / lip_width, 2.0)) + exp(-pow((v - start - f.w) / lip_width, 2.0))) * amount * reach;
+	return amount * reach * smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
 }
 
 // Where skin point (theta, v) sits after the fold and the slide.
 vec2 slide(float theta, float v) {
 	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
 	float k = exp(-dot(d, d) / (drag_radius * drag_radius));
-	return vec2(theta + drag.x / radius * k, fold_place(v) + drag.y * k);
+	return vec2(theta + drag.x / radius * k, fold_place(theta, v) + drag.y * k);
 }
 
 // The skin point's place on screen, slid first.
@@ -198,12 +237,10 @@ void fragment() {
 		ink = texture(ink_layer, skin_uv);
 	}
 	// the fold: the tucked band goes dark (its ink with it), the bunched lips either side catch the light
-	float hidden = fold_hidden(skin_v);
-	float start = fold_v - fold_width * 0.5;
-	float lip_width = fold_width * 0.18;
-	float lips = exp(-pow((skin_v - start) / lip_width, 2.0)) + exp(-pow((skin_v - start - fold_width) / lip_width, 2.0));
+	float lips;
+	float hidden = fold_hidden(skin_theta, skin_v, lips);
 	skin *= 1.0 - fold_shade * hidden;
-	skin += vec3(fold_lip) * lips * fold;
+	skin += vec3(fold_lip) * lips;
 	ink.a *= 1.0 - 0.85 * hidden;
 	// The arm darkens and reddens toward its silhouette, like skin turning away from the lamp.
 	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
