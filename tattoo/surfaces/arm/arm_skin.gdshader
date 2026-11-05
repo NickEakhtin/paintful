@@ -24,7 +24,6 @@ uniform float pull_shear = 0.0;
 uniform vec2 drag_from = vec2(0.0);
 uniform vec2 drag = vec2(0.0);
 uniform float drag_radius = 160.0;
-uniform float drag_radius_v = 160.0;
 // The swell (ArmShape.radius_here()): pulled outward near a silhouette, the arm's radius grows around swell_at.
 uniform float swell = 0.0;
 uniform vec2 swell_at = vec2(0.0);
@@ -59,9 +58,9 @@ float radius_here(float theta, float v) {
 	if (swell <= 0.0) {
 		return r;
 	}
-	vec2 d = vec2((theta - swell_at.x) * radius / drag_radius, (v - swell_at.y) / drag_radius_v);
+	vec2 d = vec2((theta - swell_at.x) * radius, v - swell_at.y);
 	float on_side = smoothstep(0.0, 0.35, theta * sign(swell_at.x));
-	return r + swell * exp(-dot(d, d)) * on_side;
+	return r + swell * exp(-dot(d, d) / (drag_radius * drag_radius)) * on_side;
 }
 
 float bulge_at(float v) {
@@ -110,8 +109,8 @@ vec3 place(float theta, float v) {
 
 // Where skin point (theta, v) sits after the slide.
 vec2 slide(float theta, float v) {
-	vec2 d = vec2((theta - drag_from.x) * radius / drag_radius, (v - drag_from.y) / drag_radius_v);
-	float k = exp(-dot(d, d));
+	vec2 d = vec2((theta - drag_from.x) * radius, v - drag_from.y);
+	float k = exp(-dot(d, d) / (drag_radius * drag_radius));
 	return vec2(theta + drag.x / radius * k, v + drag.y * k);
 }
 

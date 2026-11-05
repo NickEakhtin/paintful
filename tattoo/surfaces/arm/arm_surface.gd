@@ -35,11 +35,6 @@ extends SkinSurface
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
 ## folds).
 @export var drag_radius: float = 200.0
-## Gripped near a silhouette, the slide reaches this far along the arm (px), so the whole side of the stencil moves.
-@export var edge_drag_radius_v: float = 450.0
-## Gripped near a silhouette and pulled outward, the skin from behind rolls forward this much per pixel outward
-## (onto the swelling arm), so the stencil's side comes into view with clean skin beyond it.
-@export var edge_reveal: float = 1.0
 ## How quickly let-go skin slides back (per second, exponential).
 @export var drag_return_rate: float = 8.0
 
@@ -236,7 +231,6 @@ func update_surface(delta: float, active: bool) -> void:
 			_grip_screen = _hand_position
 			shape.drag_from = skin
 			shape.drag = Vector2.ZERO
-			shape.drag_radius_v = lerpf(drag_radius, edge_drag_radius_v, _near_edge(skin.x))
 			_stretch_sound.play()
 	elif toggled and _gripping:
 		_gripping = false
@@ -246,13 +240,9 @@ func update_surface(delta: float, active: bool) -> void:
 		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag)
 		# the gripped skin goes where the hand is: its bare-arm place under the hand, minus where it came from
 		var target: Vector2 = shape.rest_skin(_hand_position - size * 0.5)
-		var drag: Vector2 = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y)
-		# near a silhouette, how far the hand went outward swells the arm (refresh_swell()) and rolls the skin
-		# from behind forward onto it, like a flap pulled off the side
+		shape.drag = Vector2((target.x - _grip_skin.x) * radius, target.y - _grip_skin.y).limit_length(max_drag)
+		# near a silhouette, how far the hand went outward swells the arm (refresh_swell())
 		shape.outward = maxf(0.0, (_hand_position.x - _grip_screen.x) * signf(_grip_skin.x))
-		var edge: float = _near_edge(_grip_skin.x)
-		drag.x = lerpf(drag.x, -signf(_grip_skin.x) * shape.outward * edge_reveal, edge)
-		shape.drag = drag.limit_length(max_drag)
 	else:
 		shape.outward *= exp(-drag_return_rate * delta)
 		shape.drag = shape.drag * exp(-drag_return_rate * delta)
@@ -317,11 +307,6 @@ func release() -> void:
 	shape.outward = 0.0
 	_reset_hand()
 	_sync_pull()
-
-
-## 0 for a grip on the front of the arm, 1 near a silhouette (as ArmShape.refresh_swell() weighs it).
-func _near_edge(theta: float) -> float:
-	return smoothstep(0.35, 0.9, absf(sin(theta)))
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
