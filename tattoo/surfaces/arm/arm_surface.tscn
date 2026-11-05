@@ -10,9 +10,31 @@
 [sub_resource type="ShaderMaterial" id="bokeh_material"]
 shader = ExtResource("3_bokeh")
 
+[sub_resource type="FastNoiseLite" id="skin_noise"]
+noise_type = 2
+frequency = 0.03
+fractal_octaves = 2
+cellular_return_type = 4
+
+[sub_resource type="NoiseTexture2D" id="skin_detail"]
+width = 512
+height = 512
+seamless = true
+noise = SubResource("skin_noise")
+
+[sub_resource type="NoiseTexture2D" id="skin_normal"]
+width = 512
+height = 512
+seamless = true
+as_normal_map = true
+bump_strength = 6.0
+noise = SubResource("skin_noise")
+
 [sub_resource type="ShaderMaterial" id="skin_material"]
 render_priority = 0
 shader = ExtResource("2_skin")
+shader_parameter/skin_detail = SubResource("skin_detail")
+shader_parameter/skin_normal = SubResource("skin_normal")
 
 [sub_resource type="Environment" id="environment"]
 background_mode = 1

@@ -36,6 +36,14 @@ uniform vec4 skin_shadow_color : source_color = vec4(0.5, 0.27, 0.21, 1.0);
 uniform vec4 stretched_color : source_color = vec4(0.92, 0.74, 0.64, 1.0);
 uniform float stretch_tint = 1.6;
 uniform float fold_strength = 0.35;
+// Skin texture: a tiling cell pattern (the fine criss-cross lines of skin) as colour and as a normal map.
+uniform sampler2D skin_detail : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D skin_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+// One tile of the texture, in skin pixels.
+uniform float detail_tile = 160.0;
+// How much the lines darken the skin, and how deep they look in the light.
+uniform float detail_strength = 0.1;
+uniform float normal_strength = 0.5;
 
 // "Show what's left" ping: the silhouette glows on a side that still hides unfinished stencil.
 uniform float hint_left = 0.0;
@@ -132,6 +140,8 @@ void vertex() {
 	vec3 along_v = to_world(place_slid(theta, v + 1.0)) - to_world(place_slid(theta, v - 1.0));
 	VERTEX = here;
 	NORMAL = normalize(cross(along_v, along_theta));
+	TANGENT = normalize(along_theta);
+	BINORMAL = normalize(along_v);
 	stretch = length(along_theta) / (2.0 * e * radius_at(v));
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
 	skin_theta = theta;
@@ -144,6 +154,11 @@ void fragment() {
 	float pores = noise(p * 0.9);
 	vec3 skin = mix(skin_shadow_color.rgb, skin_color.rgb, 0.75 + 0.25 * blotch);
 	skin *= 0.94 + 0.06 * pores;
+	// the skin's fine lines; stretched skin smooths them out
+	vec2 detail_uv = p / detail_tile;
+	float lines = 1.0 - texture(skin_detail, detail_uv).r;
+	float smooth_out = clamp((stretch - 1.0) * 2.0, 0.0, 0.7);
+	skin *= 1.0 - detail_strength * lines * (1.0 - smooth_out);
 	// Stretched skin pales; bunched-up skin shows fine folds across the pull.
 	float stretched = clamp((stretch - 1.0) * stretch_tint, 0.0, 1.0);
 	skin = mix(skin, stretched_color.rgb, stretched * 0.5);
@@ -160,6 +175,8 @@ void fragment() {
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
 	ALBEDO = mix(skin, ink.rgb, ink.a);
 	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
+	NORMAL_MAP = texture(skin_normal, detail_uv).rgb;
+	NORMAL_MAP_DEPTH = normal_strength * (1.0 - smooth_out) * (1.0 - 0.5 * ink.a);
 	SPECULAR = 0.35;
 	float hint = skin_theta < 0.0 ? hint_left : hint_right;
 	EMISSION = hint_color.rgb * hint * smoothstep(0.6, 0.98, edge) * 1.2;
