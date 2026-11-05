@@ -21,12 +21,23 @@ extends RefCounted
 ## pushed away. Kept invertible: `drag` stays under about 1.1 × `drag_radius`.
 
 ## Radius at the arm's centre, in pixels.
-var radius: float = 210.0
-## Radius scale at the top (elbow) and bottom (wrist) end of `length`.
-var taper_top: float = 1.1
-var taper_bottom: float = 0.84
-## Length of the modelled arm, in pixels; longer than the screen so its ends stay off screen.
-var length: float = 1000.0
+var radius: float = 210.0:
+	set(value):
+		radius = value
+		_profile_table.clear()
+## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
+## positive) and the radius there in `radius`es — the deltoid, the upper arm and biceps, the narrow elbow, the
+## forearm's muscles swelling below it and thinning to the wrist, then closing inside the client's palm. Above
+## PROFILE_V[0] the shoulder is a round cap (a circle of that row's radius).
+## A smooth (Hermite) curve through them; `arm_skin.gdshader` has the same points and curve. Change both together.
+const PROFILE_V: PackedFloat32Array = [-1480.0, -1390.0, -1200.0, -960.0, -760.0, -540.0, -400.0, -260.0, -110.0, 100.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
+const PROFILE_S: PackedFloat32Array = [0.9, 1.2, 1.12, 1.1, 1.15, 1.02, 0.9, 1.0, 1.06, 0.98, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
+## `radius_at()` reads a table of the curve, this many px a step.
+const PROFILE_STEP: float = 2.0
+var _profile_table: PackedFloat32Array = PackedFloat32Array()
+## Length the mesh is built for, in pixels (the shader's mesh runs MESH_REACH times it, centred on the stencil):
+## from above the shoulder cap to below the hand.
+var length: float = 1800.0
 ## Where the fingers hold the skin, measured from the front line (radians, behind the silhouette).
 var grip_angle: float = deg_to_rad(115.0)
 ## How far past the silhouette a full pull drags the grip, in pixels.
@@ -80,8 +91,56 @@ var fold_ragged: float = 9.0
 
 ## Arm radius at row `v`.
 func radius_at(v: float) -> float:
-	var t: float = clampf(v / length + 0.5, 0.0, 1.0)
-	return radius * lerpf(taper_top, taper_bottom, t)
+	if _profile_table.is_empty():
+		_build_profile_table()
+	var top: float = _profile_top()
+	var at: float = (clampf(v, top, PROFILE_V[-1]) - top) / PROFILE_STEP
+	var i: int = mini(int(at), _profile_table.size() - 2)
+	return radius * lerpf(_profile_table[i], _profile_table[i + 1], at - i)
+
+
+## The outline's scale at row `v`: a cubic through the profile points with slopes from their neighbours.
+func profile_scale(v: float) -> float:
+	var count: int = PROFILE_V.size()
+	if v <= PROFILE_V[0]:
+		# the shoulder's round cap
+		var d: float = (PROFILE_V[0] - v) / (PROFILE_S[0] * radius)
+		return PROFILE_S[0] * sqrt(maxf(1.0 - d * d, 0.0))
+	if v >= PROFILE_V[count - 1]:
+		return PROFILE_S[count - 1]
+	var i: int = 0
+	while v > PROFILE_V[i + 1]:
+		i += 1
+	var h: float = PROFILE_V[i + 1] - PROFILE_V[i]
+	var u: float = (v - PROFILE_V[i]) / h
+	var m0: float = _profile_slope(i) * h
+	var m1: float = _profile_slope(i + 1) * h
+	var u2: float = u * u
+	var u3: float = u2 * u
+	return (2.0 * u3 - 3.0 * u2 + 1.0) * PROFILE_S[i] + (u3 - 2.0 * u2 + u) * m0 \
+			+ (-2.0 * u3 + 3.0 * u2) * PROFILE_S[i + 1] + (u3 - u2) * m1
+
+
+static func _profile_slope(i: int) -> float:
+	var count: int = PROFILE_V.size()
+	var a: int = maxi(i - 1, 0)
+	var b: int = mini(i + 1, count - 1)
+	if i == 0 or i == count - 1:
+		return 0.0   # flat at the ends: the cap closes square to the axis, the wrist runs on straight
+	return (PROFILE_S[b] - PROFILE_S[a]) / (PROFILE_V[b] - PROFILE_V[a])
+
+
+## The very top of the shoulder's cap.
+func _profile_top() -> float:
+	return PROFILE_V[0] - PROFILE_S[0] * radius
+
+
+func _build_profile_table() -> void:
+	var top: float = _profile_top()
+	var steps: int = ceili((PROFILE_V[-1] - top) / PROFILE_STEP) + 2
+	_profile_table.resize(steps)
+	for i in steps:
+		_profile_table[i] = profile_scale(top + i * PROFILE_STEP)
 
 
 ## How much of the pull reaches row `v`, 0..1.
@@ -339,8 +398,7 @@ func project_layer(theta: float, v: float, layer: Vector2) -> Vector3:
 		at_theta += drag.x / radius * k
 		at_row += drag.y * k
 	if side == 0:   # no flap: the plain cylinder, inline (the common case, thousands of times a stroke)
-		var t: float = clampf(at_row / length + 0.5, 0.0, 1.0)
-		var r: float = radius * lerpf(taper_top, taper_bottom, t)
+		var r: float = radius_at(at_row)
 		var face: float = cos(at_theta)
 		return Vector3(sin(at_theta) * r, at_row, ink_factor(face) * layer.y)
 	var placed: Array = _place(at_theta, at_row)
@@ -403,8 +461,6 @@ func tangent_angle(v: float) -> float:
 ## Copies the shape into an `arm_skin.gdshader` material.
 func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("radius", radius)
-	material.set_shader_parameter("taper_top", taper_top)
-	material.set_shader_parameter("taper_bottom", taper_bottom)
 	material.set_shader_parameter("arm_length", length)
 	material.set_shader_parameter("grip_angle", grip_angle)
 	material.set_shader_parameter("max_pull", max_pull)
