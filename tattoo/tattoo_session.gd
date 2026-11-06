@@ -319,12 +319,14 @@ func _ready() -> void:
 	# 15 ms a frame on a 3K screen for nothing, so the window stops drawing 3D until the session is freed
 	_window_3d_was_off = get_viewport().disable_3d
 	get_viewport().disable_3d = true
+	Events.tattoo_session_changed.emit(true)   # the level hides its floors meanwhile
 	_fit_retro()
 	_start_if_main_scene.call_deferred()
 
 
 func _exit_tree() -> void:
 	get_viewport().disable_3d = _window_3d_was_off
+	Events.tattoo_session_changed.emit(false)
 
 
 func _start_if_main_scene() -> void:

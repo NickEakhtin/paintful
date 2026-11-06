@@ -21,3 +21,7 @@ signal studio_closed
 ## The player went down to the basement (true) or came back up (false).
 @warning_ignore("unused_signal")
 signal underground_changed(underground: bool)
+
+## A tattoo session opened (true: it covers the screen) or closed (false).
+@warning_ignore("unused_signal")
+signal tattoo_session_changed(active: bool)

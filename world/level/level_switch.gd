@@ -3,6 +3,8 @@ extends Node
 ## Takes the player between the studio and the basement through a black screen: down through the open hatch
 ## (it asks with `descend_requested`), up through the basement exit. Only the floor the player is on is shown;
 ## the other one is hidden, since it costs frame time even where it can't be seen.
+## While a tattoo session covers the screen both floors are hidden and stopped (their lamps' flicker, the rain, the
+## passers-by), and come back as they were when it closes.
 ## Anything in `companions` (a client following the player) travels along and lands behind them.
 
 signal travelled(underground: bool)
@@ -23,6 +25,7 @@ var underground: bool = false
 var companions: Array[Node3D] = []
 
 var _busy: bool = false
+var _in_session: bool = false
 
 
 func _ready() -> void:
@@ -32,6 +35,7 @@ func _ready() -> void:
 	# the day starts by the altar: show the floor whose landing the player is nearer to
 	var to_basement: float = player.global_position.distance_to(basement_landing.global_position)
 	_show(to_basement < player.global_position.distance_to(studio_landing.global_position))
+	Events.tattoo_session_changed.connect(_on_tattoo_session)
 
 
 func _travel(down: bool) -> void:
@@ -58,9 +62,16 @@ func _travel(down: bool) -> void:
 	travelled.emit(down)
 
 
+func _on_tattoo_session(active: bool) -> void:
+	_in_session = active
+	for floor_node: Node3D in [studio, basement]:
+		floor_node.process_mode = Node.PROCESS_MODE_DISABLED if active else Node.PROCESS_MODE_INHERIT
+	_show(underground)
+
+
 func _show(down: bool) -> void:
 	underground = down
-	studio.visible = not down
-	basement.visible = down
+	studio.visible = not down and not _in_session
+	basement.visible = down and not _in_session
 	basement_exit.enabled = down
 	Events.underground_changed.emit(down)
