@@ -7,9 +7,9 @@ extends Node2D
 ## towel wipes them off (`wipe()`).
 
 ## Seconds between two drops (random in this range), at most `max_drops` at once.
-@export var interval_min: float = 25.0
-@export var interval_max: float = 55.0
-@export var max_drops: int = 3
+@export var interval_min: float = 12.0
+@export var interval_max: float = 25.0
+@export var max_drops: int = 5
 ## Only ink this young can bleed, in seconds (the ink's own drying time).
 @export var fresh_time: float = 6.0
 ## A drop's radius when it wells up and once it's full (after `grow_time` s), in skin pixels.
@@ -37,6 +37,8 @@ var _fresh: Array[Array] = []
 var _clock: float = 0.0
 var _next_drop: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Drew something last frame: one more redraw clears it once the last drop is gone.
+var _drawn: bool = false
 
 
 func _ready() -> void:
@@ -66,7 +68,10 @@ func update(delta: float) -> void:
 		drop.age += delta
 		if drop.age > run_after:
 			drop.run = minf(drop.run + run_speed * delta * (0.6 + 0.4 * sin(drop.seed + drop.age * 0.7)), run_max)
-	queue_redraw()
+	# redraw only while there's blood to draw (and once more to clear the last of it)
+	if not drops.is_empty() or _drawn:
+		queue_redraw()
+		_drawn = not drops.is_empty()
 
 
 ## Rubs at `at` (skin pixels) over a circle of `radius`, the hand having moved `moved` pixels: every drop (and its

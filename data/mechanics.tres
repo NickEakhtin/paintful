@@ -12,4 +12,4 @@ machine_inertia = false
 table_prep = false
 table_cleanup = false
 dialogues = false
-blood = false
+blood = true

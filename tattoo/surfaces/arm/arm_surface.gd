@@ -107,7 +107,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## Each fold: (degrees round the arm of its middle, its middle row in px from the arm's centre (down positive),
 ## half its length round the arm in degrees, skin px tucked in). Two at most; they mustn't overlap round the arm.
 ## Now one long scar across the stencil's diagonal, from its top left corner to its bottom right.
-@export var folds: Array[Vector4] = [Vector4(0.0, 0.0, 95.0, 60.0)]
+@export var folds: Array[Vector4] = [Vector4(0.0, 0.0, 47.5, 60.0)]
 ## The crease climbs this many px along the arm per degree round it (the scar's slant: 240 rows over the stencil's
 ## 65° half width reaches its corners), and breaks into straight pieces whose corners are up to `fold_kinks` px off.
 @export var fold_tilt: float = 3.7
