@@ -40,6 +40,8 @@ var edge_texture: ImageTexture
 
 ## How far in from the edge distances are measured; farther cells count as EDGE_REACH.
 const EDGE_REACH: int = 32
+## How torn the edge margin is: its width wanders by up to this share either way.
+const EDGE_RAGGED: float = 0.65
 
 var _threshold: float
 var _ink: PackedFloat32Array = PackedFloat32Array()
@@ -497,6 +499,17 @@ func _build_edge_distance() -> void:
 			if _edge_distance[neighbour] > next:
 				_edge_distance[neighbour] = next
 				queue.append(neighbour)
+	# a torn edge, not an even strip: each cell's distance is divided by a wavy factor (three crossing waves, coarse to
+	# fine), so the margin's inner line wanders from a third to almost twice its width
+	for cell in size.x * size.y:
+		var d: float = _edge_distance[cell]
+		if d <= 0.0 or d >= EDGE_REACH:
+			continue
+		var x: float = cell % size.x
+		var y: float = cell / size.x
+		var wave: float = 0.45 * sin(x * 0.23 + y * 0.17) + 0.35 * sin(x * 0.61 - y * 0.47 + 1.3) \
+				+ 0.2 * sin(x * 1.37 + y * 1.11 + 0.6)
+		_edge_distance[cell] = minf(d / clampf(1.0 + EDGE_RAGGED * wave, 0.35, 1.9), EDGE_REACH)
 	var image: Image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_RF, _edge_distance.to_byte_array())
 	edge_texture = ImageTexture.create_from_image(image)
 
