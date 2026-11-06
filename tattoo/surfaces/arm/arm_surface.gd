@@ -59,6 +59,10 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## No ink lands under the left hand: its exact outline (`GloveHand.outline()`, circles along its posed fingers, palm
 ## and cuff) grown by this many screen px.
 @export var hand_block_margin: float = 4.0
+## A ring in front of the left hand marks where it takes the skin (`_hand_position`); the glove sits this many screen
+## px behind it (down the screen). `grip_target_radius`: the ring's size.
+@export var grip_target_back: float = 240.0
+@export var grip_target_radius: float = 16.0
 ## The view scrolls along the whole arm (the session asks for it with `scroll_view()` when the machine nears the top
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
@@ -189,6 +193,8 @@ var holding_paper: bool = false
 var hand_locked: bool = false
 var _blood: BloodLayer
 var _paper_stack: Node2D
+## The grip's target ring.
+var _target: Node2D
 ## How far the stack has slid out, 0 peeking .. 1 out.
 var _stack_slide: float = 0.0
 var _paper: Node2D
@@ -275,6 +281,10 @@ func _ready() -> void:
 	add_child(_paper_stack)
 	move_child(_paper_stack, _hand.get_index())
 	_paper_stack.visible = MECHANICS.blood
+	_target = Node2D.new()
+	_target.name = "GripTarget"
+	_target.draw.connect(_draw_target)
+	add_child(_target)
 	_paper = PAPER_IN_HAND.new()
 	_paper.name = "Paper"
 	_paper.visible = false
@@ -704,7 +714,7 @@ func scroll_view(amount: float) -> void:
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
 func _reset_hand() -> void:
-	_hand_position = size * 0.5 + Vector2(-radius * 0.8 * _z, size.y * 0.1)
+	_hand_position = size * 0.5 + Vector2(-radius * 0.8 * _z, size.y * -0.05)
 	_hand_velocity = Vector2.ZERO
 	_place_hand()
 
@@ -868,8 +878,27 @@ func hand_outline() -> PackedVector3Array:
 ## skin, half closed round a paper towel.
 func _place_hand() -> void:
 	_hand.visible = _overview < 0.05
-	_hand.position = _hand_position   # it turns itself with its motion (GloveHand)
+	# the hand sits a little behind its target: the ring at `_hand_position` is where it takes the skin
+	_hand.position = _hand_position + Vector2(0.0, grip_target_back)   # it turns itself with its motion (GloveHand)
 	_hand.fist = 1.0 if _gripping else (PAPER_FIST if holding_paper else 0.0)
+	_target.visible = _hand.visible
+	_target.position = _hand_position
+	_target.set_meta(&"gripping", _gripping)
+	_target.queue_redraw()
+
+
+## The target ring: a thin pale ring with a dot; filled while the hand holds the skin.
+func _draw_target() -> void:
+	var r: float = grip_target_radius
+	var gripping: bool = _target.get_meta(&"gripping", false)
+	var shade: Color = Color(0.0, 0.0, 0.0, 0.45)
+	var light: Color = Color(1.0, 0.96, 0.9, 0.9)
+	_target.draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, shade, 5.0, true)
+	_target.draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, light, 2.5, true)
+	if gripping:
+		_target.draw_circle(Vector2.ZERO, r * 0.55, Color(light, 0.7))
+	else:
+		_target.draw_circle(Vector2.ZERO, 2.5, light)
 
 
 func _forget_projections() -> void:
