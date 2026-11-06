@@ -57,7 +57,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
 ## Share of the hand's footprint (round its middle) that keeps ink off the skin under it.
-@export_range(0.1, 1.0) var hand_block_scale: float = 0.55
+@export_range(0.1, 1.0) var hand_block_scale: float = 0.275
 ## The view scrolls along the whole arm (the session asks for it with `scroll_view()` when the machine nears the top
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
