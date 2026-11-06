@@ -233,9 +233,9 @@ var _warm_rows: PackedInt32Array = PackedInt32Array()
 func _ready() -> void:
 	_apply_exports()
 	item_rect_changed.connect(_forget_projections)
-	# The lamp up and to the left, as for the wet ink's highlight; a warm fill from the lower right.
-	_key_light.look_at_from_position(Vector3(-600.0, 700.0, 900.0), Vector3.ZERO)
-	_fill_light.look_at_from_position(Vector3(900.0, -250.0, 500.0), Vector3.ZERO)
+	# The lamp up and to the right, as for the wet ink's highlight; a warm fill from the lower left.
+	_key_light.look_at_from_position(Vector3(600.0, 700.0, 900.0), Vector3.ZERO)
+	_fill_light.look_at_from_position(Vector3(-900.0, -250.0, 500.0), Vector3.ZERO)
 	_arm.mesh = _build_mesh()
 	# the arm leans as in the photo: turned in the 3D world (counter-clockwise seen from the camera, so the forearm's
 	# bottom goes right), screen points turned back by the same angle

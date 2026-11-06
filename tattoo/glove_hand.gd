@@ -47,17 +47,17 @@ func _ready() -> void:
 	var world_environment: WorldEnvironment = WorldEnvironment.new()
 	world_environment.environment = environment
 	_viewport.add_child(world_environment)
-	# the lamp up and to the left, as on the client's arm; a warm fill from the lower right
+	# the lamp up and to the right, as on the client's arm; a warm fill from the lower left
 	var key: DirectionalLight3D = DirectionalLight3D.new()
 	key.light_color = Color(1.0, 0.94, 0.86)
 	key.light_energy = 1.3
 	_viewport.add_child(key)
-	key.look_at_from_position(Vector3(-0.6, 0.7, 0.9), Vector3.ZERO)
+	key.look_at_from_position(Vector3(0.6, 0.7, 0.9), Vector3.ZERO)
 	var fill: DirectionalLight3D = DirectionalLight3D.new()
 	fill.light_color = Color(1.0, 0.78, 0.6)
 	fill.light_energy = 0.3
 	_viewport.add_child(fill)
-	fill.look_at_from_position(Vector3(0.9, -0.25, 0.5), Vector3.ZERO)
+	fill.look_at_from_position(Vector3(-0.9, -0.25, 0.5), Vector3.ZERO)
 	var camera: Camera3D = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = FRAME

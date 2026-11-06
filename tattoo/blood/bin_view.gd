@@ -307,7 +307,7 @@ func _build_world() -> void:
 	_world_root.add_child(_camera)
 	_camera.look_at_from_position(Vector3(0.0, 0.95, 1.25), Vector3(0.0, 0.12, 0.0))
 	var lamp: OmniLight3D = OmniLight3D.new()
-	lamp.position = Vector3(-0.5, 1.4, 0.8)
+	lamp.position = Vector3(0.5, 1.4, 0.8)
 	lamp.light_energy = 1.6
 	lamp.omni_range = 4.0
 	lamp.shadow_enabled = true

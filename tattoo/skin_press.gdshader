@@ -1,7 +1,7 @@
 shader_type canvas_item;
 // The skin under the working needle: the picture is pulled in toward the tip like a small dent shaped like the
 // brush (an ellipse `radius` long along `axis`, `thickness` of that across, turning with it),
-// lit from the same lamp as the wet ink (up and to the left), with a pink halo around it.
+// lit from the same lamp as the wet ink (up and to the right), with a pink halo around it.
 // The whole skin also trembles by `shake` pixels while the machine buzzes.
 // Reads the screen (a BackBufferCopy right before it), so it bends skin, stencil, ink and redness,
 // but nothing drawn after it (tasks, machine). Cut to the rounded skin panel.
@@ -61,7 +61,7 @@ void fragment() {
 
 	// Walls of the dent: the one facing the lamp is lighter, the other darker.
 	float wall = r < 1.0 ? r * (1.0 - r * r) / 0.385 : 0.0;
-	vec2 to_light = normalize(vec2(-0.5, -0.7));
+	vec2 to_light = normalize(vec2(0.5, -0.7));
 	color *= 1.0 + shade * wall * dot(-out_dir, to_light) * press;
 
 	float halo = exp(-pow(r / (0.7 * tint_spread), 2.0)) * tint.a * press;

@@ -109,12 +109,12 @@ void fragment() {
 	vec2 ripple = vec2(noise(UV * 14.0 + now * 0.07), noise(UV * 14.0 + 17.0 - now * 0.05)) - 0.5;
 	vec3 normal = normalize(vec3(-(slope + ripple * 0.12) * bump, 1.0));
 
-	// Bright pin highlight from a lamp up and to the left.
-	vec3 to_light = normalize(vec3(-0.5, -0.7, 1.0));
+	// Bright pin highlight from a lamp up and to the right.
+	vec3 to_light = normalize(vec3(0.5, -0.7, 1.0));
 	vec3 half_way = normalize(to_light + vec3(0.0, 0.0, 1.0));
 	float specular = pow(max(dot(normal, half_way), 0.0), 160.0) * 1.5;
 	// The studio window reflected in the wet ink: two soft diagonal bands that the surface bends.
-	vec2 mirror = SCREEN_UV + normal.xy * 0.12;
+	vec2 mirror = vec2(1.0 - SCREEN_UV.x, SCREEN_UV.y) + vec2(-normal.x, normal.y) * 0.12;   // the window on the right
 	float across = dot(mirror, vec2(0.7071, 0.7071));
 	float window = smoothstep(0.52, 0.56, across) * (1.0 - smoothstep(0.62, 0.66, across))
 			+ 0.6 * smoothstep(0.69, 0.71, across) * (1.0 - smoothstep(0.73, 0.75, across));
