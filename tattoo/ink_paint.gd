@@ -26,7 +26,7 @@ const MAX_SIZE: int = 2048
 ## A stroke is drawn as dabs this far apart, in radii (the logic steps half a radius): no scallops at its edges.
 const STROKE_SPACING: float = 0.15
 ## Most blocked ellipses passed to the brushes.
-const MAX_BLOCKS: int = 8
+const MAX_BLOCKS: int = 80
 ## Wetness decays as exp(-DECAY * age / dry_time); the ink shader turns it back into an age.
 const DECAY: float = 3.0
 ## Copies a buffer as is into one of another size; its values are already linear, so they go out re-encoded.

@@ -42,7 +42,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## How close the camera is to the arm: the arm (and everything in its own pixels: the stencil, the scroll, the
 ## grip's reach) is drawn this many times bigger on screen. Screen points go to arm pixels through `_arm_point()` /
 ## `_screen_to_arm()`, cell projections come back × this.
-@export var zoom: float = 1.5
+@export var zoom: float = 1.3
 ## How much of the photo's lean the view shows (`ArmShape.PROFILE.lean`, 21.4°): 1 the arm leans as in the photo, the
 ## forearm's bottom forward (the arm turns in 3D, and screen points turn back through `_unturn`); 0 the forearm stands
 ## upright. The arm's own geometry, the stencil included, is the same either way.
@@ -56,8 +56,9 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var hand_acceleration: float = 12.0
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
-## Share of the hand's footprint (round its middle) that keeps ink off the skin under it.
-@export_range(0.1, 1.0) var hand_block_scale: float = 0.275
+## No ink lands under the left hand: its exact outline (`GloveHand.outline()`, circles along its posed fingers, palm
+## and cuff) grown by this many screen px.
+@export var hand_block_margin: float = 4.0
 ## The view scrolls along the whole arm (the session asks for it with `scroll_view()` when the machine nears the top
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
@@ -857,18 +858,10 @@ func _update_fold(delta: float) -> void:
 
 ## How closed the hand is round a paper towel.
 const PAPER_FIST: float = 0.7
-## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 2.25 in
-## the scene, which hand_rect() takes along).
-const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
-
-
-func hand_rect() -> Rect2:
+func hand_outline() -> PackedVector3Array:
 	if not _hand.visible:
-		return Rect2()
-	var shape_rect: Rect2 = HAND_SHAPE
-	var middle: Vector2 = shape_rect.get_center()
-	shape_rect = Rect2(middle - shape_rect.size * 0.5 * hand_block_scale, shape_rect.size * hand_block_scale)
-	return _hand.get_global_transform() * shape_rect
+		return PackedVector3Array()
+	return _hand.outline(hand_block_margin)
 
 
 ## The left hand (`GloveHand`, the player's glove): palm at `_hand_position`, fingers up; a fist while it holds the

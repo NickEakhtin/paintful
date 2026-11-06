@@ -609,13 +609,13 @@ func _update_ink_blocks() -> void:
 		for rect in modifier.ink_blocks():
 			var from: Vector2 = _to_cell(rect.position)
 			canvas.blocked.append(Rect2(from, _to_cell(rect.end) - from))
-	# the artist's own left hand on the skin: its ellipse, measured in cells around the hand's middle
-	var hand: Rect2 = _surface.hand_rect()
-	if hand.has_area():
-		var middle: Vector2 = _to_cell(hand.get_center())
+	# the artist's own left hand on the skin: every circle of its outline, measured in cells round its middle
+	# (exact size: screen px over px per cell; cells_within() pads its walk for the brush)
+	var cell_px: float = maxf(_surface.pixels_per_cell(), 0.001)
+	for circle: Vector3 in _surface.hand_outline():
+		var middle: Vector2 = _to_cell(Vector2(circle.x, circle.y))
 		if middle.is_finite():
-			var half: Vector2 = Vector2(_surface.cells_within(middle, hand.size.x * 0.5).x,
-					_surface.cells_within(middle, hand.size.y * 0.5).y)
+			var half: Vector2 = Vector2.ONE * circle.z / cell_px
 			canvas.blocked.append(Rect2(middle - half, half * 2.0))
 
 
@@ -1044,14 +1044,14 @@ func _update_edge(delta: float, inking: bool) -> void:
 ## needle when all of it is out).
 func _brush_outside() -> float:
 	var outside: int = 0
-	var hand: Rect2 = _surface.hand_rect()
+	var hand: PackedVector3Array = _surface.hand_outline()
 	var crossings: Vector2 = Vector2.ZERO
 	var crossing_count: int = 0
 	var was_out: int = -1   # the previous point: -1 none (or on the hand), 0 inside, 1 outside
 	var previous: Vector2 = Vector2.ZERO
 	for s: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
 		var point: Vector2 = _machine.needle + _brush.axis * _brush.radius_px * s
-		if _in_ellipse(point, hand):
+		if _on_hand(point, hand):
 			was_out = -1
 			continue
 		var cell: Vector2 = _surface.to_cell(point)
@@ -1067,11 +1067,11 @@ func _brush_outside() -> float:
 
 
 ## Whether a point is inside the ellipse inscribed in a rect (false for an empty rect).
-static func _in_ellipse(point: Vector2, rect: Rect2) -> bool:
-	if not rect.has_area():
-		return false
-	var offset: Vector2 = (point - rect.get_center()) / (rect.size * 0.5)
-	return offset.length_squared() <= 1.0
+static func _on_hand(point: Vector2, outline: PackedVector3Array) -> bool:
+	for circle: Vector3 in outline:
+		if point.distance_squared_to(Vector2(circle.x, circle.y)) <= circle.z * circle.z:
+			return true
+	return false
 
 
 ## Centre of the stencil's cells, in cells.
@@ -1206,12 +1206,39 @@ func _set_blur(progress: float) -> void:
 	(_blur.material as ShaderMaterial).set_shader_parameter("strength", sin(progress * PI))
 
 
+## The blocked ellipses this frame's new ink can touch (the hand's outline is dozens of circles; every dab on the GPU
+## tests each one it's given).
+func _blocks_near_new_ink() -> Array[Rect2]:
+	var near: Array[Rect2] = []
+	if canvas.blocked.is_empty() or (canvas.dabs.is_empty() and canvas.strokes.is_empty()):
+		return near
+	var area: Rect2 = Rect2()
+	var first: bool = true
+	var reach: float = 0.0
+	for dab: Array in canvas.dabs:
+		var basis: Transform2D = dab[1]
+		reach = maxf(reach, maxf(basis.x.length(), basis.y.length()))
+		area = Rect2(dab[0], Vector2.ZERO) if first else area.expand(dab[0])
+		first = false
+	for stroke: Array in canvas.strokes:
+		var basis: Transform2D = stroke[2]
+		reach = maxf(reach, maxf(basis.x.length(), basis.y.length()))
+		area = Rect2(stroke[0], Vector2.ZERO) if first else area.expand(stroke[0])
+		first = false
+		area = area.expand(stroke[1])
+	area = area.grow(reach * 1.7 + 2.0)   # the dots scatter past the brush's rim
+	for rect: Rect2 in canvas.blocked:
+		if rect.intersects(area, true):
+			near.append(rect)
+	return near
+
+
 ## Uploads the grid and hands this frame's stamps (or a wipe) to the screen-resolution look.
 func _flush_ink() -> void:
 	if canvas.cleared:
 		canvas.cleared = false
 		_paint_view.clear_ink()
-	_paint_view.set_blocks(canvas.blocked)
+	_paint_view.set_blocks(_blocks_near_new_ink())
 	_paint_view.add_ink(canvas.dabs, canvas.strokes)
 	canvas.dabs.clear()
 	canvas.strokes.clear()

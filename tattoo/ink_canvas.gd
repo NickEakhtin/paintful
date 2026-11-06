@@ -120,7 +120,7 @@ func stamp_on(surface: SkinSurface, center: Vector2, brush: InkBrush, amount: fl
 	var cached: PackedVector3Array = cache[0] if use_cache else PackedVector3Array()
 	var known: PackedByteArray = cache[1] if use_cache else PackedByteArray()
 	var cache_offset: Vector3 = cache[2] if use_cache else Vector3.ZERO
-	var blocks: PackedVector4Array = _block_ellipses()
+	var blocks: PackedVector4Array = _block_ellipses(Rect2(center - reach, reach * 2.0))
 	if not _in_stroke and middle.z > 0.0:
 		dabs.append([center, _brush_basis(surface, center, brush), amount * middle.z, brush.radius_px, brush.thickness])
 	for y in range(y0, y1 + 1):
@@ -188,7 +188,7 @@ func stroke_on(surface: SkinSurface, from: Vector2, to: Vector2, brush: InkBrush
 	var cached: PackedVector3Array = cache[0] if use_cache else PackedVector3Array()
 	var known: PackedByteArray = cache[1] if use_cache else PackedByteArray()
 	var cache_offset: Vector3 = cache[2] if use_cache else Vector3.ZERO
-	var blocks: PackedVector4Array = _block_ellipses()
+	var blocks: PackedVector4Array = _block_ellipses(Rect2(low, high - low))
 	var seg: Vector2 = to - from
 	var seg_len_sq: float = maxf(seg.length_squared(), 1e-9)
 	var reach_sq: float = reach_cells * reach_cells
@@ -401,10 +401,13 @@ func _brush_basis(surface: SkinSurface, cell: Vector2, brush: InkBrush) -> Trans
 	return surface.brush_basis(cell, brush.axis * brush.radius_px, brush.across() * brush.half_thickness())
 
 
-## `blocked` as (centre, 1 / half size) per ellipse, worked out once per brush call.
-func _block_ellipses() -> PackedVector4Array:
+## `blocked` as (centre, 1 / half size) per ellipse, worked out once per brush call; only those touching `area`
+## (cells; the hand's outline is dozens of circles, and a brush reaches a few).
+func _block_ellipses(area: Rect2 = Rect2(-1e9, -1e9, 2e9, 2e9)) -> PackedVector4Array:
 	var ellipses: PackedVector4Array = PackedVector4Array()
 	for rect in blocked:
+		if not rect.intersects(area, true):
+			continue
 		var half: Vector2 = (rect.size * 0.5).max(Vector2.ONE * 1e-6)
 		var centre: Vector2 = rect.get_center()
 		ellipses.append(Vector4(centre.x, centre.y, 1.0 / half.x, 1.0 / half.y))

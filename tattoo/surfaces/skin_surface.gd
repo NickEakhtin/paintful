@@ -100,10 +100,10 @@ func note_ink(_canvas: InkCanvas) -> void:
 	pass
 
 
-## The artist's left hand lying on the skin: a rect in viewport pixels whose inscribed ellipse takes no ink and
-## pushes the needle away; an empty rect when there is no hand.
-func hand_rect() -> Rect2:
-	return Rect2()
+## The artist's left hand lying on the skin, as circles (x, y = centre, z = radius) in viewport pixels following its
+## outline: no ink lands under them. Empty when there is no hand.
+func hand_outline() -> PackedVector3Array:
+	return PackedVector3Array()
 
 
 ## The "show what's left" ping, 0..1 (rises, then fades). A skin can light up what's left out of sight.

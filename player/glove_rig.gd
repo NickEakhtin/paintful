@@ -141,6 +141,27 @@ func _weights_at(p: Vector3) -> Array:
 	return [chain[0], w0, chain[1], w1, chain[2], w2, palm, maxf(wp, 0.0)]
 
 
+## Each finger's posed joints and tip (knuckle out), in the skeleton's space (empty before it's built).
+func finger_points() -> Array[PackedVector3Array]:
+	var out: Array[PackedVector3Array] = []
+	if _skeleton == null:
+		return out
+	for finger: String in _bones:
+		var chain: Array = _bones[finger]
+		var joints: Array = FINGERS[finger]
+		var points: PackedVector3Array = PackedVector3Array()
+		for i in 3:
+			points.append(_skeleton.get_bone_global_pose(chain[i]).origin)
+		points.append(_skeleton.get_bone_global_pose(chain[2]) * ((joints[3] as Vector3) - (joints[2] as Vector3)))
+		out.append(points)
+	return out
+
+
+## The skeleton (null before it's built): its global transform takes finger_points() into the world.
+func skeleton() -> Skeleton3D:
+	return _skeleton
+
+
 func _pose() -> void:
 	if _skeleton == null:
 		return
