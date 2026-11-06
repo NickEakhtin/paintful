@@ -95,6 +95,9 @@ const SURFACE_SCENES: Dictionary = {
 ## The view (skin and table, like a camera) shakes by up to this many pixels meanwhile; the machine stays under
 ## the mouse.
 @export var edge_shake: float = 8.0
+## The purple frame round the screen and the specks flying off the touch (off: the user found them too much; the thick
+## needle simply lays nothing near the edge).
+@export var edge_effects: bool = false
 ## A red frame around the screen shows how far past the edge the brush is; how fast it comes and goes.
 @export var edge_frame_rate: float = 10.0
 ## The frame stays this many seconds at its last strength once the brush is back inside, then fades.
@@ -1024,7 +1027,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 	if not _turning:
 		var shake: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * edge_shake * _edge_amount
 		_view.position = Vector2(_view_home, 0.0) + shake
-	var frame_target: float = minf(_edge_amount * 2.0, 1.0)
+	var frame_target: float = minf(_edge_amount * 2.0, 1.0) if edge_effects else 0.0
 	if frame_target > 0.0:
 		_edge_frame_held = maxf(frame_target, _edge_frame_held if canvas.time < _edge_frame_hold_until else 0.0)
 		_edge_frame_hold_until = canvas.time + edge_frame_hold
@@ -1035,7 +1038,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 	(_edge_frame.material as ShaderMaterial).set_shader_parameter("strength", _edge_frame_level)
 	# purple specks fly off where the brush touches the edge, only while it does (the thick needle)
 	_edge_motes.position = _edge_contact
-	_edge_motes.level = minf(_edge_amount * 2.0, 1.0)
+	_edge_motes.level = minf(_edge_amount * 2.0, 1.0) if edge_effects else 0.0
 
 
 ## Share of five points along the brush (its middle, halfway and its ends) that miss the stencil (points on the

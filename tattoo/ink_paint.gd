@@ -61,12 +61,9 @@ void fragment() {
 		}
 	}
 	vec4 color = texture(TEXTURE, UV) * COLOR;
-	if (edge_margin > 0.0) {
-		float near = texture(edge_map, FRAGCOORD.xy / buffer_size).r / edge_margin;
-		if (near < 1.0) {
-			color.b = color.r * max(near, 0.0);
-			color.r = 0.0;
-		}
+	// the thick needle lays nothing within the edge margin, film or dots: only the thin one reaches the edge
+	if (edge_margin > 0.0 && texture(edge_map, FRAGCOORD.xy / buffer_size).r < edge_margin) {
+		discard;
 	}
 	COLOR = color;
 }

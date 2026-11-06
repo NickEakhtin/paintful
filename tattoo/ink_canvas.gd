@@ -34,7 +34,7 @@ const BLOCK: int = 4
 const BLOCK_MARGIN: float = 3.0
 ## Most ink a stamp within `edge_margin` brings a cell up to (below full, so the part can't complete without
 ## another brush there).
-var edge_cap: float = 0.5
+var edge_cap: float = 0.0
 ## Every stencil cell's distance from the stencil's edge in cells (R float, up to EDGE_REACH), for the look.
 var edge_texture: ImageTexture
 
