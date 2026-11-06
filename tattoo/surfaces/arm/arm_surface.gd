@@ -241,6 +241,10 @@ var _warm_rows: PackedInt32Array = PackedInt32Array()
 
 
 func _ready() -> void:
+	# No MSAA in the arm's view (arm_surface.tscn): with this heavy shader in a transparent SubViewport it hung the GPU
+	# now and then on macOS (AMD Radeon Pro 5300M under MoltenVK: "GPU Timeout Error", the game froze), about once in
+	# a minute or two of a session; without it not once in 20 runs. The retro filter samples one point per game pixel
+	# anyway.
 	_apply_exports()
 	item_rect_changed.connect(_forget_projections)
 	# The lamp up and to the right, as for the wet ink's highlight; a warm fill from the lower left.

@@ -83,7 +83,7 @@ func _ready() -> void:
 	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
-	_viewport.msaa_3d = Viewport.MSAA_2X
+	# no MSAA: with the wire's discard it risks the GPU hang the arm's view had on macOS (AMD, MoltenVK)
 	container.add_child(_viewport)
 	_world_root = Node3D.new()
 	_viewport.add_child(_world_root)

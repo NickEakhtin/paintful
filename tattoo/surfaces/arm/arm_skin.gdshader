@@ -333,6 +333,13 @@ float noise(vec2 p) {
 			mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// normalize() that never returns NaN: past the shoulder's top and the fingertips the arm's radius is 0, a whole
+// row sits on one point and its vectors are zero (NaN in the vertices hung the GPU on macOS: a GPU timeout).
+vec3 safe_normalize(vec3 v, vec3 fallback) {
+	float length_v = length(v);
+	return length_v > 1e-6 ? v / length_v : fallback;
+}
+
 void vertex() {
 	float theta = (UV.x * 2.0 - 1.0) * PI;
 	float v = (UV.y - 0.5) * arm_length * MESH_REACH;
@@ -341,11 +348,12 @@ void vertex() {
 	vec3 along_theta = to_world(place_slid(theta + e, v)) - to_world(place_slid(theta - e, v));
 	vec3 along_v = to_world(place_slid(theta, v + 1.0)) - to_world(place_slid(theta, v - 1.0));
 	VERTEX = here;
-	NORMAL = normalize(cross(along_v, along_theta));
-	TANGENT = normalize(along_theta);
-	BINORMAL = normalize(along_v);
+	NORMAL = safe_normalize(cross(along_v, along_theta), vec3(0.0, 0.0, 1.0));
+	TANGENT = safe_normalize(along_theta, vec3(1.0, 0.0, 0.0));
+	BINORMAL = safe_normalize(along_v, vec3(0.0, -1.0, 0.0));
 	// round the arm only: folds and the bump move rows up and down, which isn't stretch (it lit pale streaks)
-	stretch = length(along_theta.xz) / (2.0 * e * radius_at(v));
+	float row_radius = radius_at(v);
+	stretch = row_radius > 0.01 ? length(along_theta.xz) / (2.0 * e * row_radius) : 1.0;
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
 	skin_theta = theta;
 	skin_v = v;
@@ -405,7 +413,7 @@ void fragment() {
 		float d_v = photo_detail(arm_at.x, arm_at.y + e) - photo_detail(arm_at.x, arm_at.y - e);
 		float d_t = photo_detail(arm_at.x + e / radius, arm_at.y) - photo_detail(arm_at.x - e / radius, arm_at.y);
 		float k = photo_relief / (2.0 * e);
-		NORMAL = normalize(NORMAL - normalize(TANGENT) * d_t * k - normalize(BINORMAL) * d_v * k);
+		NORMAL = safe_normalize(NORMAL - safe_normalize(TANGENT, vec3(1.0, 0.0, 0.0)) * d_t * k - safe_normalize(BINORMAL, vec3(0.0, -1.0, 0.0)) * d_v * k, NORMAL);
 	}
 	// the shoulder's top dissolves: pixels dropped by a fine noise (interleaved gradient noise, steady on screen)
 	float fade = smoothstep(fade_top_from, fade_top_from + fade_top_length, skin_v);
@@ -420,7 +428,7 @@ void fragment() {
 		float h_v = bump_height(skin_theta, bump_row + e) - bump_height(skin_theta, bump_row - e);
 		float h_t = bump_height(skin_theta + e / radius, bump_row) - bump_height(skin_theta - e / radius, bump_row);
 		float slope = bump_relief * bump.w * 0.02;
-		NORMAL = normalize(NORMAL - normalize(TANGENT) * h_t * slope / (2.0 * e) * 30.0 - normalize(BINORMAL) * h_v * slope / (2.0 * e) * 30.0);
+		NORMAL = safe_normalize(NORMAL - safe_normalize(TANGENT, vec3(1.0, 0.0, 0.0)) * h_t * slope / (2.0 * e) * 30.0 - safe_normalize(BINORMAL, vec3(0.0, -1.0, 0.0)) * h_v * slope / (2.0 * e) * 30.0, NORMAL);
 	}
 	NORMAL_MAP = texture(skin_normal, detail_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_strength * (1.0 - smooth_out) * (1.0 - 0.5 * ink.a);

@@ -52,7 +52,7 @@ func _ready() -> void:
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = true
 	_viewport.transparent_bg = true
-	_viewport.msaa_3d = Viewport.MSAA_2X
+	# no MSAA: it's supersampled already, and MSAA in a transparent SubViewport hung the GPU on macOS (AMD, MoltenVK)
 	var side: int = roundi(FRAME * PX_PER_M * SUPERSAMPLE)
 	_viewport.size = Vector2i(side, side)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE

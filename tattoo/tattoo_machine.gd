@@ -90,7 +90,11 @@ var render_divisor: int = 1:
 	set(value):
 		render_divisor = maxi(value, 1)
 		if is_node_ready():
-			_view.msaa_3d = Viewport.MSAA_DISABLED if render_divisor > 1 else Viewport.MSAA_4X
+			# no MSAA ever (in a transparent SubViewport it hung the GPU on macOS: AMD under MoltenVK); at full
+			# resolution FXAA smooths the edges instead
+			_view.msaa_3d = Viewport.MSAA_DISABLED
+			_view.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if render_divisor > 1 \
+					else Viewport.SCREEN_SPACE_AA_FXAA
 ## Set: where the hand wants the needle. Get: where the needle actually is.
 var needle: Vector2:
 	set(value):
