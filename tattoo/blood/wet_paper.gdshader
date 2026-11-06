@@ -10,7 +10,7 @@ uniform float wet = 0.85;
 uniform vec2 seed = vec2(0.0);
 uniform vec3 paper : source_color = vec3(0.95, 0.95, 0.94);
 uniform vec3 soaked : source_color = vec3(0.78, 0.78, 0.77);
-uniform vec3 blood : source_color = vec3(0.45, 0.03, 0.06);
+uniform vec3 blood : source_color = vec3(0.24, 0.02, 0.05);   // dark maroon, soaked in
 // The emboss pattern's cells across the sheet.
 uniform float emboss_cells = 11.0;
 
