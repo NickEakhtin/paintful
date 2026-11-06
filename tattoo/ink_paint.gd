@@ -90,6 +90,12 @@ var dot_size_edge: float = 1.1
 var dot_size_jitter: float = 0.3
 ## Dots are stretched along the brush up to this much (most stay round).
 var dot_stretch_max: float = 2.0
+## Most spray dots drawn in one frame (normal inking stays near a thousand; dense ink on taut skin asked for up to a
+## hundred times that).
+const MAX_DOTS_PER_FRAME: float = 4000.0
+var _dot_share: float = 1.0
+## How many dabs and dots the last add_ink() queued (one call a frame), for diagnostics.
+var last_batch: int = 0
 ## Smallest dot radius in buffer pixels, so a dot never falls between them.
 const MIN_DOT_PIXELS: float = 0.75
 
@@ -238,6 +244,15 @@ func texel() -> Vector2:
 
 ## Queues stamps and strokes (in cells, as InkCanvas keeps them) to be drawn this frame.
 func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
+	# the dots follow the dose, and taut skin takes 13 times the ink: up to 99 000 dots in one frame, which made the GPU
+	# time out (the game froze on macOS). At most MAX_DOTS_PER_FRAME, shared out evenly over the frame's stamps.
+	var wanted: float = 0.0
+	for dab: Array in dabs:
+		wanted += float(dab[2]) * dots_per_dose
+	for stroke: Array in strokes:
+		wanted += float(stroke[3]) * dots_per_dose
+	_dot_share = minf(1.0, MAX_DOTS_PER_FRAME / maxf(wanted, 1.0))
+	var before: int = _pending.size()
 	# the logic raises a thin brush's dose by 1 / thickness (InkBrush.dose_scale()); the film's dabs do the same,
 	# so the film builds up exactly as the logic counts
 	for dab: Array in dabs:
@@ -256,6 +271,7 @@ func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
 			_pending.append([from.lerp(to, float(i + 1) / steps), basis,
 					float(stroke[3]) / maxf(thick, 0.001) / steps, false])
 		_add_dots(from, to, basis, stroke[3], stroke[4] if stroke.size() > 5 else 0.0, stroke[5] if stroke.size() > 5 else 1.0)
+	last_batch = _pending.size() - before
 
 
 ## Wets an ellipse (centre and half size, in cells) without laying ink: drawn this frame like a dab.
@@ -292,7 +308,7 @@ func _add_dots(from: Vector2, to: Vector2, basis: Transform2D, amount: float, ra
 		thickness: float) -> void:
 	if dots_per_dose <= 0.0 or radius_px <= 0.0 or amount <= 0.0:
 		return
-	var wanted: float = amount * dots_per_dose
+	var wanted: float = amount * dots_per_dose * _dot_share
 	var count: int = floori(wanted) + (1 if _rng.randf() < wanted - floorf(wanted) else 0)
 	# the brush's unit across is its half thickness: a dot of radius r screen px is r / radius_px along it and
 	# r / (thickness * radius_px) across it in brush units
