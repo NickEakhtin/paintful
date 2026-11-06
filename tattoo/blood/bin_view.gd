@@ -89,7 +89,7 @@ func _ready() -> void:
 	_hand = Node2D.new()
 	_hand.set_script(HAND_SCRIPT)
 	_hand.name = "Hand"
-	_hand.scale = Vector2.ONE * 1.5   # as big as the hand on the skin (the ball in it too)
+	_hand.scale = Vector2.ONE * 2.25   # as big as the hand on the skin (the ball in it too)
 	add_child(_hand)
 	var held: Node2D = Node2D.new()
 	held.set_script(load("res://tattoo/blood/held_ball.gd"))

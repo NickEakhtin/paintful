@@ -19,8 +19,8 @@ const SUPERSAMPLE: float = 2.0
 ## Where the hand is heading, 0 open .. 1 a fist.
 @export_range(0.0, 1.0) var fist: float = 0.0
 ## How fast it closes and opens (per second, exponential).
-@export var clench_rate: float = 14.0
-@export var open_rate: float = 8.0
+@export var clench_rate: float = 21.0
+@export var open_rate: float = 12.0
 ## The fingers lean away from us by this much (degrees), so the hand reads as lying on something, not flat.
 @export var lean: float = 18.0
 
