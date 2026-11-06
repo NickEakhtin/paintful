@@ -1,6 +1,6 @@
 shader_type canvas_item;
 // A wet paper towel (the stack, the towel in the hand, the crumpled ball): pale paper with fibres and an embossed
-// dot pattern, soaked darker and bluish-grey in blotches, with glints of water, a darker soaked rim, and blood
+// dot pattern, soaked a little greyer in blotches (white, no blue), with glints of water, a darker soaked rim, and blood
 // soaking in from a few spots as `stained` (0..1) grows. UV 0..1 over the sheet; COLOR tints it (alpha kept).
 
 uniform float stained = 0.0;
@@ -8,8 +8,8 @@ uniform float stained = 0.0;
 uniform float wet = 0.85;
 // Moves the blotches, so sheets of one stack don't look alike.
 uniform vec2 seed = vec2(0.0);
-uniform vec3 paper : source_color = vec3(0.86, 0.86, 0.85);
-uniform vec3 soaked : source_color = vec3(0.58, 0.62, 0.66);
+uniform vec3 paper : source_color = vec3(0.95, 0.95, 0.94);
+uniform vec3 soaked : source_color = vec3(0.78, 0.78, 0.77);
 uniform vec3 blood : source_color = vec3(0.45, 0.03, 0.06);
 // The emboss pattern's cells across the sheet.
 uniform float emboss_cells = 11.0;

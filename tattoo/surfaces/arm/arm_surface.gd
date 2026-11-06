@@ -72,6 +72,12 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 @export var defocus_dark_to: float = 950.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 142.0
+## The towel stack peeks in from the screen's left edge (`stack_peek` of its width shows) and slides out to
+## `stack_out` of it while the left hand is within `stack_reach` of the screen's width from that edge, at `stack_rate`.
+@export var stack_peek: float = 0.2
+@export var stack_out: float = 0.6
+@export_range(0.0, 1.0) var stack_reach: float = 0.2
+@export var stack_rate: float = 8.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -167,6 +173,8 @@ var holding_paper: bool = false
 var hand_locked: bool = false
 var _blood: BloodLayer
 var _paper_stack: Node2D
+## How far the stack has slid out, 0 peeking .. 1 out.
+var _stack_slide: float = 0.0
 var _paper: Node2D
 var _defocus: ColorRect
 var _defocus_copy: BackBufferCopy
@@ -418,6 +426,7 @@ func update_surface(delta: float, active: bool) -> void:
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
 	var before: Vector2 = _hand_previous
 	_hand_previous = _hand_position
+	_slide_paper_stack(delta)
 	_paper_stack.hovered = not holding_paper and not _gripping and _paper_stack.visible \
 			and _paper_stack.rect.grow(20.0).has_point(_hand_position)
 	if holding_paper:
@@ -662,7 +671,21 @@ func set_wet_map(wet: Texture2D) -> void:
 
 
 func _place_paper_stack() -> void:
-	_paper_stack.rect = Rect2(20.0, size.y * 0.5, 507.0, 304.0)
+	var width: float = 507.0
+	var shown: float = lerpf(stack_peek, stack_out, _stack_slide)
+	_paper_stack.rect = Rect2(width * (shown - 1.0), size.y * 0.5, width, 304.0)
+
+
+## The stack slides out while the hand nears the screen's left edge, back to peeking when it leaves.
+func _slide_paper_stack(delta: float) -> void:
+	var near: bool = not hand_locked and _hand_position.x < size.x * stack_reach
+	var target: float = 1.0 if near else 0.0
+	var eased: float = lerpf(_stack_slide, target, 1.0 - exp(-stack_rate * delta))
+	if absf(eased - target) < 0.001:
+		eased = target
+	if eased != _stack_slide:
+		_stack_slide = eased
+		_place_paper_stack()
 
 
 func has_tension() -> bool:

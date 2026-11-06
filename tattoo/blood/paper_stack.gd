@@ -68,6 +68,6 @@ func _draw() -> void:
 	if hovered:
 		draw_rect(top.grow(5.0), Color(1.0, 0.9, 0.5, 0.8), false, 3.0)
 	var font: Font = ThemeDB.fallback_font
-	var at: Vector2 = Vector2(rect.position.x, rect.end.y + 26.0)
+	var at: Vector2 = Vector2(maxf(rect.position.x, 8.0), rect.end.y + 26.0)   # on screen while the stack peeks
 	draw_string_outline(font, at, "Салфетки", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color.BLACK)
 	draw_string(font, at, "Салфетки", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.85))
