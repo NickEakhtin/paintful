@@ -132,7 +132,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var fold_rate: float = 8.0
 ## The taut patch round a slide's grip reaches this many `drag_radius`es; a flap's taut band along the arm this
 ## many of its `bulge_spread`s.
-@export var tension_spread: float = 0.55
+@export var tension_spread: float = 0.825
 ## How far from a fold or the bump (past it) a slide still smooths it, in `drag_radius`es.
 @export var fold_reach_spread: float = 0.8
 @export var drag_return_rate: float = 8.0
