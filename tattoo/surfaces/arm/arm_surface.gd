@@ -67,6 +67,10 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## The lowest row of the arm the screen's bottom edge may reach (about the middle of the hand's fingers), whatever
 ## the window's height.
 @export var scroll_bottom_row: float = 1190.0
+## Pulling the skin into the screen's top or bottom edge (the hand within `edge_pull_margin` px of it, still short of
+## `max_drag`) scrolls the view on along the arm at `edge_pull_speed` screen px/s, the hand staying at the edge.
+@export var edge_pull_margin: float = 30.0
+@export var edge_pull_speed: float = 400.0
 ## Out of focus toward the wrist and over the hand (a screen blur): from nothing at `defocus_from` to
 ## `defocus_radius` px at `defocus_full` and on, and darkening smoothly from `defocus_from` down to `defocus_dark_to`
 ## (`defocus_darken` there and below); rows from the wrist (`ArmShape.wrist_row()`), down positive.
@@ -462,13 +466,22 @@ func update_surface(delta: float, active: bool) -> void:
 	var wanted: Vector2 = Input.get_vector("hand_left", "hand_right", "hand_up", "hand_down") if can_use else Vector2.ZERO
 	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
+	# pulling the skin against the screen's top or bottom edge: the view goes on along the arm while the hand stays at
+	# the edge, so the pull can still reach max_drag (and the skin past the scar can be worked)
+	var edge_pull: bool = false
+	if _gripping and wanted.y != 0.0 and (_hand_position - _grip_screen).length() < max_drag * _z * 0.98:
+		if (wanted.y > 0.0 and _hand_position.y >= size.y - edge_pull_margin) \
+				or (wanted.y < 0.0 and _hand_position.y <= edge_pull_margin):
+			scroll_view(wanted.y * edge_pull_speed * delta / _z)
+			edge_pull = true
 	_update_pan(delta)
 	_update_overview(0.0)   # the middle row follows the scroll
 	# a held grip and the hand ride along with the arm while the view moves, so it never pulls the skin by itself
 	var view_moved: Vector2 = _turn.basis_xform(Vector2(_view_x, _view_pan) - view_before) * _z
 	if _gripping and view_moved != Vector2.ZERO:
 		_grip_screen -= view_moved
-		_hand_position -= view_moved
+		if not edge_pull:
+			_hand_position -= view_moved
 	_refresh_center()
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
