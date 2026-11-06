@@ -13,6 +13,9 @@ extends Resource
 @export var radii: PackedFloat32Array = PackedFloat32Array()
 ## The arm's centre line at each sample, across (right positive), in radii; 0 at the stencil's middle.
 @export var centers: PackedFloat32Array = PackedFloat32Array()
+## How far the photo's forearm leaned (degrees, its bottom toward +x): the profile is kept with the forearm upright,
+## the view turns the arm back by it (`ArmSurface.lean`).
+@export var lean: float = 0.0
 ## Arm rows of the elbow (the narrowest point between the upper arm and the forearm) and the wrist (the narrowest
 ## point above the hand).
 @export var elbow: float = -500.0

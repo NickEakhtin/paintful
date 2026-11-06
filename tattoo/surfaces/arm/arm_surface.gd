@@ -43,6 +43,10 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## grip's reach) is drawn this many times bigger on screen. Screen points go to arm pixels through `_arm_point()` /
 ## `_screen_to_arm()`, cell projections come back × this.
 @export var zoom: float = 1.5
+## How much of the photo's lean the view shows (`ArmShape.PROFILE.lean`, 21.4°): 1 the arm leans as in the photo, the
+## forearm's bottom forward (the arm turns in 3D, and screen points turn back through `_unturn`); 0 the forearm stands
+## upright. The arm's own geometry, the stencil included, is the same either way.
+@export_range(0.0, 1.0) var lean: float = 1.0
 ## The mouse wheel pulls the camera back until the whole arm shows (its outline's box, `overview_margin` px round
 ## it), and forward again: `wheel_step` of the way per notch, eased at `overview_rate`. Meanwhile nothing inks, the
 ## left hand lets go and hides.
@@ -189,6 +193,10 @@ var _z: float = 1.5
 var _view_pan: float = 0.0
 ## The view's middle across, arm px: the arm's centre line at the middle row (it leans above the elbow).
 var _view_x: float = 0.0
+## The view's turn: arm px -> screen directions (`_turn`) and back (`_unturn`); the arm's turn in 3D (`_tilt`, rad).
+var _tilt: float = 0.0
+var _turn: Transform2D = Transform2D.IDENTITY
+var _unturn: Transform2D = Transform2D.IDENTITY
 var _active: bool = false
 ## The zoom the cached projections were made at.
 var _projected_scale: float = 1.5
@@ -229,6 +237,12 @@ func _ready() -> void:
 	_key_light.look_at_from_position(Vector3(-600.0, 700.0, 900.0), Vector3.ZERO)
 	_fill_light.look_at_from_position(Vector3(900.0, -250.0, 500.0), Vector3.ZERO)
 	_arm.mesh = _build_mesh()
+	# the arm leans as in the photo: turned in the 3D world (counter-clockwise seen from the camera, so the forearm's
+	# bottom goes right), screen points turned back by the same angle
+	_tilt = deg_to_rad(ArmShape.PROFILE.lean) * lean
+	_arm.rotation.z = _tilt
+	_turn = Transform2D(-_tilt, Vector2.ZERO)
+	_unturn = _turn.affine_inverse()
 	_material = _arm.material_override
 	_material.set_shader_parameter("ink_layer", _ink_layer.get_texture())
 	_material.set_shader_parameter("wrap_angle", _wrap)
@@ -278,7 +292,7 @@ func stencil_layer() -> Control:
 
 
 func to_cell(screen_point: Vector2) -> Vector2:
-	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / _z)
+	var skin: Vector2 = shape.screen_to_skin(_unturn.basis_xform((screen_point - _center()) / _z))
 	if not skin.is_finite():
 		return Vector2.INF
 	return _skin_to_cell(skin)
@@ -320,9 +334,10 @@ func _place_cell(cell: Vector2) -> Vector3:
 	return _zoomed(shape.project(skin.x, skin.y))
 
 
-## An arm-pixel projection (x, y, ink) as seen on screen, relative to the arm's centre.
+## An arm-pixel projection (x, y, ink) as seen on screen (turned, zoomed), relative to the arm's centre.
 func _zoomed(placed: Vector3) -> Vector3:
-	return Vector3(placed.x * _z, placed.y * _z, placed.z)
+	var on_screen: Vector2 = _turn.basis_xform(Vector2(placed.x, placed.y)) * _z
+	return Vector3(on_screen.x, on_screen.y, placed.z)
 
 
 
@@ -352,8 +367,8 @@ func place_cell_at(x: int, y: int) -> Vector3:
 			at_theta += shape.drag.x / shape.radius * k
 			at_row += shape.drag.y * k
 		var r: float = shape.radius_at(at_row)
-		placed = Vector3((shape.center_at(at_row) + sin(at_theta) * r) * _z, at_row * _z,
-				smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
+		var on_screen: Vector2 = (_turn.x * (shape.center_at(at_row) + sin(at_theta) * r) + _turn.y * at_row) * _z
+		placed = Vector3(on_screen.x, on_screen.y, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
 	else:
 		placed = _zoomed(shape.project_layer(theta, v, layer))
 	_projected[index] = placed
@@ -387,7 +402,8 @@ func cells_within(cell: Vector2, radius_px: float) -> Vector2:
 				var there: Vector3 = project(center + step * k)
 				# rows by how far down the screen they go, columns by how far across: a slide shears the other way,
 				# which doesn't bring a row or column closer
-				var gone: float = absf(there.x - here.x) if axis == 0 else absf(there.y - here.y)
+				var step_on_arm: Vector2 = _unturn.basis_xform(Vector2(there.x - here.x, there.y - here.y))
+				var gone: float = absf(step_on_arm.x) if axis == 0 else absf(step_on_arm.y)
 				if gone > radius_px:
 					break
 				k += 1
@@ -443,7 +459,7 @@ func update_surface(delta: float, active: bool) -> void:
 	_update_pan(delta)
 	_update_overview(0.0)   # the middle row follows the scroll
 	# a held grip and the hand ride along with the arm while the view moves, so it never pulls the skin by itself
-	var view_moved: Vector2 = (Vector2(_view_x, _view_pan) - view_before) * _z
+	var view_moved: Vector2 = _turn.basis_xform(Vector2(_view_x, _view_pan) - view_before) * _z
 	if _gripping and view_moved != Vector2.ZERO:
 		_grip_screen -= view_moved
 		_hand_position -= view_moved
@@ -523,10 +539,10 @@ func _side_grab(point: Vector2) -> Vector2:
 ## A side grip moved inward or up and down (rather than out) slides the skin too, like a grip in front: the inward
 ## part of the hand's way and the up-down part the flap doesn't use for its tilt.
 func _slide_side_grip() -> void:
-	var offset: Vector2 = _hand_position - _grip_screen
+	var offset: Vector2 = _unturn.basis_xform(_hand_position - _grip_screen)   # across and along the arm
 	var side: float = -1.0 if _grip_skin.x < 0.0 else 1.0
 	var inward: float = minf(offset.x * side, 0.0) * side
-	var way: Vector2 = Vector2(inward, offset.y * (1.0 - pull.amount))
+	var way: Vector2 = _turn.basis_xform(Vector2(inward, offset.y * (1.0 - pull.amount)))
 	var base: Vector2 = shape.rest_skin(_arm_point(_grip_screen))
 	var target: Vector2 = shape.rest_skin(_arm_point(_grip_screen + way))
 	shape.drag = Vector2((target.x - base.x) * radius, target.y - base.y).limit_length(max_drag)
@@ -535,7 +551,7 @@ func _slide_side_grip() -> void:
 ## A side grip: how far the hand went outward lifts the flap (`max_pull` = a full one), how far up or down tilts it
 ## (the grip follows the hand: the shear is the hand's height over the grip).
 func _lift_flap() -> void:
-	var offset: Vector2 = (_hand_position - _grip_screen) / _z
+	var offset: Vector2 = _unturn.basis_xform(_hand_position - _grip_screen) / _z   # across and along the arm
 	var side: int = -1 if _grip_skin.x < 0.0 else 1
 	var outward: float = maxf(0.0, offset.x * side)
 	pull.side = side
@@ -634,11 +650,12 @@ func _update_overview(delta: float) -> void:
 		eased = _overview_target
 	_overview = eased
 	var t: float = smoothstep(0.0, 1.0, _overview)
-	var whole: Rect2 = shape.outline_bounds().grow(overview_margin)
+	var whole: Rect2 = shape.outline_bounds(_turn).grow(overview_margin)   # as the screen sees it
 	var fit: float = minf(size.y / whole.size.y, size.x / whole.size.x) if size.y > 0.0 else zoom
 	_z = zoom * pow(fit / zoom, t)
-	_view_pan = lerpf(_pan, whole.get_center().y, t)
-	_view_x = lerpf(shape.center_at(_pan), whole.get_center().x, t)
+	var whole_middle: Vector2 = _unturn.basis_xform(whole.get_center())   # back on the arm
+	_view_pan = lerpf(_pan, whole_middle.y, t)
+	_view_x = lerpf(shape.center_at(_pan), whole_middle.x, t)
 	if _projected_scale != _z:
 		_forget_projections()   # the cache keeps positions relative to the centre, but in screen px
 		_projected_scale = _z
@@ -673,7 +690,9 @@ func _process(_delta: float) -> void:
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
 		_camera.size = view_size.y / _z
-	_camera.position = Vector3(_view_x, -_view_pan, _camera.position.z)   # the view's y is up: lower down the arm
+	# the view's middle on the turned arm (the world's y is up: lower down the arm)
+	var middle: Vector2 = Vector2(_view_x, -_view_pan).rotated(_tilt)
+	_camera.position = Vector3(middle.x, middle.y, _camera.position.z)
 	(_background.material as ShaderMaterial).set_shader_parameter("size", view_size)
 
 
@@ -761,7 +780,7 @@ func has_tension() -> bool:
 ## a lifted flap tightens its side by the flap's amount, most at the hand's row. Holding
 ## without moving tightens nothing.
 func tension_at(screen_point: Vector2) -> float:
-	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / _z)
+	var skin: Vector2 = shape.screen_to_skin(_unturn.basis_xform((screen_point - _center()) / _z))
 	if not skin.is_finite():
 		return 0.0
 	var tension: float = 0.0
@@ -845,7 +864,7 @@ func _forget_projections() -> void:
 
 ## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
-	return get_global_rect().get_center() - Vector2(_view_x, _view_pan) * _z
+	return get_global_rect().get_center() - _turn.basis_xform(Vector2(_view_x, _view_pan)) * _z
 
 
 ## Refreshes `_center_offset`, the arm's centre that cached projections add (a field, not a call: a stroke reads
@@ -857,7 +876,7 @@ func _refresh_center() -> void:
 
 ## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
 func _arm_point(local: Vector2) -> Vector2:
-	return (local - size * 0.5) / _z + Vector2(_view_x, _view_pan)
+	return _unturn.basis_xform((local - size * 0.5) / _z) + Vector2(_view_x, _view_pan)
 
 
 func _skin_to_cell(skin: Vector2) -> Vector2:
@@ -927,17 +946,26 @@ func _update_defocus() -> void:
 	if _defocus == null:
 		return
 	var scale: float = get_viewport().get_final_transform().get_scale().y
-	var centre: float = _center().y
+	var origin: Vector2 = _center() * scale   # the arm's row 0, window px
+	var axis: Vector2 = _turn.basis_xform(Vector2.DOWN)   # down the arm on screen
 	var material: ShaderMaterial = _defocus.material
 	var wrist: float = shape.wrist_row()
+	var from: float = (wrist + defocus_from) * _z * scale
 	# pulled back to the whole arm the hand comes into focus (it fades out with the overview)
 	var focus: float = 1.0 - smoothstep(0.0, 1.0, _overview)
-	material.set_shader_parameter("from_y", (centre + (wrist + defocus_from) * _z) * scale)
-	material.set_shader_parameter("full_y", (centre + (wrist + defocus_full) * _z) * scale)
+	material.set_shader_parameter("origin", origin)
+	material.set_shader_parameter("axis", axis)
+	material.set_shader_parameter("from_y", from)
+	material.set_shader_parameter("full_y", (wrist + defocus_full) * _z * scale)
 	material.set_shader_parameter("max_radius", defocus_radius * _z * scale * focus)
 	material.set_shader_parameter("darken", defocus_darken * focus)
-	material.set_shader_parameter("dark_y", (centre + (wrist + defocus_dark_to) * _z) * scale)
-	_defocus.visible = focus > 0.01 and centre + (wrist + defocus_from) * _z < size.y + get_global_rect().position.y
+	material.set_shader_parameter("dark_y", (wrist + defocus_dark_to) * _z * scale)
+	# shown only while some corner of the view is past where it starts
+	var view: Rect2 = Rect2(get_global_rect().position * scale, size * scale)
+	var farthest: float = -INF
+	for corner: Vector2 in [view.position, Vector2(view.end.x, view.position.y), view.end, Vector2(view.position.x, view.end.y)]:
+		farthest = maxf(farthest, (corner - origin).dot(axis))
+	_defocus.visible = focus > 0.01 and farthest > from
 	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
 
 

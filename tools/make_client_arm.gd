@@ -6,7 +6,8 @@ extends SceneTree
 ##   is the piece round ARM_SEED. Under the shoulder the chest shows through the tank top's armhole and joins the arm,
 ##   so there the arm's front edge follows the crease between them, traced by hand (FRONT_EDGE).
 ## - The picture is turned so the forearm stands upright (its centre line fitted over FOREARM_ROWS): the stencil sits
-##   on it square and the view scrolls straight along it; the upper arm leans as the elbow bends.
+##   on it square and the view scrolls straight along it; the upper arm leans as the elbow bends. The angle goes into
+##   the profile (`lean`), and the session's view turns the arm back by it, so on screen it leans as in the photo.
 ## - Each row of the turned arm gives its left and right edge (sub-pixel, smoothed a little): the half width and the
 ##   centre line. The elbow and the wrist are the narrowest rows near ELBOW_GUESS and WRIST_GUESS; the stencil's
 ##   middle goes STENCIL_AT of the way from the elbow to the wrist, and the forearm's half width there becomes
@@ -259,7 +260,8 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	shading.save_png(ProjectSettings.globalize_path(OUT_DIR + "arm_shading.png"))
 	_write_import(OUT_DIR + "arm_shading.png")
-	_write_profile(top, scale, radii, centers, (elbow_row - stencil_row) * scale, (wrist_row - stencil_row) * scale)
+	_write_profile(top, scale, radii, centers, rad_to_deg(angle), (elbow_row - stencil_row) * scale,
+			(wrist_row - stencil_row) * scale)
 	print("arm: forearm leaned %.1f°, %d rows, %.2f arm px per photo px, top %.0f, elbow %.0f, wrist %.0f, bottom %.0f" % [
 			rad_to_deg(angle), samples, scale, top, (elbow_row - stencil_row) * scale, (wrist_row - stencil_row) * scale,
 			top + scale * (samples - 1)])
@@ -530,8 +532,8 @@ detect_3d/compress_to=0
 	file.close()
 
 
-func _write_profile(top: float, step: float, radii: PackedFloat32Array, centers: PackedFloat32Array, elbow: float,
-		wrist: float) -> void:
+func _write_profile(top: float, step: float, radii: PackedFloat32Array, centers: PackedFloat32Array, lean: float,
+		elbow: float, wrist: float) -> void:
 	var file: FileAccess = FileAccess.open(OUT_DIR + "arm_profile.tres", FileAccess.WRITE)
 	file.store_string("""[gd_resource type="Resource" script_class="ArmProfile" load_steps=3 format=3]
 
@@ -544,10 +546,11 @@ top = %.3f
 step = %.5f
 radii = PackedFloat32Array(%s)
 centers = PackedFloat32Array(%s)
+lean = %.4f
 elbow = %.3f
 wrist = %.3f
 shading = ExtResource("2_shading")
-""" % [OUT_DIR, top, step, _floats(radii), _floats(centers), elbow, wrist])
+""" % [OUT_DIR, top, step, _floats(radii), _floats(centers), lean, elbow, wrist])
 	file.close()
 
 

@@ -105,14 +105,18 @@ func center_at(v: float) -> float:
 	return radius * lerpf(_centers[i], _centers[i + 1], at - i)
 
 
-## The whole arm's box in arm px: x across its widest reach either side, y from the shoulder's top to the fingertips.
-func outline_bounds() -> Rect2:
-	var low: float = INF
-	var high: float = -INF
+## The whole arm's box (shoulder's top to fingertips, its widest reach either side) as seen turned by `turn` (arm px
+## into a turned frame, e.g. the view's), in that frame's px.
+func outline_bounds(turn: Transform2D = Transform2D.IDENTITY) -> Rect2:
+	var low: Vector2 = Vector2(INF, INF)
+	var high: Vector2 = Vector2(-INF, -INF)
 	for i in _radii.size():
-		low = minf(low, (_centers[i] - _radii[i]) * radius)
-		high = maxf(high, (_centers[i] + _radii[i]) * radius)
-	return Rect2(low, _profile_top, high - low, PROFILE.bottom() - _profile_top)
+		var row: float = _profile_top + _profile_step * i
+		for side: float in [-1.0, 1.0]:
+			var p: Vector2 = turn.basis_xform(Vector2((_centers[i] + side * _radii[i]) * radius, row))
+			low = low.min(p)
+			high = high.max(p)
+	return Rect2(low, high - low)
 
 
 ## Arm rows of the elbow and the wrist (ArmProfile).
