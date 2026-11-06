@@ -10,7 +10,7 @@ uniform float radius = 210.0;
 // the shoulder's dome) and below `fade_bottom_to` (past the wrist), over `fade_length` px — more and more of their
 // pixels dropped in a fine noise (the background shows through) and the rest darkening a little. No transparency:
 // the transparent pipeline lit the arm in blocks.
-uniform float fade_top_from = -1517.0;
+uniform float fade_top_from = -1806.0;
 uniform float fade_bottom_to = 760.0;
 uniform float fade_length = 300.0;
 // The shoulder's top dissolves over a shorter stretch, so its round ball shows.
@@ -19,7 +19,7 @@ uniform float fade_top_length = 120.0;
 // swell on its outer side, a hollow in the crook of the elbow. `relief` scales how much they bend the light.
 uniform float relief = 1.0;
 uniform float elbow_hollow = 0.3;
-uniform float arm_length = 1800.0;
+uniform float arm_length = 2300.0;
 // The arm's outline, shoulder to wrist: ArmShape's table of it (scale × `radius`), one texel every `profile_step` px
 // from `profile_top`; read with the same linear step as ArmShape.radius_at(), so the two agree exactly.
 uniform sampler2D profile_tex : filter_nearest, repeat_disable;
@@ -149,11 +149,11 @@ float swell(float theta, float v) {
 	if (outside <= 0.0) {
 		return 0.0;
 	}
-	float h = swell_one(theta, v, 1.45, -820.0, 0.65, 190.0, 0.09);
-	h += swell_one(theta, v, -1.45, -900.0, 0.7, 230.0, 0.13);
-	h += swell_one(theta, v, -1.5, -440.0, 0.5, 38.0, 0.06);
-	h += swell_one(theta, v, -1.45, -500.0, 0.45, 26.0, -0.035);
-	h += swell_one(theta, v, 1.5, -445.0, 0.6, 30.0, -0.05);
+	float h = swell_one(theta, v, 1.45, -1430.0, 0.7, 200.0, 0.1);
+	h += swell_one(theta, v, 1.45, -800.0, 0.65, 190.0, 0.12);
+	h += swell_one(theta, v, -1.45, -880.0, 0.7, 240.0, 0.15);
+	h += swell_one(theta, v, -1.5, -440.0, 0.5, 38.0, 0.05);
+	h += swell_one(theta, v, -1.45, -500.0, 0.45, 26.0, -0.03);
 	h += swell_one(theta, v, -1.45, 535.0, 0.4, 32.0, 0.09);
 	return h * outside;
 }
@@ -310,7 +310,7 @@ float muscles(float theta, float v) {
 	h += 1.0 * muscle(theta, v, vec2(0.0, -800.0), vec2(0.75, 210.0));      // biceps, in front of the upper arm
 	h += 0.35 * muscle(theta, v, vec2(0.95, -760.0), vec2(0.45, 260.0));    // the biceps' and triceps' sides
 	h += 0.45 * muscle(theta, v, vec2(-0.95, -860.0), vec2(0.45, 260.0));
-	h += 0.6 * muscle(theta, v, vec2(0.0, -1180.0), vec2(0.9, 150.0));      // the shoulder's ball (the deltoid)
+	h += 0.6 * muscle(theta, v, vec2(0.0, -1560.0), vec2(0.9, 220.0));      // the shoulder's ball (the deltoid)
 	h += 0.7 * muscle(theta, v, vec2(0.65, -190.0), vec2(0.55, 170.0));     // the forearm's swell on the outer side
 	h += 0.35 * muscle(theta, v, vec2(-0.5, -150.0), vec2(0.5, 200.0));
 	h -= 0.9 * muscle(theta, v, vec2(0.05, -420.0), vec2(0.38, 42.0));      // the hollow in the crook of the elbow

@@ -29,12 +29,18 @@ var radius: float = 210.0:
 ## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
 ## positive) and the radius there in `radius`es — the upper arm and biceps, the narrow elbow, the forearm's muscles
 ## swelling below it and thinning to the wrist, then closing (hidden: the arm fades out there, see `arm_skin.gdshader`'s `fade_*`). Above PROFILE_V[0] the
-## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step — with the narrowing
-## below it (where the deltoid ends, -960) it reads as the shoulder's ball.
+## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step (the deltoid's
+## rounded top).
 ## A smooth (Hermite) curve through them, kept as a table every PROFILE_STEP px; the shader reads the same table as a
 ## texture (`apply_to()`), so the outline lives only here.
-const PROFILE_V: PackedFloat32Array = [-1250.0, -1120.0, -960.0, -800.0, -640.0, -490.0, -420.0, -340.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
-const PROFILE_S: PackedFloat32Array = [1.27, 1.2, 1.06, 1.17, 1.1, 0.93, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
+## Measured off the user's side-view photo of an arm, scaled so its elbow-to-wrist matches ours (-420 .. 600): the
+## deltoid a broad cap (1.76 radii half wide at -1540, its round top at about -1910), the upper arm tapering down
+## through the biceps (1.31 at -810) to the elbow (0.96), the forearm full below it (1.16) and hardly thinning until
+## the wrist (0.87 at 600).
+const PROFILE_V: PackedFloat32Array = [-1540.0, -1295.0, -1052.0, -809.0, -566.0, -420.0, -226.0, 66.0, 358.0, 600.0, 700.0, 760.0, 800.0]
+const PROFILE_S: PackedFloat32Array = [1.76, 1.62, 1.39, 1.31, 1.16, 1.0, 1.13, 1.1, 1.08, 0.87, 0.8, 0.55, 0.0]
+## The shoulder's dome is this much as tall as it's half wide (a squashed half circle, the deltoid's rounded top).
+const DOME_HEIGHT: float = 0.72
 ## Swells and dents of the arm's surface round it (outside the stencil): each (theta of its middle, row of its middle,
 ## half width round the arm in radians, half height along it in px, height in `radius`es; gaussians). Seen from the
 ## front with the thumb's side on the right: the biceps' outer edge and the triceps' long head bulge the upper arm's
@@ -42,11 +48,11 @@ const PROFILE_S: PackedFloat32Array = [1.27, 1.2, 1.06, 1.17, 1.1, 0.93, 0.87, 0
 ## crease on the outer side, and the wrist's bone sticks out on the little finger's side. `arm_skin.gdshader`'s
 ## `swell()` repeats them — change both together.
 const SWELLS: PackedFloat32Array = [
-	1.45, -820.0, 0.65, 190.0, 0.09,     # biceps, its outer edge
-	-1.45, -900.0, 0.7, 230.0, 0.13,     # triceps' long head, the inner side
-	-1.5, -440.0, 0.5, 38.0, 0.06,       # the elbow's inner knob
-	-1.45, -500.0, 0.45, 26.0, -0.035,   # the dimple just above it
-	1.5, -445.0, 0.6, 30.0, -0.05,       # the notch at the crease, outer side
+	1.45, -1430.0, 0.7, 200.0, 0.1,      # the deltoid's front, bulging the shoulder's outer side
+	1.45, -800.0, 0.65, 190.0, 0.12,     # biceps, its outer edge
+	-1.45, -880.0, 0.7, 240.0, 0.15,     # triceps' long head, the inner side
+	-1.5, -440.0, 0.5, 38.0, 0.05,       # the elbow's inner knob
+	-1.45, -500.0, 0.45, 26.0, -0.03,    # the dimple just above it
 	-1.45, 535.0, 0.4, 32.0, 0.09,       # the wrist's bone
 ]
 ## Swells only act outside these rows (they fade in over 30 px past them), so the stencil's cells skip them.
@@ -58,7 +64,7 @@ var _profile_table: PackedFloat32Array = PackedFloat32Array()
 var _profile_texture: ImageTexture
 ## Length the mesh is built for, in pixels (the shader's mesh runs MESH_REACH times it, centred on the stencil):
 ## from above the shoulder cap to below the hand.
-var length: float = 1800.0
+var length: float = 2300.0
 ## Where the fingers hold the skin, measured from the front line (radians, behind the silhouette).
 var grip_angle: float = deg_to_rad(115.0)
 ## How far past the silhouette a full pull drags the grip, in pixels.
@@ -147,7 +153,7 @@ func profile_scale(v: float) -> float:
 	var count: int = PROFILE_V.size()
 	if v <= PROFILE_V[0]:
 		# the shoulder's round cap
-		var d: float = (PROFILE_V[0] - v) / (PROFILE_S[0] * radius)
+		var d: float = (PROFILE_V[0] - v) / (PROFILE_S[0] * radius * DOME_HEIGHT)
 		return PROFILE_S[0] * sqrt(maxf(1.0 - d * d, 0.0))
 	if v >= PROFILE_V[count - 1]:
 		return PROFILE_S[count - 1]
@@ -175,7 +181,7 @@ static func _profile_slope(i: int) -> float:
 
 ## The very top of the shoulder's cap.
 func _profile_top() -> float:
-	return PROFILE_V[0] - PROFILE_S[0] * radius
+	return PROFILE_V[0] - PROFILE_S[0] * radius * DOME_HEIGHT
 
 
 func _build_profile_table() -> void:

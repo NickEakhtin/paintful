@@ -24,7 +24,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 @export var radius: float = 210.0
 ## How long the arm's mesh is built (it runs 1.8 times this, centred on the stencil: shoulder to past the hand). The
 ## outline itself is `ArmShape.PROFILE_V` / `PROFILE_S`.
-@export var arm_length: float = 1800.0
+@export var arm_length: float = 2300.0
 
 @export_group("Stencil")
 ## How far around the arm the stencil reaches on each side of the front line, in degrees.
@@ -48,7 +48,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## The mouse wheel pulls the camera back until the whole arm shows, rows `overview_top` .. `overview_bottom` (the
 ## shoulder's top to the fingers), and forward again: `wheel_step` of the way per notch, eased at `overview_rate`.
 ## Meanwhile nothing inks, the left hand lets go and hides.
-@export var overview_top: float = -1580.0
+@export var overview_top: float = -1960.0
 @export var overview_bottom: float = 1330.0
 @export var wheel_step: float = 0.5
 @export var overview_rate: float = 7.0
@@ -61,7 +61,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
-@export var scroll_min: float = -1300.0
+@export var scroll_min: float = -1650.0
 @export var scroll_max: float = 950.0
 ## The lowest row of the arm the screen's bottom edge may reach (about the middle of the hand's fingers), whatever
 ## the window's height.
