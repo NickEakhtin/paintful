@@ -62,6 +62,22 @@ uniform float fold_ragged = 9.0;
 // ArmShape.fold_tilt: the crease climbs across the arm. (Its breaks, a constant array read by a variable index, made
 // the GPU time out on macOS AMD: the game froze; gone.)
 uniform float fold_tilt = 0.0;
+// ArmShape.fold_kinks / _fold_kink / _kink_corner: the crease breaks into straight pieces. Plain arithmetic, no table.
+uniform float fold_kinks = 0.0;
+const float FOLD_KINK_STEP = 0.23;
+const float FOLD_KINK_COUNT = 13.0;
+
+float kink_corner(float i) {
+	float f = fract(i * i * 0.1371 + i * 0.6180);
+	float inside = step(0.5, i) * step(i, FOLD_KINK_COUNT - 0.5);
+	return (f * 2.0 - 1.0) * inside;
+}
+
+float fold_kink(float along) {
+	float at = clamp(along / FOLD_KINK_STEP, 0.0, FOLD_KINK_COUNT - 0.001);
+	float i = floor(at);
+	return fold_kinks * mix(kink_corner(i), kink_corner(i + 1.0), at - i);
+}
 // How much the bump bends the light, and how dark the shadow it casts on the skin below.
 uniform float bump_relief = 0.45;
 uniform float bump_shadow = 0.45;
@@ -168,7 +184,7 @@ vec3 place(float theta, float v) {
 // A fold as it is at `theta` (ArmShape._fold_local()): a scar — its middle wanders, its band widens and narrows.
 vec4 fold_local(vec4 f, float seed, float theta) {
 	float a = theta - f.x;
-	float middle = f.y + fold_tilt * a
+	float middle = f.y + fold_tilt * a + fold_kink(a + f.z)
 			+ fold_ragged * (0.6 * sin(a * 9.0 + seed) + 0.3 * sin(a * 23.0 + 2.0 * seed) + 0.15 * sin(a * 53.0 + 3.0 * seed));
 	return vec4(f.x, middle, f.z, f.w * (1.0 + 0.3 * sin(a * 13.0 + 1.7 * seed)));
 }

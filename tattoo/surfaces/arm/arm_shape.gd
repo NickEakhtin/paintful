@@ -89,9 +89,14 @@ var bump_uneven: float = 0.5
 var bump_up: bool = false
 ## How ragged the folds' creases are, in pixels the crease wanders up and down (0: straight).
 var fold_ragged: float = 9.0
-## The crease climbs this many rows per radian round the arm (a fold across the stencil's diagonal). `arm_skin.gdshader`
-## repeats it.
+## The crease climbs this many rows per radian round the arm (a fold across the stencil's diagonal), and breaks:
+## its middle runs in straight pieces `FOLD_KINK_STEP` radians long, each corner up to `fold_kinks` px off the line
+## (`_kink_corner()`: arithmetic, no table — a constant array read by a variable index in the shader froze the GPU).
+## `arm_skin.gdshader` repeats them.
 var fold_tilt: float = 0.0
+var fold_kinks: float = 0.0
+const FOLD_KINK_STEP: float = 0.23
+const FOLD_KINK_COUNT: float = 13.0
 
 
 ## Arm radius at row `v` (0 above the shoulder and below the fingertips).
@@ -330,9 +335,24 @@ func _fold_local(index: int, theta: float) -> Vector4:
 	var fold: Vector4 = folds[index]
 	var a: float = theta - fold.x
 	var seed: float = index * 2.3 + 0.7
-	var middle: float = fold.y + fold_tilt * a \
+	var middle: float = fold.y + fold_tilt * a + _fold_kink(a + fold.z) \
 			+ fold_ragged * (0.6 * sin(a * 9.0 + seed) + 0.3 * sin(a * 23.0 + 2.0 * seed) + 0.15 * sin(a * 53.0 + 3.0 * seed))
 	return Vector4(fold.x, middle, fold.z, fold.w * (1.0 + 0.3 * sin(a * 13.0 + 1.7 * seed)))
+
+
+## The crease's breaks `along` radians from its start: straight between corners, px.
+func _fold_kink(along: float) -> float:
+	var at: float = clampf(along / FOLD_KINK_STEP, 0.0, FOLD_KINK_COUNT - 0.001)
+	var i: float = floorf(at)
+	return fold_kinks * lerpf(_kink_corner(i), _kink_corner(i + 1.0), at - i)
+
+
+## Corner `i`'s offset, -1..1 (0 at both ends): a fixed scatter from plain arithmetic, the same in the shader.
+func _kink_corner(i: float) -> float:
+	if i <= 0.0 or i >= FOLD_KINK_COUNT:
+		return 0.0
+	var f: float = fmod(i * i * 0.1371 + i * 0.6180, 1.0)
+	return f * 2.0 - 1.0
 
 
 ## Fold `index`'s middle row at `theta` (its tilt, breaks and wander), clamped to its ends round the arm.
@@ -496,6 +516,7 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("bump_up", bump_up)
 	material.set_shader_parameter("fold_ragged", fold_ragged)
 	material.set_shader_parameter("fold_tilt", fold_tilt)
+	material.set_shader_parameter("fold_kinks", fold_kinks)
 
 
 func _side_sign() -> float:
