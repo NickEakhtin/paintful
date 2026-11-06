@@ -310,6 +310,10 @@ var _window_3d_was_off: bool = false
 
 func _ready() -> void:
 	_machine.visible = false
+	# the old flat skin panel shows only for a flat stencil (`_setup_surface()`), never by itself before a start
+	skin.visible = false
+	_canvas_rect.visible = false
+	_redness.visible = false
 	get_viewport().size_changed.connect(_on_window_resized)
 	# the session covers the whole screen: the level's 3D under it (SSAO, volumetric fog, glow) would cost about
 	# 15 ms a frame on a 3K screen for nothing, so the window stops drawing 3D until the session is freed
@@ -386,6 +390,9 @@ func roll_and_start(new_stencil: StencilData) -> void:
 
 ## `tasks` are the spirit tasks for this session, each once.
 func start(new_stencil: StencilData, tasks: Array[ModifierData] = []) -> void:
+	if new_stencil == null:
+		push_error("TattooSession.start(): no stencil")
+		return
 	stencil = new_stencil
 	_setup_surface()
 	canvas = InkCanvas.new(stencil, completion_threshold)
@@ -1224,6 +1231,9 @@ func _setup_surface() -> void:
 	var path: String = SURFACE_SCENES.get(stencil.surface, "")
 	if path.is_empty():
 		_surface = _canvas_rect
+		skin.visible = true
+		_canvas_rect.visible = true
+		_redness.visible = true
 	else:
 		_surface = (load(path) as PackedScene).instantiate()
 		_body.add_child(_surface)
