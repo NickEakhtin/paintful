@@ -6,26 +6,28 @@ shader_type spatial;
 render_mode cull_disabled;
 
 uniform float radius = 210.0;
-// The arm's ends dissolve into the background instead of showing hard edges: gone above `fade_top_from` (the top of
-// the shoulder's dome) and below `fade_bottom_to` (past the wrist), over `fade_length` px — more and more of their
-// pixels dropped in a fine noise (the background shows through) and the rest darkening a little. No transparency:
-// the transparent pipeline lit the arm in blocks.
-uniform float fade_top_from = -1806.0;
-uniform float fade_bottom_to = 760.0;
-uniform float fade_length = 300.0;
-// The shoulder's top dissolves over a shorter stretch, so its round ball shows.
+// The shoulder's top (`fade_top_from`, the profile's first row; ArmShape sets it) dissolves into the background over
+// `fade_top_length` px instead of showing a hard edge: more and more of its pixels dropped in a fine noise and the
+// rest darkening a little. No transparency: the transparent pipeline lit the arm in blocks. The hand ends by itself.
+uniform float fade_top_from = -1948.0;
 uniform float fade_top_length = 120.0;
-// Muscle relief, light only (the outline is ArmShape's profile): the biceps in front of the upper arm, the forearm's
-// swell on its outer side, a hollow in the crook of the elbow. `relief` scales how much they bend the light.
-uniform float relief = 1.0;
-uniform float elbow_hollow = 0.3;
 uniform float arm_length = 2300.0;
-// The arm's outline, shoulder to wrist: ArmShape's table of it (scale × `radius`), one texel every `profile_step` px
-// from `profile_top`; read with the same linear step as ArmShape.radius_at(), so the two agree exactly.
+// The arm's outline, shoulder to fingertips (ArmShape.PROFILE, measured off the side-view photo): R its half width,
+// G its centre line across, both in radii, one texel every `profile_step` px from `profile_top`; read with the same
+// linear step as ArmShape.radius_at() / center_at(), so the two agree exactly.
 uniform sampler2D profile_tex : filter_nearest, repeat_disable;
-uniform float profile_top = -1600.0;
-uniform float profile_step = 2.0;
+uniform float profile_top = -1948.0;
+uniform float profile_step = 5.0;
 uniform int profile_count = 2;
+// The photo's own shading over the arm (ArmProfile.shading): R the detail / 2 (the muscles, the elbow, the knuckles),
+// G skin (0 between the fingers, cut out below `hand_from`, the wrist). Columns run across the arm (sin of the angle
+// round it, -1 .. 1), rows as the profile's. It stays with the arm, not the skin: the skin slides over the muscles.
+// `photo_strength` scales how much it darkens and lightens, `photo_relief` how much it bends the light (px of height
+// per unit of detail).
+uniform sampler2D photo_shading : filter_linear, repeat_disable;
+uniform float photo_strength = 1.0;
+uniform float photo_relief = 60.0;
+uniform float hand_from = 660.0;
 // The mesh runs this many times `arm_length`, so a pull dragging the skin up or down never shows its ends.
 const float MESH_REACH = 1.8;
 uniform float grip_angle = 2.007;
@@ -99,13 +101,20 @@ varying vec2 skin_uv;
 varying float skin_theta;
 varying float skin_v;
 varying float stretch;
+// Where the skin point sits on the arm after the slide (theta, row): the photo's shading belongs there.
+varying vec2 arm_at;
+
+// (half width, centre) at row v, px (ArmShape.radius_at(), center_at()).
+vec2 profile_at(float v) {
+	float at = clamp((v - profile_top) / profile_step, 0.0, float(profile_count) - 1.001);
+	int i = int(at);
+	vec2 a = texelFetch(profile_tex, ivec2(i, 0), 0).rg;
+	vec2 b = texelFetch(profile_tex, ivec2(i + 1, 0), 0).rg;
+	return radius * mix(a, b, at - float(i));
+}
 
 float radius_at(float v) {
-	float at = (clamp(v, profile_top, profile_top + profile_step * float(profile_count - 2)) - profile_top) / profile_step;
-	int i = min(int(at), profile_count - 2);
-	float a = texelFetch(profile_tex, ivec2(i, 0), 0).r;
-	float b = texelFetch(profile_tex, ivec2(i + 1, 0), 0).r;
-	return radius * mix(a, b, at - float(i));
+	return profile_at(v).x;
 }
 
 float bulge_at(float v) {
@@ -133,39 +142,15 @@ float tangent_angle(float v) {
 	return min(grip_angle, atan(q.x, q.y) - acos(r / distance));
 }
 
-// Screen-space point (x right, y down, z toward the camera) of skin point (theta, v).
-// ArmShape.SWELLS / swell(): the biceps and triceps, the elbow's knob, dimple and notch, the wrist's bone, as
-// gaussians round the outline, only outside the stencil's rows. Change both together.
-const float SWELL_QUIET_TOP = -380.0;
-const float SWELL_QUIET_BOTTOM = 470.0;
-float swell_one(float theta, float v, float at_theta, float at_v, float wide, float tall, float height) {
-	float a = (theta - at_theta) / wide;
-	float b = (v - at_v) / tall;
-	return height * exp(-(a * a + b * b));
-}
-float swell(float theta, float v) {
-	float outside = (1.0 - smoothstep(SWELL_QUIET_TOP - 30.0, SWELL_QUIET_TOP, v))
-			+ smoothstep(SWELL_QUIET_BOTTOM, SWELL_QUIET_BOTTOM + 30.0, v);
-	if (outside <= 0.0) {
-		return 0.0;
-	}
-	float h = swell_one(theta, v, 1.45, -1430.0, 0.7, 200.0, 0.1);
-	h += swell_one(theta, v, 1.45, -800.0, 0.65, 190.0, 0.12);
-	h += swell_one(theta, v, -1.45, -880.0, 0.7, 240.0, 0.15);
-	h += swell_one(theta, v, -1.5, -440.0, 0.5, 38.0, 0.05);
-	h += swell_one(theta, v, -1.45, -500.0, 0.45, 26.0, -0.03);
-	h += swell_one(theta, v, -1.45, 535.0, 0.4, 32.0, 0.09);
-	return h * outside;
-}
-
+// Screen-space point (x right, y down, z toward the camera) of arm point (theta, v): round the row's own middle.
 vec3 place(float theta, float v) {
-	float r = radius_at(v);
+	vec2 profile = profile_at(v);
+	float r = profile.x;
 	float s = pull_side < 0.0 ? -1.0 : 1.0;
 	float local = theta * s;
 	float t_angle = tangent_angle(v);
 	if (pull_side == 0.0 || local <= t_angle || local > grip_angle) {
-		r *= 1.0 + swell(theta, v);
-		return vec3(sin(theta) * r, v, cos(theta) * r);
+		return vec3(profile.y + sin(theta) * r, v, cos(theta) * r);
 	}
 	vec2 tangent = vec2(sin(t_angle), cos(t_angle)) * r;
 	vec2 grip = grip_point(v);
@@ -174,7 +159,7 @@ vec3 place(float theta, float v) {
 	float share = (local - t_angle) / (grip_angle - t_angle);
 	float t = k * share + (1.0 - k) * share * share;
 	vec2 on_flap = mix(tangent, grip, t);
-	return vec3(on_flap.x * s, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
+	return vec3(on_flap.x * s + profile.y, v + pull_shear * bulge_at(v) * t * t, on_flap.y);
 }
 
 // A fold as it is at `theta` (ArmShape._fold_local()): a scar — its middle wanders, its band widens and narrows.
@@ -298,24 +283,14 @@ float bump_height(float theta, float row) {
 	return bump_amount * bump_reach(theta) * bump_lumps(theta) * sin(t * PI);
 }
 
-// A gaussian bump of skin centred at (theta, v), `wide` radians round the arm and `tall` px along it.
-float muscle(float theta, float v, vec2 at, vec2 size) {
-	vec2 d = vec2((theta - at.x) / size.x, (v - at.y) / size.y);
-	return exp(-dot(d, d));
+// Where arm point (theta, row) is in the photo's shading (ArmProfile.shading).
+vec2 photo_uv(float theta, float row) {
+	return vec2(sin(theta) * 0.5 + 0.5, ((row - profile_top) / profile_step + 0.5) / float(profile_count));
 }
 
-// The muscles' height over the plain outline (positive: swells, negative: hollows), roughly 0..1.
-float muscles(float theta, float v) {
-	float h = 0.0;
-	h += 1.0 * muscle(theta, v, vec2(0.0, -800.0), vec2(0.75, 210.0));      // biceps, in front of the upper arm
-	h += 0.35 * muscle(theta, v, vec2(0.95, -760.0), vec2(0.45, 260.0));    // the biceps' and triceps' sides
-	h += 0.45 * muscle(theta, v, vec2(-0.95, -860.0), vec2(0.45, 260.0));
-	h += 0.6 * muscle(theta, v, vec2(0.0, -1560.0), vec2(0.9, 220.0));      // the shoulder's ball (the deltoid)
-	h += 0.7 * muscle(theta, v, vec2(0.65, -190.0), vec2(0.55, 170.0));     // the forearm's swell on the outer side
-	h += 0.35 * muscle(theta, v, vec2(-0.5, -150.0), vec2(0.5, 200.0));
-	h -= 0.9 * muscle(theta, v, vec2(0.05, -420.0), vec2(0.38, 42.0));      // the hollow in the crook of the elbow
-	h -= 0.3 * muscle(theta, v + 18.0 * theta * theta, vec2(0.0, -440.0), vec2(0.75, 7.0));   // the crease across the bend, curving up at its ends
-	return h;
+// The photo's shading detail at arm point (theta, row): 1 = as the average across the arm there.
+float photo_detail(float theta, float row) {
+	return texture(photo_shading, photo_uv(theta, row)).r * 2.0;
 }
 
 // Where skin point (theta, v) sits after the fold and the slide.
@@ -363,6 +338,7 @@ void vertex() {
 	skin_uv = vec2((theta + wrap_angle) / (2.0 * wrap_angle), v / stencil_height + 0.5);
 	skin_theta = theta;
 	skin_v = v;
+	arm_at = slide(theta, v);
 }
 
 void fragment() {
@@ -403,20 +379,25 @@ void fragment() {
 	// The arm darkens and reddens toward its silhouette, like skin turning away from the lamp.
 	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	skin = mix(skin, skin_shadow_color.rgb * 0.8, edge * edge * 0.6);
-	// the elbow's hollow sits a little in shadow
-	shade *= 1.0 - elbow_hollow * max(-muscles(skin_theta, skin_v), 0.0);
+	// the photo's shading where this skin lies on the arm: its muscles, elbow and knuckles, skin and ink alike; the
+	// gaps between the fingers are cut out
+	vec4 photo = texture(photo_shading, photo_uv(arm_at.x, arm_at.y));
+	if (arm_at.y > hand_from && photo.g < 0.4) {
+		discard;
+	}
+	shade *= mix(1.0, photo.r * 2.0, photo_strength);
 	ALBEDO = mix(skin, ink.rgb, ink.a) * shade + vec3(fold_lip) * lips * (1.0 - ink.a);
 	ROUGHNESS = mix(mix(0.62 - 0.2 * stretched, wet_roughness, wet), 0.45, ink.a);
-	// the muscles bend the light (not the outline): the normal tilts by their slope along the arm and round it
+	// the photo's muscles bend the light too: brighter counts as higher, the normal tilts by the slope
 	{
-		float e = 3.0;
-		float m_v = muscles(skin_theta, skin_v + e) - muscles(skin_theta, skin_v - e);
-		float m_t = muscles(skin_theta + e / radius, skin_v) - muscles(skin_theta - e / radius, skin_v);
-		NORMAL = normalize(NORMAL - normalize(TANGENT) * m_t * relief * 6.0 / (2.0 * e) - normalize(BINORMAL) * m_v * relief * 6.0 / (2.0 * e));
+		float e = 4.0;
+		float d_v = photo_detail(arm_at.x, arm_at.y + e) - photo_detail(arm_at.x, arm_at.y - e);
+		float d_t = photo_detail(arm_at.x + e / radius, arm_at.y) - photo_detail(arm_at.x - e / radius, arm_at.y);
+		float k = photo_relief / (2.0 * e);
+		NORMAL = normalize(NORMAL - normalize(TANGENT) * d_t * k - normalize(BINORMAL) * d_v * k);
 	}
-	// the arm's ends dissolve: pixels dropped by a fine noise (interleaved gradient noise, steady on screen)
-	float fade = smoothstep(fade_top_from, fade_top_from + fade_top_length, skin_v)
-			* (1.0 - smoothstep(fade_bottom_to - fade_length, fade_bottom_to, skin_v));
+	// the shoulder's top dissolves: pixels dropped by a fine noise (interleaved gradient noise, steady on screen)
+	float fade = smoothstep(fade_top_from, fade_top_from + fade_top_length, skin_v);
 	float grain = fract(52.9829189 * fract(dot(floor(FRAGCOORD.xy), vec2(0.06711056, 0.00583715))));
 	if (fade < grain) {
 		discard;

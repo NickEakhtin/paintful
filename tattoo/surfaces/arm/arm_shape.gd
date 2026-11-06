@@ -24,43 +24,18 @@ extends RefCounted
 var radius: float = 210.0:
 	set(value):
 		radius = value
-		_profile_table.clear()
 		_profile_texture = null
-## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
-## positive) and the radius there in `radius`es — the upper arm and biceps, the narrow elbow, the forearm's muscles
-## swelling below it and thinning to the wrist, then closing (hidden: the arm fades out there, see `arm_skin.gdshader`'s `fade_*`). Above PROFILE_V[0] the
-## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step (the deltoid's
-## rounded top).
-## A smooth (Hermite) curve through them, kept as a table every PROFILE_STEP px; the shader reads the same table as a
-## texture (`apply_to()`), so the outline lives only here.
-## Measured off the user's side-view photo of an arm, scaled so its elbow-to-wrist matches ours (-420 .. 600): the
-## deltoid a broad cap (1.76 radii half wide at -1540, its round top at about -1910), the upper arm tapering down
-## through the biceps (1.31 at -810) to the elbow (0.96), the forearm full below it (1.16) and hardly thinning until
-## the wrist (0.87 at 600).
-const PROFILE_V: PackedFloat32Array = [-1540.0, -1295.0, -1052.0, -809.0, -566.0, -420.0, -226.0, 66.0, 358.0, 600.0, 700.0, 760.0, 800.0]
-const PROFILE_S: PackedFloat32Array = [1.76, 1.62, 1.39, 1.31, 1.16, 1.0, 1.13, 1.1, 1.08, 0.87, 0.8, 0.55, 0.0]
-## The shoulder's dome is this much as tall as it's half wide (a squashed half circle, the deltoid's rounded top).
-const DOME_HEIGHT: float = 0.72
-## Swells and dents of the arm's surface round it (outside the stencil): each (theta of its middle, row of its middle,
-## half width round the arm in radians, half height along it in px, height in `radius`es; gaussians). Seen from the
-## front with the thumb's side on the right: the biceps' outer edge and the triceps' long head bulge the upper arm's
-## outline on either side, the elbow has a bony knob on the inner side with a little dimple over it and a notch at the
-## crease on the outer side, and the wrist's bone sticks out on the little finger's side. `arm_skin.gdshader`'s
-## `swell()` repeats them — change both together.
-const SWELLS: PackedFloat32Array = [
-	1.45, -1430.0, 0.7, 200.0, 0.1,      # the deltoid's front, bulging the shoulder's outer side
-	1.45, -800.0, 0.65, 190.0, 0.12,     # biceps, its outer edge
-	-1.45, -880.0, 0.7, 240.0, 0.15,     # triceps' long head, the inner side
-	-1.5, -440.0, 0.5, 38.0, 0.05,       # the elbow's inner knob
-	-1.45, -500.0, 0.45, 26.0, -0.03,    # the dimple just above it
-	-1.45, 535.0, 0.4, 32.0, 0.09,       # the wrist's bone
-]
-## Swells only act outside these rows (they fade in over 30 px past them), so the stencil's cells skip them.
-const SWELL_QUIET_TOP: float = -380.0
-const SWELL_QUIET_BOTTOM: float = 470.0
-## `radius_at()` reads a table of the curve, this many px a step.
-const PROFILE_STEP: float = 2.0
-var _profile_table: PackedFloat32Array = PackedFloat32Array()
+## The arm's outline, shoulder to fingertips, and its centre line: measured off the user's side-view photo of an arm
+## (ArmProfile, made by `tools/make_client_arm.gd`): the photo turned so the forearm stands upright under the stencil,
+## the upper arm leaning toward the shoulder as the elbow bends, the hand below the wrist. A point (theta, v) sits at
+## x = center_at(v) + sin(theta) × radius_at(v): round cross-sections stacked along the rows, their middles following
+## the centre line, so seen from the front the arm has the photo's outline on both sides. The shader reads the same
+## table as a texture (`apply_to()`: R the half width, G the centre, in radii), so the outline lives only in the data.
+const PROFILE: ArmProfile = preload("res://art/characters/client_arm/arm_profile.tres")
+var _radii: PackedFloat32Array = PROFILE.radii
+var _centers: PackedFloat32Array = PROFILE.centers
+var _profile_top: float = PROFILE.top
+var _profile_step: float = PROFILE.step
 var _profile_texture: ImageTexture
 ## Length the mesh is built for, in pixels (the shader's mesh runs MESH_REACH times it, centred on the stencil):
 ## from above the shoulder cap to below the hand.
@@ -116,80 +91,37 @@ var bump_up: bool = false
 var fold_ragged: float = 9.0
 
 
-## Arm radius at row `v`.
+## Arm radius at row `v` (0 above the shoulder and below the fingertips).
 func radius_at(v: float) -> float:
-	if _profile_table.is_empty():
-		_build_profile_table()
-	var top: float = _profile_top()
-	var at: float = (clampf(v, top, PROFILE_V[-1]) - top) / PROFILE_STEP
-	var i: int = mini(int(at), _profile_table.size() - 2)
-	return radius * lerpf(_profile_table[i], _profile_table[i + 1], at - i)
+	var at: float = clampf((v - _profile_top) / _profile_step, 0.0, _radii.size() - 1.001)
+	var i: int = int(at)
+	return radius * lerpf(_radii[i], _radii[i + 1], at - i)
 
 
-## The arm's radius at (theta, v): the outline's radius with the swells round it.
-func surface_radius(theta: float, v: float) -> float:
-	var r: float = radius_at(v)
-	if v > SWELL_QUIET_TOP and v < SWELL_QUIET_BOTTOM:
-		return r
-	return r * (1.0 + swell(theta, v))
+## The arm's centre line at row `v`: px across from the stencil's middle (right positive).
+func center_at(v: float) -> float:
+	var at: float = clampf((v - _profile_top) / _profile_step, 0.0, _centers.size() - 1.001)
+	var i: int = int(at)
+	return radius * lerpf(_centers[i], _centers[i + 1], at - i)
 
 
-## How far the surface stands out of the outline at (theta, v), in `radius`es (SWELLS).
-static func swell(theta: float, v: float) -> float:
-	var outside: float = (1.0 - smoothstep(SWELL_QUIET_TOP - 30.0, SWELL_QUIET_TOP, v)) \
-			+ smoothstep(SWELL_QUIET_BOTTOM, SWELL_QUIET_BOTTOM + 30.0, v)
-	if outside <= 0.0:
-		return 0.0
-	var h: float = 0.0
-	for i in range(0, SWELLS.size(), 5):
-		var a: float = (theta - SWELLS[i]) / SWELLS[i + 2]
-		var b: float = (v - SWELLS[i + 1]) / SWELLS[i + 3]
-		h += SWELLS[i + 4] * exp(-(a * a + b * b))
-	return h * outside
+## The whole arm's box in arm px: x across its widest reach either side, y from the shoulder's top to the fingertips.
+func outline_bounds() -> Rect2:
+	var low: float = INF
+	var high: float = -INF
+	for i in _radii.size():
+		low = minf(low, (_centers[i] - _radii[i]) * radius)
+		high = maxf(high, (_centers[i] + _radii[i]) * radius)
+	return Rect2(low, _profile_top, high - low, PROFILE.bottom() - _profile_top)
 
 
-## The outline's scale at row `v`: a cubic through the profile points with slopes from their neighbours.
-func profile_scale(v: float) -> float:
-	var count: int = PROFILE_V.size()
-	if v <= PROFILE_V[0]:
-		# the shoulder's round cap
-		var d: float = (PROFILE_V[0] - v) / (PROFILE_S[0] * radius * DOME_HEIGHT)
-		return PROFILE_S[0] * sqrt(maxf(1.0 - d * d, 0.0))
-	if v >= PROFILE_V[count - 1]:
-		return PROFILE_S[count - 1]
-	var i: int = 0
-	while v > PROFILE_V[i + 1]:
-		i += 1
-	var h: float = PROFILE_V[i + 1] - PROFILE_V[i]
-	var u: float = (v - PROFILE_V[i]) / h
-	var m0: float = _profile_slope(i) * h
-	var m1: float = _profile_slope(i + 1) * h
-	var u2: float = u * u
-	var u3: float = u2 * u
-	return (2.0 * u3 - 3.0 * u2 + 1.0) * PROFILE_S[i] + (u3 - 2.0 * u2 + u) * m0 \
-			+ (-2.0 * u3 + 3.0 * u2) * PROFILE_S[i + 1] + (u3 - u2) * m1
+## Arm rows of the elbow and the wrist (ArmProfile).
+func elbow_row() -> float:
+	return PROFILE.elbow
 
 
-static func _profile_slope(i: int) -> float:
-	var count: int = PROFILE_V.size()
-	var a: int = maxi(i - 1, 0)
-	var b: int = mini(i + 1, count - 1)
-	if i == 0 or i == count - 1:
-		return 0.0   # flat at the ends: the cap closes square to the axis, the wrist runs on straight
-	return (PROFILE_S[b] - PROFILE_S[a]) / (PROFILE_V[b] - PROFILE_V[a])
-
-
-## The very top of the shoulder's cap.
-func _profile_top() -> float:
-	return PROFILE_V[0] - PROFILE_S[0] * radius * DOME_HEIGHT
-
-
-func _build_profile_table() -> void:
-	var top: float = _profile_top()
-	var steps: int = ceili((PROFILE_V[-1] - top) / PROFILE_STEP) + 2
-	_profile_table.resize(steps)
-	for i in steps:
-		_profile_table[i] = profile_scale(top + i * PROFILE_STEP)
+func wrist_row() -> float:
+	return PROFILE.wrist
 
 
 ## How much of the pull reaches row `v`, 0..1.
@@ -416,17 +348,8 @@ func unslide(theta: float, v: float) -> Vector2:
 ## The bare arm's skin point (theta, v) under a screen point, ignoring pulls and slides; past the silhouette
 ## clamped just inside it.
 func rest_skin(point: Vector2) -> Vector2:
-	return Vector2(_angle_under(point.x, point.y, 0.995), point.y)
-
-
-## The angle round the arm under screen x in row v, with the swells (a few rounds), the sine clamped to ±`limit`.
-func _angle_under(x: float, v: float, limit: float) -> float:
-	var theta: float = asin(clampf(x / radius_at(v), -limit, limit))
-	if v > SWELL_QUIET_TOP and v < SWELL_QUIET_BOTTOM:
-		return theta
-	for i in 4:
-		theta = asin(clampf(x / surface_radius(theta, v), -limit, limit))
-	return theta
+	var r: float = maxf(radius_at(point.y), 0.001)
+	return Vector2(asin(clampf((point.x - center_at(point.y)) / r, -0.995, 0.995)), point.y)
 
 
 func _slide_weight(theta: float, v: float) -> float:
@@ -456,9 +379,9 @@ func project_layer(theta: float, v: float, layer: Vector2) -> Vector3:
 		at_theta += drag.x / radius * k
 		at_row += drag.y * k
 	if side == 0:   # no flap: the plain cylinder, inline (the common case, thousands of times a stroke)
-		var r: float = surface_radius(at_theta, at_row)
+		var r: float = radius_at(at_row)
 		var face: float = cos(at_theta)
-		return Vector3(sin(at_theta) * r, at_row, ink_factor(face) * layer.y)
+		return Vector3(center_at(at_row) + sin(at_theta) * r, at_row, ink_factor(face) * layer.y)
 	var placed: Array = _place(at_theta, at_row)
 	var point: Vector3 = placed[0]
 	return Vector3(point.x, point.y, ink_factor(placed[1]) * layer.y)
@@ -501,7 +424,7 @@ func grip_point(v: float) -> Vector2:
 ## Where the grip is on screen (x, y), for the hand. Mirrored to the pulled side.
 func grip_screen() -> Vector2:
 	var q: Vector2 = grip_point(grip_v)
-	return Vector2(q.x * _side_sign(), grip_v + _row_shear(grip_v))
+	return Vector2(q.x * _side_sign() + center_at(grip_v), grip_v + _row_shear(grip_v))
 
 
 ## Angle of the tangent point T in row `v` (pulled side's frame); >= grip_angle when nothing is pulled.
@@ -519,16 +442,20 @@ func tangent_angle(v: float) -> float:
 ## Copies the shape into an `arm_skin.gdshader` material.
 func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("radius", radius)
-	if _profile_table.is_empty():
-		_build_profile_table()
-	if _profile_texture == null or _profile_texture.get_width() != _profile_table.size():
-		var image: Image = Image.create_from_data(_profile_table.size(), 1, false, Image.FORMAT_RF,
-				_profile_table.to_byte_array())
+	if _profile_texture == null:
+		var pairs: PackedFloat32Array = PackedFloat32Array()
+		for i in _radii.size():
+			pairs.append(_radii[i])
+			pairs.append(_centers[i])
+		var image: Image = Image.create_from_data(_radii.size(), 1, false, Image.FORMAT_RGF, pairs.to_byte_array())
 		_profile_texture = ImageTexture.create_from_image(image)
 		material.set_shader_parameter("profile_tex", _profile_texture)
-	material.set_shader_parameter("profile_top", _profile_top())
-	material.set_shader_parameter("profile_step", PROFILE_STEP)
-	material.set_shader_parameter("profile_count", _profile_table.size())
+	material.set_shader_parameter("profile_top", _profile_top)
+	material.set_shader_parameter("profile_step", _profile_step)
+	material.set_shader_parameter("profile_count", _radii.size())
+	material.set_shader_parameter("photo_shading", PROFILE.shading)
+	material.set_shader_parameter("hand_from", PROFILE.wrist)
+	material.set_shader_parameter("fade_top_from", _profile_top)
 	material.set_shader_parameter("arm_length", length)
 	material.set_shader_parameter("grip_angle", grip_angle)
 	material.set_shader_parameter("max_pull", max_pull)
@@ -572,12 +499,11 @@ func _place(theta: float, v: float) -> Array:
 	var local: float = theta * s # angle in the pulled side's frame
 	var t_angle: float = tangent_angle(v)
 	if side == 0 or local <= t_angle or local > grip_angle:
-		r = surface_radius(theta, v)
-		return [Vector3(sin(theta) * r, v, cos(theta) * r), cos(theta)]
+		return [Vector3(center_at(v) + sin(theta) * r, v, cos(theta) * r), cos(theta)]
 	var tangent: Vector2 = Vector2(sin(t_angle), cos(t_angle)) * r
 	var t: float = _ease_out(t_angle, v, (local - t_angle) / (grip_angle - t_angle))
 	var on_flap: Vector2 = tangent.lerp(grip_point(v), t)
-	return [Vector3(on_flap.x * s, v + _row_shear(v) * t * t, on_flap.y), cos(t_angle)]
+	return [Vector3(on_flap.x * s + center_at(v), v + _row_shear(v) * t * t, on_flap.y), cos(t_angle)]
 
 
 ## Skin taken off the arm at T starts unstretched: the first bit of arc covers as much screen as it did
@@ -603,7 +529,8 @@ func _start_density(t_angle: float, v: float) -> float:
 
 ## In row `v`: (theta, share of the way along the flap, 1 or -1 when there is no skin) under screen x.
 ## Past the flap's end the result is clamped to its end, flagged as no skin.
-func _solve_row(x: float, v: float) -> Vector3:
+func _solve_row(screen_x: float, v: float) -> Vector3:
+	var x: float = screen_x - center_at(v)   # across from the row's own middle
 	var r: float = radius_at(v)
 	var s: float = _side_sign()
 	var t_angle: float = tangent_angle(v)
@@ -618,7 +545,6 @@ func _solve_row(x: float, v: float) -> Vector3:
 			t = minf(t, 1.0)
 			var share: float = _ease_back(t_angle, v, t)
 			return Vector3((t_angle + share * (grip_angle - t_angle)) * s, t, ok)
-	var edge: float = surface_radius(signf(x) * PI * 0.5, v)
-	if absf(x) > edge:
+	if absf(x) > r:
 		return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
-	return Vector3(_angle_under(x, v, 1.0), 0.0, 1.0)
+	return Vector3(asin(x / r), 0.0, 1.0)

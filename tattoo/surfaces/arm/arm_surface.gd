@@ -17,13 +17,11 @@ signal skin_wetted(center: Vector2, radius: Vector2)
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 const PAPER_STACK: Script = preload("res://tattoo/blood/paper_stack.gd")
 const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
-const HAND_ALBEDO: String = "res://art/characters/client_hand/hand_albedo.png"
-const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 
 @export_group("Shape")
 @export var radius: float = 210.0
 ## How long the arm's mesh is built (it runs 1.8 times this, centred on the stencil: shoulder to past the hand). The
-## outline itself is `ArmShape.PROFILE_V` / `PROFILE_S`.
+## outline itself is `ArmShape.PROFILE` (measured off the side-view photo, `tools/make_client_arm.gd`).
 @export var arm_length: float = 2300.0
 
 @export_group("Stencil")
@@ -45,11 +43,10 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## grip's reach) is drawn this many times bigger on screen. Screen points go to arm pixels through `_arm_point()` /
 ## `_screen_to_arm()`, cell projections come back × this.
 @export var zoom: float = 1.5
-## The mouse wheel pulls the camera back until the whole arm shows, rows `overview_top` .. `overview_bottom` (the
-## shoulder's top to the fingers), and forward again: `wheel_step` of the way per notch, eased at `overview_rate`.
-## Meanwhile nothing inks, the left hand lets go and hides.
-@export var overview_top: float = -1960.0
-@export var overview_bottom: float = 1330.0
+## The mouse wheel pulls the camera back until the whole arm shows (its outline's box, `overview_margin` px round
+## it), and forward again: `wheel_step` of the way per notch, eased at `overview_rate`. Meanwhile nothing inks, the
+## left hand lets go and hides.
+@export var overview_margin: float = 60.0
 @export var wheel_step: float = 0.5
 @export var overview_rate: float = 7.0
 @export var hand_acceleration: float = 12.0
@@ -61,26 +58,19 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## or bottom of the screen), eased at `scroll_rate`, from `scroll_min` (the shoulder) to `scroll_max` (the hand);
 ## 0 = the stencil in the middle.
 @export var scroll_rate: float = 10.0
-@export var scroll_min: float = -1650.0
+@export var scroll_min: float = -1750.0
 @export var scroll_max: float = 950.0
 ## The lowest row of the arm the screen's bottom edge may reach (about the middle of the hand's fingers), whatever
 ## the window's height.
 @export var scroll_bottom_row: float = 1190.0
-## The client's hand picture: the row its top (the wrist) sits at, and where the wrist is in the picture (its width
-## and middle, in the picture's pixels), so it lines up with the arm.
-@export var hand_top: float = 460.0
-@export var hand_wrist_width: float = 235.0
-@export var hand_wrist_center: float = 322.0
-## The hand's size against a wrist as wide as the arm's (1: as wide; below 1 smaller).
-@export var hand_scale: float = 0.667
-## Out of focus toward the wrist and over the hand (a screen blur): from nothing at the arm's row `defocus_from` to
+## Out of focus toward the wrist and over the hand (a screen blur): from nothing at `defocus_from` to
 ## `defocus_radius` px at `defocus_full` and on, and darkening smoothly from `defocus_from` down to `defocus_dark_to`
-## (`defocus_darken` there and below).
-@export var defocus_from: float = 360.0
-@export var defocus_full: float = 700.0
+## (`defocus_darken` there and below); rows from the wrist (`ArmShape.wrist_row()`), down positive.
+@export var defocus_from: float = -240.0
+@export var defocus_full: float = 100.0
 @export var defocus_radius: float = 13.0
 @export_range(0.0, 1.0) var defocus_darken: float = 0.6
-@export var defocus_dark_to: float = 950.0
+@export var defocus_dark_to: float = 350.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
 @export var wipe_radius: float = 142.0
 ## The towel stack peeks in from the screen's left edge (`stack_peek` of its width shows) and slides out to
@@ -197,6 +187,8 @@ var _overview_target: float = 0.0
 ## The camera this frame: how many screen px an arm px is, and the row in the middle of the view.
 var _z: float = 1.5
 var _view_pan: float = 0.0
+## The view's middle across, arm px: the arm's centre line at the middle row (it leans above the elbow).
+var _view_x: float = 0.0
 var _active: bool = false
 ## The zoom the cached projections were made at.
 var _projected_scale: float = 1.5
@@ -242,7 +234,6 @@ func _ready() -> void:
 	_material.set_shader_parameter("wrap_angle", _wrap)
 	_material.set_shader_parameter("stencil_height", stencil_height)
 	shape.apply_to(_material)
-	_build_client_hand()
 	_build_defocus()
 	_hand.visible = false
 	_reset_hand.call_deferred()
@@ -360,8 +351,9 @@ func place_cell_at(x: int, y: int) -> Vector3:
 			var k: float = exp(-(dx * dx + dy * dy) / (shape.drag_radius * shape.drag_radius))
 			at_theta += shape.drag.x / shape.radius * k
 			at_row += shape.drag.y * k
-		var r: float = shape.surface_radius(at_theta, at_row)
-		placed = Vector3(sin(at_theta) * r * _z, at_row * _z, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
+		var r: float = shape.radius_at(at_row)
+		placed = Vector3((shape.center_at(at_row) + sin(at_theta) * r) * _z, at_row * _z,
+				smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
 	else:
 		placed = _zoomed(shape.project_layer(theta, v, layer))
 	_projected[index] = placed
@@ -439,6 +431,7 @@ func hint() -> String:
 func update_surface(delta: float, active: bool) -> void:
 	_refresh_center()
 	_active = active
+	var view_before: Vector2 = Vector2(_view_x, _view_pan)
 	_update_overview(delta)
 	var can_use: bool = active and not Transition.is_busy and not hand_locked and not is_overview()
 	if _hand_position == Vector2.ZERO and size != Vector2.ZERO:
@@ -449,6 +442,11 @@ func update_surface(delta: float, active: bool) -> void:
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
 	_update_pan(delta)
 	_update_overview(0.0)   # the middle row follows the scroll
+	# a held grip and the hand ride along with the arm while the view moves, so it never pulls the skin by itself
+	var view_moved: Vector2 = (Vector2(_view_x, _view_pan) - view_before) * _z
+	if _gripping and view_moved != Vector2.ZERO:
+		_grip_screen -= view_moved
+		_hand_position -= view_moved
 	_refresh_center()
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
@@ -516,7 +514,7 @@ func update_surface(delta: float, active: bool) -> void:
 ## Just outside the silhouette (within `side_grab_margin` of it, on the background) the hand still takes the skin:
 ## the side at the silhouette of that row. INF farther out.
 func _side_grab(point: Vector2) -> Vector2:
-	var past: float = absf(point.x) - shape.radius_at(point.y)
+	var past: float = absf(point.x - shape.center_at(point.y)) - shape.radius_at(point.y)
 	if past < 0.0 or past > side_grab_margin:
 		return Vector2.INF
 	return shape.rest_skin(point)
@@ -636,11 +634,11 @@ func _update_overview(delta: float) -> void:
 		eased = _overview_target
 	_overview = eased
 	var t: float = smoothstep(0.0, 1.0, _overview)
-	var fit: float = size.y / maxf(overview_bottom - overview_top, 1.0) if size.y > 0.0 else zoom
-	var z: float = zoom * pow(fit / zoom, t)
-	var pan: float = lerpf(_pan, (overview_top + overview_bottom) * 0.5, t)
-	_z = z
-	_view_pan = pan
+	var whole: Rect2 = shape.outline_bounds().grow(overview_margin)
+	var fit: float = minf(size.y / whole.size.y, size.x / whole.size.x) if size.y > 0.0 else zoom
+	_z = zoom * pow(fit / zoom, t)
+	_view_pan = lerpf(_pan, whole.get_center().y, t)
+	_view_x = lerpf(shape.center_at(_pan), whole.get_center().x, t)
 	if _projected_scale != _z:
 		_forget_projections()   # the cache keeps positions relative to the centre, but in screen px
 		_projected_scale = _z
@@ -648,17 +646,11 @@ func _update_overview(delta: float) -> void:
 	_paper_stack.visible = MECHANICS.blood and _overview < 0.05
 
 
-## The view eases toward where the scroll is heading. The left hand and a held grip ride along with the arm, so
-## the view moving never pulls the skin by itself.
+## The view eases toward where the scroll is heading (update_surface() moves a held grip along with it).
 func _update_pan(delta: float) -> void:
-	var before: float = _pan
 	_pan = lerpf(_pan, _scroll_target, 1.0 - exp(-scroll_rate * delta))
 	if absf(_pan - _scroll_target) < 0.3:
 		_pan = _scroll_target
-	var moved: float = _pan - before
-	if moved != 0.0 and _gripping:
-		_grip_screen.y -= moved * _z
-		_hand_position.y -= moved * _z
 
 
 ## Scrolls the view along the arm by `amount` px (down positive), within `scroll_min`..`scroll_max`.
@@ -681,7 +673,7 @@ func _process(_delta: float) -> void:
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
 		_camera.size = view_size.y / _z
-	_camera.position.y = -_view_pan   # the view's y is up: looking lower down the arm
+	_camera.position = Vector3(_view_x, -_view_pan, _camera.position.z)   # the view's y is up: lower down the arm
 	(_background.material as ShaderMaterial).set_shader_parameter("size", view_size)
 
 
@@ -853,7 +845,7 @@ func _forget_projections() -> void:
 
 ## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
-	return get_global_rect().get_center() - Vector2(0.0, _view_pan * _z)
+	return get_global_rect().get_center() - Vector2(_view_x, _view_pan) * _z
 
 
 ## Refreshes `_center_offset`, the arm's centre that cached projections add (a field, not a call: a stroke reads
@@ -865,7 +857,7 @@ func _refresh_center() -> void:
 
 ## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
 func _arm_point(local: Vector2) -> Vector2:
-	return (local - size * 0.5) / _z + Vector2(0.0, _view_pan)
+	return (local - size * 0.5) / _z + Vector2(_view_x, _view_pan)
 
 
 func _skin_to_cell(skin: Vector2) -> Vector2:
@@ -937,42 +929,16 @@ func _update_defocus() -> void:
 	var scale: float = get_viewport().get_final_transform().get_scale().y
 	var centre: float = _center().y
 	var material: ShaderMaterial = _defocus.material
-	material.set_shader_parameter("from_y", (centre + defocus_from * _z) * scale)
-	material.set_shader_parameter("full_y", (centre + defocus_full * _z) * scale)
-	material.set_shader_parameter("max_radius", defocus_radius * _z * scale)
-	material.set_shader_parameter("darken", defocus_darken)
-	material.set_shader_parameter("dark_y", (centre + defocus_dark_to * _z) * scale)
-	_defocus.visible = centre + defocus_from * _z < size.y + get_global_rect().position.y
+	var wrist: float = shape.wrist_row()
+	# pulled back to the whole arm the hand comes into focus (it fades out with the overview)
+	var focus: float = 1.0 - smoothstep(0.0, 1.0, _overview)
+	material.set_shader_parameter("from_y", (centre + (wrist + defocus_from) * _z) * scale)
+	material.set_shader_parameter("full_y", (centre + (wrist + defocus_full) * _z) * scale)
+	material.set_shader_parameter("max_radius", defocus_radius * _z * scale * focus)
+	material.set_shader_parameter("darken", defocus_darken * focus)
+	material.set_shader_parameter("dark_y", (centre + (wrist + defocus_dark_to) * _z) * scale)
+	_defocus.visible = focus > 0.01 and centre + (wrist + defocus_from) * _z < size.y + get_global_rect().position.y
 	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
-
-
-## The client's hand below the wrist: a flat out-of-focus picture (`client_hand.gdshader`) on a quad just behind the
-## arm, scaled so its wrist is as wide as the arm's and its top under the arm's fade, where it dissolves in.
-func _build_client_hand() -> void:
-	var albedo: Texture2D = load(HAND_ALBEDO)
-	if albedo == null:
-		return
-	var picture: Vector2 = Vector2(albedo.get_size())
-	var scale: float = 2.0 * shape.radius_at(hand_top + 140.0) / hand_wrist_width * hand_scale
-	var size: Vector2 = picture * scale
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = size
-	quad.subdivide_depth = 32   # rows for the shader's lean
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = load("res://tattoo/surfaces/arm/client_hand.gdshader")
-	material.set_shader_parameter("albedo_tex", albedo)
-	material.set_shader_parameter("normal_tex", load(HAND_NORMAL))
-	material.set_shader_parameter("skin_detail", _material.get_shader_parameter("skin_detail"))
-	material.set_shader_parameter("skin_normal", _material.get_shader_parameter("skin_normal"))
-	material.set_shader_parameter("quad_size", size)
-	var hand: MeshInstance3D = MeshInstance3D.new()
-	hand.name = "ClientHand"
-	hand.mesh = quad
-	hand.material_override = material
-	hand.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# world y is up and the arm's rows run down; the wrist (the picture's top) lines up with the arm's middle
-	hand.position = Vector3((picture.x * 0.5 - hand_wrist_center) * scale, -(hand_top + size.y * 0.5), 0.0)
-	_view_viewport.add_child(hand)
 
 
 ## A flat grid; UV = skin coordinates (theta -PI..PI, v along `arm_length` × the shader's MESH_REACH).
