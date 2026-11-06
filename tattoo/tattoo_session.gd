@@ -88,13 +88,13 @@ const SURFACE_SCENES: Dictionary = {
 @export_group("Edge")
 ## Inking past the stencil's edge (`Mechanics.edge_kick`): the machine is pushed back toward the drawing by up to
 ## this many pixels, in proportion to how much of the brush is outside.
-@export var edge_push: float = 450.0
+@export var edge_push: float = 0.0
 ## Within this many pixels of the stencil's edge the thick needle lays ink only by distance / margin (none right at
 ## the edge; the dots still fly), so it can't fill the edge evenly: that's the thin needle's job.
 @export var edge_margin: float = 24.0
 ## The view (skin and table, like a camera) shakes by up to this many pixels meanwhile; the machine stays under
 ## the mouse.
-@export var edge_shake: float = 8.0
+@export var edge_shake: float = 0.0
 ## The purple frame round the screen and the specks flying off the touch (off: the user found them too much; the thick
 ## needle simply lays nothing near the edge).
 @export var edge_effects: bool = false
@@ -107,7 +107,7 @@ const SURFACE_SCENES: Dictionary = {
 @export var edge_return: float = 5.0
 ## A push this strong (share of the brush past the edge, times the needle's factor) stops the machine for
 ## `edge_stall_time` seconds: it doesn't ink or buzz meanwhile.
-@export_range(0.0, 1.0) var edge_stall_from: float = 0.2
+@export_range(0.0, 1.0) var edge_stall_from: float = 0.0
 @export var edge_stall_time: float = 0.5
 ## Seconds between two flinch sounds at the edge.
 @export var edge_sound_gap: float = 0.7
@@ -1017,7 +1017,7 @@ func _update_edge(delta: float, inking: bool) -> void:
 			target = toward.normalized() * edge_push * _edge_amount
 		if _edge_amount >= edge_stall_from and edge_stall_from > 0.0:
 			_edge_stall_until = canvas.time + edge_stall_time   # the skin jerks: the machine stops a moment
-		if _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
+		if edge_effects and _edge_amount > 0.3 and canvas.time - _edge_sound_at > edge_sound_gap:
 			_edge_sound_at = canvas.time
 			_wince.pitch_scale = randf_range(1.15, 1.35)
 			_wince.play()
