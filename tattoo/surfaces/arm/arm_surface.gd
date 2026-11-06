@@ -887,19 +887,16 @@ func _place_hand() -> void:
 	_target.queue_redraw()
 
 
-## The target: a small solid circle with a thin ring round it, as if drawn round it; while the hand holds the skin
-## the ring closes in on it.
+## The target: a small grey ring (a circle with a hole in it); while the hand holds the skin the hole closes.
 func _draw_target() -> void:
-	var r: float = grip_target_radius
 	var gripping: bool = _target.get_meta(&"gripping", false)
-	var shade: Color = Color(0.0, 0.0, 0.0, 0.45)
-	var light: Color = Color(1.0, 0.96, 0.9, 0.9)
-	var inner: float = r * 0.32
-	var ring: float = r * (0.62 if gripping else 1.0)
-	_target.draw_circle(Vector2.ZERO, inner + 1.5, shade)
-	_target.draw_circle(Vector2.ZERO, inner, light)
-	_target.draw_arc(Vector2.ZERO, ring, 0.0, TAU, 40, shade, 4.0, true)
-	_target.draw_arc(Vector2.ZERO, ring, 0.0, TAU, 40, light, 1.8, true)
+	var outer: float = grip_target_radius * 0.45
+	var grey: Color = Color(0.62, 0.62, 0.62, 0.95)
+	_target.draw_circle(Vector2.ZERO, outer + 1.0, Color(0.0, 0.0, 0.0, 0.35))
+	if gripping:
+		_target.draw_circle(Vector2.ZERO, outer, grey)
+	else:
+		_target.draw_arc(Vector2.ZERO, outer * 0.68, 0.0, TAU, 32, grey, outer * 0.64, true)
 
 
 func _forget_projections() -> void:
