@@ -29,11 +29,29 @@ var radius: float = 210.0:
 ## The arm's outline from the shoulder (top) to the wrist (bottom): rows (px from the middle of the stencil, down
 ## positive) and the radius there in `radius`es — the upper arm and biceps, the narrow elbow, the forearm's muscles
 ## swelling below it and thinning to the wrist, then closing (hidden: the arm fades out there, see `arm_skin.gdshader`'s `fade_*`). Above PROFILE_V[0] the
-## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step.
+## shoulder is a full round dome: a half circle as wide as the arm there, joining it without a step — with the narrowing
+## below it (where the deltoid ends, -960) it reads as the shoulder's ball.
 ## A smooth (Hermite) curve through them, kept as a table every PROFILE_STEP px; the shader reads the same table as a
 ## texture (`apply_to()`), so the outline lives only here.
-const PROFILE_V: PackedFloat32Array = [-1350.0, -1150.0, -980.0, -800.0, -620.0, -470.0, -400.0, -330.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
-const PROFILE_S: PackedFloat32Array = [1.12, 1.1, 1.14, 1.22, 1.1, 0.92, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
+const PROFILE_V: PackedFloat32Array = [-1250.0, -1120.0, -960.0, -800.0, -640.0, -490.0, -420.0, -340.0, -180.0, 50.0, 300.0, 470.0, 600.0, 700.0, 760.0, 800.0]
+const PROFILE_S: PackedFloat32Array = [1.27, 1.2, 1.06, 1.17, 1.1, 0.93, 0.87, 0.95, 1.09, 1.0, 0.85, 0.72, 0.7, 0.68, 0.5, 0.0]
+## Swells and dents of the arm's surface round it (outside the stencil): each (theta of its middle, row of its middle,
+## half width round the arm in radians, half height along it in px, height in `radius`es; gaussians). Seen from the
+## front with the thumb's side on the right: the biceps' outer edge and the triceps' long head bulge the upper arm's
+## outline on either side, the elbow has a bony knob on the inner side with a little dimple over it and a notch at the
+## crease on the outer side, and the wrist's bone sticks out on the little finger's side. `arm_skin.gdshader`'s
+## `swell()` repeats them — change both together.
+const SWELLS: PackedFloat32Array = [
+	1.45, -820.0, 0.65, 190.0, 0.09,     # biceps, its outer edge
+	-1.45, -900.0, 0.7, 230.0, 0.13,     # triceps' long head, the inner side
+	-1.5, -440.0, 0.5, 38.0, 0.06,       # the elbow's inner knob
+	-1.45, -500.0, 0.45, 26.0, -0.035,   # the dimple just above it
+	1.5, -445.0, 0.6, 30.0, -0.05,       # the notch at the crease, outer side
+	-1.45, 535.0, 0.4, 32.0, 0.09,       # the wrist's bone
+]
+## Swells only act outside these rows (they fade in over 30 px past them), so the stencil's cells skip them.
+const SWELL_QUIET_TOP: float = -380.0
+const SWELL_QUIET_BOTTOM: float = 470.0
 ## `radius_at()` reads a table of the curve, this many px a step.
 const PROFILE_STEP: float = 2.0
 var _profile_table: PackedFloat32Array = PackedFloat32Array()
@@ -100,6 +118,28 @@ func radius_at(v: float) -> float:
 	var at: float = (clampf(v, top, PROFILE_V[-1]) - top) / PROFILE_STEP
 	var i: int = mini(int(at), _profile_table.size() - 2)
 	return radius * lerpf(_profile_table[i], _profile_table[i + 1], at - i)
+
+
+## The arm's radius at (theta, v): the outline's radius with the swells round it.
+func surface_radius(theta: float, v: float) -> float:
+	var r: float = radius_at(v)
+	if v > SWELL_QUIET_TOP and v < SWELL_QUIET_BOTTOM:
+		return r
+	return r * (1.0 + swell(theta, v))
+
+
+## How far the surface stands out of the outline at (theta, v), in `radius`es (SWELLS).
+static func swell(theta: float, v: float) -> float:
+	var outside: float = (1.0 - smoothstep(SWELL_QUIET_TOP - 30.0, SWELL_QUIET_TOP, v)) \
+			+ smoothstep(SWELL_QUIET_BOTTOM, SWELL_QUIET_BOTTOM + 30.0, v)
+	if outside <= 0.0:
+		return 0.0
+	var h: float = 0.0
+	for i in range(0, SWELLS.size(), 5):
+		var a: float = (theta - SWELLS[i]) / SWELLS[i + 2]
+		var b: float = (v - SWELLS[i + 1]) / SWELLS[i + 3]
+		h += SWELLS[i + 4] * exp(-(a * a + b * b))
+	return h * outside
 
 
 ## The outline's scale at row `v`: a cubic through the profile points with slopes from their neighbours.
@@ -370,8 +410,17 @@ func unslide(theta: float, v: float) -> Vector2:
 ## The bare arm's skin point (theta, v) under a screen point, ignoring pulls and slides; past the silhouette
 ## clamped just inside it.
 func rest_skin(point: Vector2) -> Vector2:
-	var r: float = radius_at(point.y)
-	return Vector2(asin(clampf(point.x / r, -0.995, 0.995)), point.y)
+	return Vector2(_angle_under(point.x, point.y, 0.995), point.y)
+
+
+## The angle round the arm under screen x in row v, with the swells (a few rounds), the sine clamped to ±`limit`.
+func _angle_under(x: float, v: float, limit: float) -> float:
+	var theta: float = asin(clampf(x / radius_at(v), -limit, limit))
+	if v > SWELL_QUIET_TOP and v < SWELL_QUIET_BOTTOM:
+		return theta
+	for i in 4:
+		theta = asin(clampf(x / surface_radius(theta, v), -limit, limit))
+	return theta
 
 
 func _slide_weight(theta: float, v: float) -> float:
@@ -401,7 +450,7 @@ func project_layer(theta: float, v: float, layer: Vector2) -> Vector3:
 		at_theta += drag.x / radius * k
 		at_row += drag.y * k
 	if side == 0:   # no flap: the plain cylinder, inline (the common case, thousands of times a stroke)
-		var r: float = radius_at(at_row)
+		var r: float = surface_radius(at_theta, at_row)
 		var face: float = cos(at_theta)
 		return Vector3(sin(at_theta) * r, at_row, ink_factor(face) * layer.y)
 	var placed: Array = _place(at_theta, at_row)
@@ -517,6 +566,7 @@ func _place(theta: float, v: float) -> Array:
 	var local: float = theta * s # angle in the pulled side's frame
 	var t_angle: float = tangent_angle(v)
 	if side == 0 or local <= t_angle or local > grip_angle:
+		r = surface_radius(theta, v)
 		return [Vector3(sin(theta) * r, v, cos(theta) * r), cos(theta)]
 	var tangent: Vector2 = Vector2(sin(t_angle), cos(t_angle)) * r
 	var t: float = _ease_out(t_angle, v, (local - t_angle) / (grip_angle - t_angle))
@@ -562,6 +612,7 @@ func _solve_row(x: float, v: float) -> Vector3:
 			t = minf(t, 1.0)
 			var share: float = _ease_back(t_angle, v, t)
 			return Vector3((t_angle + share * (grip_angle - t_angle)) * s, t, ok)
-	if absf(x) > r:
+	var edge: float = surface_radius(signf(x) * PI * 0.5, v)
+	if absf(x) > edge:
 		return Vector3(signf(x) * PI * 0.5, 0.0, -1.0)
-	return Vector3(asin(x / r), 0.0, 1.0)
+	return Vector3(_angle_under(x, v, 1.0), 0.0, 1.0)

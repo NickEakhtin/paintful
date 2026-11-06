@@ -10,9 +10,11 @@ uniform float radius = 210.0;
 // the shoulder's dome) and below `fade_bottom_to` (past the wrist), over `fade_length` px — more and more of their
 // pixels dropped in a fine noise (the background shows through) and the rest darkening a little. No transparency:
 // the transparent pipeline lit the arm in blocks.
-uniform float fade_top_from = -1590.0;
+uniform float fade_top_from = -1517.0;
 uniform float fade_bottom_to = 760.0;
 uniform float fade_length = 300.0;
+// The shoulder's top dissolves over a shorter stretch, so its round ball shows.
+uniform float fade_top_length = 120.0;
 // Muscle relief, light only (the outline is ArmShape's profile): the biceps in front of the upper arm, the forearm's
 // swell on its outer side, a hollow in the crook of the elbow. `relief` scales how much they bend the light.
 uniform float relief = 1.0;
@@ -126,12 +128,37 @@ float tangent_angle(float v) {
 }
 
 // Screen-space point (x right, y down, z toward the camera) of skin point (theta, v).
+// ArmShape.SWELLS / swell(): the biceps and triceps, the elbow's knob, dimple and notch, the wrist's bone, as
+// gaussians round the outline, only outside the stencil's rows. Change both together.
+const float SWELL_QUIET_TOP = -380.0;
+const float SWELL_QUIET_BOTTOM = 470.0;
+float swell_one(float theta, float v, float at_theta, float at_v, float wide, float tall, float height) {
+	float a = (theta - at_theta) / wide;
+	float b = (v - at_v) / tall;
+	return height * exp(-(a * a + b * b));
+}
+float swell(float theta, float v) {
+	float outside = (1.0 - smoothstep(SWELL_QUIET_TOP - 30.0, SWELL_QUIET_TOP, v))
+			+ smoothstep(SWELL_QUIET_BOTTOM, SWELL_QUIET_BOTTOM + 30.0, v);
+	if (outside <= 0.0) {
+		return 0.0;
+	}
+	float h = swell_one(theta, v, 1.45, -820.0, 0.65, 190.0, 0.09);
+	h += swell_one(theta, v, -1.45, -900.0, 0.7, 230.0, 0.13);
+	h += swell_one(theta, v, -1.5, -440.0, 0.5, 38.0, 0.06);
+	h += swell_one(theta, v, -1.45, -500.0, 0.45, 26.0, -0.035);
+	h += swell_one(theta, v, 1.5, -445.0, 0.6, 30.0, -0.05);
+	h += swell_one(theta, v, -1.45, 535.0, 0.4, 32.0, 0.09);
+	return h * outside;
+}
+
 vec3 place(float theta, float v) {
 	float r = radius_at(v);
 	float s = pull_side < 0.0 ? -1.0 : 1.0;
 	float local = theta * s;
 	float t_angle = tangent_angle(v);
 	if (pull_side == 0.0 || local <= t_angle || local > grip_angle) {
+		r *= 1.0 + swell(theta, v);
 		return vec3(sin(theta) * r, v, cos(theta) * r);
 	}
 	vec2 tangent = vec2(sin(t_angle), cos(t_angle)) * r;
@@ -275,11 +302,13 @@ float muscle(float theta, float v, vec2 at, vec2 size) {
 float muscles(float theta, float v) {
 	float h = 0.0;
 	h += 1.0 * muscle(theta, v, vec2(0.0, -800.0), vec2(0.75, 210.0));      // biceps, in front of the upper arm
-	h += 0.55 * muscle(theta, v, vec2(0.95, -760.0), vec2(0.45, 260.0));    // the side head of the triceps
-	h += 0.55 * muscle(theta, v, vec2(-0.95, -760.0), vec2(0.45, 260.0));
+	h += 0.35 * muscle(theta, v, vec2(0.95, -760.0), vec2(0.45, 260.0));    // the biceps' and triceps' sides
+	h += 0.45 * muscle(theta, v, vec2(-0.95, -860.0), vec2(0.45, 260.0));
+	h += 0.6 * muscle(theta, v, vec2(0.0, -1180.0), vec2(0.9, 150.0));      // the shoulder's ball (the deltoid)
 	h += 0.7 * muscle(theta, v, vec2(0.65, -190.0), vec2(0.55, 170.0));     // the forearm's swell on the outer side
 	h += 0.35 * muscle(theta, v, vec2(-0.5, -150.0), vec2(0.5, 200.0));
 	h -= 0.9 * muscle(theta, v, vec2(0.05, -420.0), vec2(0.38, 42.0));      // the hollow in the crook of the elbow
+	h -= 0.3 * muscle(theta, v + 18.0 * theta * theta, vec2(0.0, -440.0), vec2(0.75, 7.0));   // the crease across the bend, curving up at its ends
 	return h;
 }
 
@@ -377,7 +406,7 @@ void fragment() {
 		NORMAL = normalize(NORMAL - normalize(TANGENT) * m_t * relief * 6.0 / (2.0 * e) - normalize(BINORMAL) * m_v * relief * 6.0 / (2.0 * e));
 	}
 	// the arm's ends dissolve: pixels dropped by a fine noise (interleaved gradient noise, steady on screen)
-	float fade = smoothstep(fade_top_from, fade_top_from + fade_length, skin_v)
+	float fade = smoothstep(fade_top_from, fade_top_from + fade_top_length, skin_v)
 			* (1.0 - smoothstep(fade_bottom_to - fade_length, fade_bottom_to, skin_v));
 	float grain = fract(52.9829189 * fract(dot(floor(FRAGCOORD.xy), vec2(0.06711056, 0.00583715))));
 	if (fade < grain) {

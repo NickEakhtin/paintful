@@ -325,7 +325,7 @@ func place_cell_at(x: int, y: int) -> Vector3:
 			var k: float = exp(-(dx * dx + dy * dy) / (shape.drag_radius * shape.drag_radius))
 			at_theta += shape.drag.x / shape.radius * k
 			at_row += shape.drag.y * k
-		var r: float = shape.radius_at(at_row)
+		var r: float = shape.surface_radius(at_theta, at_row)
 		placed = Vector3(sin(at_theta) * r, at_row, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
 	else:
 		placed = shape.project_layer(theta, v, layer)
