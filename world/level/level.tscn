@@ -24,7 +24,7 @@
 environment = ExtResource("22_environment")
 
 [node name="Studio" parent="." unique_id=1880109431 instance=ExtResource("3_studio")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12265766, -0.09821701, 0.025513649)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12967235, -0.104715824, 0.025194645)
 
 [node name="Basement" parent="." unique_id=122328114 instance=ExtResource("4_basement")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12565601, -0.25061452, 0.51185703)

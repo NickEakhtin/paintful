@@ -80,7 +80,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export_range(0.0, 1.0) var defocus_darken: float = 0.6
 @export var defocus_dark_to: float = 350.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
-@export var wipe_radius: float = 121.0
+@export var wipe_radius: float = 95.0
 ## The towel stack peeks in from the screen's left edge (`stack_peek` of its width shows) and slides out to
 ## `stack_out` of it while the left hand is within `stack_reach` of the screen's width from that edge, at `stack_rate`.
 @export var stack_peek: float = 0.2
@@ -102,7 +102,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## Each fold: (degrees round the arm of its middle, its middle row in px from the arm's centre (down positive),
 ## half its length round the arm in degrees, skin px tucked in). Two at most; they mustn't overlap round the arm.
 ## Now one long scar across the stencil's diagonal, from its top left corner to its bottom right.
-@export var folds: Array[Vector4] = [Vector4(0.0, 0.0, 95.0, 60.0)]
+@export var folds: Array[Vector4] = []
 ## The crease climbs this many px along the arm per degree round it (the scar's slant: 240 rows over the stencil's
 ## 65° half width reaches its corners), and breaks into straight pieces whose corners are up to `fold_kinks` px off.
 @export var fold_tilt: float = 3.7
@@ -110,7 +110,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## A fat bump that sags over the stencil (`ArmShape.bump`): (degrees round the arm of its middle, its top row,
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
-@export var bump_enabled: bool = true
+@export var bump_enabled: bool = false
 ## Now a long low one above the stencil, sagging down over its top edge.
 @export var bump: Vector4 = Vector4(10.0, -310.0, 55.0, 35.0)
 ## The bump reaches up over the skin above it instead of sagging down (off: it sags over the skin below).
@@ -778,9 +778,9 @@ func set_wet_map(wet: Texture2D) -> void:
 
 
 func _place_paper_stack() -> void:
-	var width: float = 432.0
+	var width: float = 338.0
 	var shown: float = lerpf(stack_peek, stack_out, _stack_slide)
-	_paper_stack.rect = Rect2(width * (shown - 1.0), size.y * 0.52, width, 259.0)
+	_paper_stack.rect = Rect2(width * (shown - 1.0), size.y * 0.55, width, 203.0)
 
 
 ## The stack slides out while the hand nears the screen's left edge, back to peeking when it leaves.
@@ -857,7 +857,7 @@ func _update_fold(delta: float) -> void:
 
 ## How closed the hand is round a paper towel.
 const PAPER_FIST: float = 0.7
-## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 2.875 in
+## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 2.25 in
 ## the scene, which hand_rect() takes along).
 const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 
