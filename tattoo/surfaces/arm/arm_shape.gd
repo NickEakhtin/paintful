@@ -280,9 +280,18 @@ func fold_unplace(theta: float, row: float) -> float:
 	if index < 0:
 		return row
 	var fold: Vector4 = _fold_local(index, theta)
-	var slack: float = _fold_slack(index, theta)
+	var slack: float = _slack_of(index, fold, theta)
 	if slack <= 0.0:
 		return row
+	# Newton first (the map is smooth and steep, so a few steps reach a thousandth of a pixel); unslide() calls this
+	# 24 times per point, and 24 rounds of halving each made pulling over the scar cost several times a frame
+	var x: float = row
+	for i in 6:
+		var miss: float = x + _fold_shift(fold, slack, x) - row
+		if absf(miss) < 0.001:
+			return x
+		var slope: float = 1.0 + _fold_shift(fold, slack, x + 0.25) - _fold_shift(fold, slack, x - 0.25)
+		x = clampf(x - miss / maxf(slope, 0.05), row - slack, row + slack)
 	var low: float = row - slack
 	var high: float = row + slack
 	for i in 24:
@@ -362,19 +371,31 @@ func fold_middle(index: int, theta: float) -> float:
 
 
 func _fold_slack(index: int, theta: float) -> float:
-	var fold: Vector4 = _fold_local(index, theta)
+	return _slack_of(index, _fold_local(index, theta), theta)
+
+
+## _fold_slack() for a fold already worked out at `theta`.
+func _slack_of(index: int, fold: Vector4, theta: float) -> float:
 	return maxf(0.0, fold.w - fold_closed_width) * clampf(fold_amounts[index], 0.0, 1.0) * _fold_reach(fold, theta)
 
 
 ## The skin point that slid to (theta, v): slide()'s inverse, by a few rounds.
-func unslide(theta: float, v: float) -> Vector2:
+## `guess` (a skin point near the answer, INF for none) starts the rounds there.
+func unslide(theta: float, v: float, guess: Vector2 = Vector2.INF) -> Vector2:
 	if drag == Vector2.ZERO:
 		return Vector2(theta, skin_unrow(theta, v))
-	var skin: Vector2 = Vector2(theta, skin_unrow(theta, v))
-	for i in 24:   # each round cuts the error by about 0.86 × drag / drag_radius: 24 get under a tenth of a pixel
+	var skin: Vector2 = guess if guess.is_finite() else Vector2(theta, skin_unrow(theta, v))
+	# each round cuts the error by about 0.86 × drag / drag_radius: 24 get under a tenth of a pixel at a full drag;
+	# stop once a round moves the point by less than a hundredth of a pixel (far from the grip that's 2-3 rounds;
+	# over a scar every round is costly, and the hand's outline converts dozens of points a frame)
+	for i in 24:
 		var k: float = _slide_weight(skin.x, skin.y)
 		var skin_theta: float = theta - drag.x / radius * k
-		skin = Vector2(skin_theta, skin_unrow(skin_theta, v - drag.y * k))
+		var next: Vector2 = Vector2(skin_theta, skin_unrow(skin_theta, v - drag.y * k))
+		var moved: Vector2 = Vector2((next.x - skin.x) * radius, next.y - skin.y)
+		skin = next
+		if moved.length_squared() < 0.0001:
+			break
 	return skin
 
 
@@ -428,7 +449,7 @@ func ink_factor(face: float) -> float:
 ## Skin point (theta, v) under a screen point, or Vector2.INF where there is no skin.
 ## The flap is sheared, so the row is found by a few rounds; the ends of the flap are clamped while
 ## searching and only the final row decides whether there is skin.
-func screen_to_skin(point: Vector2) -> Vector2:
+func screen_to_skin(point: Vector2, guess: Vector2 = Vector2.INF) -> Vector2:
 	var v: float = point.y
 	var solved: Vector3 = Vector3.ZERO
 	for i in 8:
@@ -443,7 +464,7 @@ func screen_to_skin(point: Vector2) -> Vector2:
 	solved = _solve_row(point.x, v)
 	if solved.z < 0.0:
 		return Vector2.INF
-	return unslide(solved.x, v)
+	return unslide(solved.x, v, guess)
 
 
 ## The grip point Q of row `v` in the pulled side's frame (x outward, y = z toward the camera).

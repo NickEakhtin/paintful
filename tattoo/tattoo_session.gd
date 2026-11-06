@@ -605,6 +605,10 @@ func _add_modifiers(tasks: Array[ModifierData]) -> void:
 		_modifier_layer.add_child(modifier)
 
 
+## Last frame's cell under each circle of the hand's outline (ZERO: none), to start the next frame's search.
+var _hand_cells: PackedVector2Array = PackedVector2Array()
+
+
 ## Hands the canvas where tasks keep ink off this frame, in cells.
 func _update_ink_blocks() -> void:
 	canvas.blocked.clear()
@@ -614,9 +618,15 @@ func _update_ink_blocks() -> void:
 			canvas.blocked.append(Rect2(from, _to_cell(rect.end) - from))
 	# the artist's own left hand on the skin: every circle of its outline, measured in cells round its middle
 	# (exact size: screen px over px per cell; cells_within() pads its walk for the brush)
+	# (each circle's search starts from where it was last frame: over a scar a cold one costs a lot)
 	var cell_px: float = maxf(_surface.pixels_per_cell(), 0.001)
-	for circle: Vector3 in _surface.hand_outline():
-		var middle: Vector2 = _to_cell(Vector2(circle.x, circle.y))
+	var outline: PackedVector3Array = _surface.hand_outline()
+	_hand_cells.resize(outline.size())
+	for i in outline.size():
+		var circle: Vector3 = outline[i]
+		var guess: Vector2 = _hand_cells[i] if _hand_cells[i] != Vector2.ZERO else Vector2.INF
+		var middle: Vector2 = _surface.to_cell_near(Vector2(circle.x, circle.y), guess)
+		_hand_cells[i] = middle if middle.is_finite() else Vector2.ZERO
 		if middle.is_finite():
 			var half: Vector2 = Vector2.ONE * circle.z / cell_px
 			canvas.blocked.append(Rect2(middle - half, half * 2.0))

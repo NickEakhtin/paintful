@@ -317,7 +317,12 @@ func stencil_layer() -> Control:
 
 
 func to_cell(screen_point: Vector2) -> Vector2:
-	var skin: Vector2 = shape.screen_to_skin(_unturn.basis_xform((screen_point - _center()) / _z))
+	return to_cell_near(screen_point, Vector2.INF)
+
+
+func to_cell_near(screen_point: Vector2, guess: Vector2) -> Vector2:
+	var start: Vector2 = _cell_to_skin(guess) if guess.is_finite() else Vector2.INF
+	var skin: Vector2 = shape.screen_to_skin(_unturn.basis_xform((screen_point - _center()) / _z), start)
 	if not skin.is_finite():
 		return Vector2.INF
 	return _skin_to_cell(skin)

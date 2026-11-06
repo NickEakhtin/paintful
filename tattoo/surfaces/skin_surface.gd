@@ -23,6 +23,12 @@ func to_cell(_screen_point: Vector2) -> Vector2:
 	return Vector2.INF
 
 
+## to_cell() starting its search from `guess` (a cell this point was near, e.g. the same point last frame; INF for
+## none): surfaces with a costly inverse use it to finish in a round or two.
+func to_cell_near(screen_point: Vector2, _guess: Vector2) -> Vector2:
+	return to_cell(screen_point)
+
+
 ## Screen point of a cell (x, y) and how much ink lands there, 0..1 (z); z is 0 where it's hidden.
 func project(_cell: Vector2) -> Vector3:
 	return Vector3.ZERO
