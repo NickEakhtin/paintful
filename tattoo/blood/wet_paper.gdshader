@@ -45,7 +45,9 @@ void fragment() {
 	colour *= 1.0 - 0.07 * dot_mark * (1.0 - 0.6 * soak);
 	// blood soaking in from a few spots, spreading as it takes more
 	float spread = fbm(uv * 2.4 + seed * 1.7 + 11.0);
-	float red = smoothstep(1.0 - stained * 0.85, 1.0 - stained * 0.85 + 0.12, spread) * step(0.001, stained);
+	// (fbm sits about 0.25..0.75: the first blood shows at once as a small spot, a fully bloody one covers it all)
+	float edge = mix(0.74, 0.2, sqrt(stained));
+	float red = smoothstep(edge, edge + 0.08, spread) * step(0.001, stained);
 	colour = mix(colour, blood * (0.75 + 0.35 * fibres), red * 0.9);
 	// a few soft glints of water on the soaked blotches
 	float glint = smoothstep(0.82, 0.97, fbm(uv * 9.0 + seed * 3.0)) * soak;

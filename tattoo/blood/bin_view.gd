@@ -56,6 +56,8 @@ var _viewport: SubViewport
 var _camera: Camera3D
 var _world_root: Node3D
 var _hand: Node2D
+## The crumpled towel in the hand (`held_ball.gd`).
+var _held: Node2D
 var _hand_position: Vector2 = Vector2.ZERO
 var _hand_velocity: Vector2 = Vector2.ZERO
 ## Mouse motion since the last frame, and the hand's measured speed (px/s).
@@ -91,9 +93,9 @@ func _ready() -> void:
 	_hand.name = "Hand"
 	_hand.scale = Vector2.ONE * 3.375   # as big as the hand on the skin (the ball in it too)
 	add_child(_hand)
-	var held: Node2D = Node2D.new()
-	held.set_script(load("res://tattoo/blood/held_ball.gd"))
-	_hand.add_child(held)
+	_held = Node2D.new()
+	_held.set_script(load("res://tattoo/blood/held_ball.gd"))
+	_hand.add_child(_held)
 	_hand.visible = false
 	set_process(false)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED   # off screen: no 3D to draw
@@ -105,7 +107,9 @@ func wake() -> void:
 
 
 ## The view swung here: the hand comes up holding the ball.
-func arm_throw() -> void:
+## `stained`: how bloody the towel in the hand is (0 .. 1).
+func arm_throw(stained: float = 0.5) -> void:
+	_held.set(&"stained", stained)
 	armed = true
 	_hand_position = Vector2(size.x * 0.3, size.y * 0.62)
 	_hand_velocity = Vector2.ZERO

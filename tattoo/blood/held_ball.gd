@@ -6,11 +6,18 @@ const WET_PAPER: Shader = preload("res://tattoo/blood/wet_paper.gdshader")
 const CENTER: Vector2 = Vector2(10.0, -62.0)
 const RADIUS: float = 27.0
 
+## How bloody the towel was when it was crumpled, 0 .. 1 (`ArmSurface.paper_stain()`).
+var stained: float = 0.5:
+	set(value):
+		stained = clampf(value, 0.0, 1.0)
+		if material != null:
+			(material as ShaderMaterial).set_shader_parameter("stained", stained)
+
 
 func _ready() -> void:
 	var shader_material: ShaderMaterial = ShaderMaterial.new()
 	shader_material.shader = WET_PAPER
-	shader_material.set_shader_parameter("stained", 0.75)
+	shader_material.set_shader_parameter("stained", stained)
 	shader_material.set_shader_parameter("wet", 1.0)
 	shader_material.set_shader_parameter("emboss_cells", 5.0)
 	material = shader_material

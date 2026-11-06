@@ -661,7 +661,7 @@ func _wipe(moved: float) -> void:
 	var layer: Vector2 = Vector2(_ink_layer.size)
 	var at: Vector2 = Vector2((skin.x / _wrap + 1.0) * 0.5 * layer.x, (skin.y / stencil_height + 0.5) * layer.y)
 	var taken: float = _blood.wipe(at, wipe_radius, moved)
-	_paper.stained += taken * 0.12
+	_paper.stained += taken * 0.25
 	var cells: Vector2 = Vector2(grid) / layer
 	skin_wetted.emit(at * cells, Vector2.ONE * wipe_radius * cells)
 

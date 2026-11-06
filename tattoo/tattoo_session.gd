@@ -1130,7 +1130,7 @@ func _on_paper_discard() -> void:
 		_end_discard(arm)
 		return
 	_machine.visible = false   # LMB throws here; the machine waits off to the side
-	_bin_view.arm_throw()
+	_bin_view.arm_throw(arm.paper_stain())
 	var in_bin: bool = await _bin_view.throw_finished
 	if in_bin:
 		_paper_throw.play()
