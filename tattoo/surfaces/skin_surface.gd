@@ -116,6 +116,12 @@ func update_surface(_delta: float, _active: bool) -> void:
 	pass
 
 
+## The ink look's wetness buffer (InkPaint.wetness, laid over the stencil's area like the ink): a skin can glisten
+## where it's wet.
+func set_wet_map(_wet: Texture2D) -> void:
+	pass
+
+
 ## Lets go of anything held at once (overheat, the end).
 func release() -> void:
 	pass

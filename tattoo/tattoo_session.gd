@@ -349,6 +349,7 @@ func _bind_paint() -> void:
 		material.set_shader_parameter("paint", _paint_view.coverage)
 		material.set_shader_parameter("wet_map", _paint_view.wetness)
 		material.set_shader_parameter("paint_texel", _paint_view.texel())
+	_surface.set_wet_map(_paint_view.wetness)
 
 
 ## Fullscreen on or off, or a resized window: the ink look follows the screen's pixels (the machine and the
@@ -1246,6 +1247,11 @@ func _setup_surface() -> void:
 		_redness.visible = false
 		if _surface.has_signal("paper_discard_requested"):
 			_surface.connect("paper_discard_requested", _on_paper_discard)
+		if _surface.has_signal("skin_wetted"):
+			# a wet paper towel wiped over the skin: the ink there looks fresh again and dries as after inking
+			_surface.connect("skin_wetted", func(center: Vector2, radius: Vector2) -> void:
+				if _paint_view != null:
+					_paint_view.add_wet(center, radius))
 	_surface.setup(stencil)
 
 

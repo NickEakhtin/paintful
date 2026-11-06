@@ -66,6 +66,12 @@ uniform float fold_lip = 0.03;
 
 // The ink layer covers theta -wrap..wrap and v -stencil_height/2..stencil_height/2.
 uniform sampler2D ink_layer : source_color, filter_linear, repeat_disable;
+// The ink look's wetness (InkPaint.wetness, over the same area as ink_layer): where a wet paper towel went, the skin
+// glistens and a little darker, drying as the ink does. Its ink looks fresh by itself (stencil_ink.gdshader).
+uniform sampler2D wet_map : filter_linear, repeat_disable, hint_default_black;
+uniform float wet_darken = 0.2;
+uniform float wet_roughness = 0.08;
+uniform float wet_specular = 1.0;
 uniform float wrap_angle = 2.094;
 uniform float stencil_height = 700.0;
 
@@ -379,9 +385,12 @@ void fragment() {
 	skin *= 1.0 - fold_strength * bunched * folds;
 
 	vec4 ink = vec4(0.0);
+	float wet = 0.0;
 	if (skin_uv.x >= 0.0 && skin_uv.x <= 1.0 && skin_uv.y >= 0.0 && skin_uv.y <= 1.0) {
 		ink = texture(ink_layer, skin_uv);
+		wet = clamp(texture(wet_map, skin_uv).r, 0.0, 1.0);
 	}
+	skin *= 1.0 - wet_darken * wet;
 	// the fold: the tucked band goes dark, the bunched lips either side catch the light
 	float lips;
 	float hidden = fold_hidden(skin_theta, skin_v, lips);
@@ -397,7 +406,7 @@ void fragment() {
 	// the elbow's hollow sits a little in shadow
 	shade *= 1.0 - elbow_hollow * max(-muscles(skin_theta, skin_v), 0.0);
 	ALBEDO = mix(skin, ink.rgb, ink.a) * shade + vec3(fold_lip) * lips * (1.0 - ink.a);
-	ROUGHNESS = mix(0.62 - 0.2 * stretched, 0.45, ink.a);
+	ROUGHNESS = mix(mix(0.62 - 0.2 * stretched, wet_roughness, wet), 0.45, ink.a);
 	// the muscles bend the light (not the outline): the normal tilts by their slope along the arm and round it
 	{
 		float e = 3.0;
@@ -423,7 +432,8 @@ void fragment() {
 	}
 	NORMAL_MAP = texture(skin_normal, detail_uv).rgb;
 	NORMAL_MAP_DEPTH = normal_strength * (1.0 - smooth_out) * (1.0 - 0.5 * ink.a);
-	SPECULAR = 0.35;
+	SPECULAR = mix(0.35, wet_specular, wet * (1.0 - ink.a));
+	NORMAL_MAP_DEPTH *= 1.0 - 0.6 * wet;   // a film of water smooths the skin's fine lines
 	float hint = skin_theta < 0.0 ? hint_left : hint_right;
 	EMISSION = hint_color.rgb * hint * smoothstep(0.6, 0.98, edge) * 1.2;
 	RIM = 0.2;

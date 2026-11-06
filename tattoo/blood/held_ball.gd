@@ -1,16 +1,41 @@
 extends Node2D
-## The crumpled bloody paper towel in the left hand's half-closed fingers before the throw (placeholder look, over
-## the curled fingers, so it shows).
+## The crumpled bloody paper towel in the left hand's half-closed fingers before the throw, over the curled
+## fingers so it shows: a lumpy blob drawn with `wet_paper.gdshader` (soaked, bloody), creases shaded in.
+
+const WET_PAPER: Shader = preload("res://tattoo/blood/wet_paper.gdshader")
+const CENTER: Vector2 = Vector2(10.0, -62.0)
+const RADIUS: float = 27.0
+
+
+func _ready() -> void:
+	var shader_material: ShaderMaterial = ShaderMaterial.new()
+	shader_material.shader = WET_PAPER
+	shader_material.set_shader_parameter("stained", 0.75)
+	shader_material.set_shader_parameter("wet", 1.0)
+	shader_material.set_shader_parameter("emboss_cells", 5.0)
+	material = shader_material
 
 
 func _draw() -> void:
-	var points: PackedVector2Array = PackedVector2Array()
-	for i in 11:
-		var angle: float = TAU * i / 11.0
-		points.append(Vector2(cos(angle), sin(angle)) * (26.0 + 5.0 * sin(i * 3.1)) + Vector2(10.0, -62.0))
-	draw_colored_polygon(points, Color(0.86, 0.88, 0.92))
-	draw_polyline(points + PackedVector2Array([points[0]]), Color(0.42, 0.45, 0.52), 2.0, true)
-	draw_line(Vector2(-4.0, -70.0), Vector2(16.0, -56.0), Color(0.55, 0.58, 0.66), 2.0)
-	draw_line(Vector2(12.0, -80.0), Vector2(24.0, -66.0), Color(0.55, 0.58, 0.66), 2.0)
-	draw_circle(Vector2(18.0, -54.0), 9.0, Color(0.45, 0.04, 0.07, 0.85))
-	draw_circle(Vector2(-2.0, -72.0), 6.0, Color(0.45, 0.04, 0.07, 0.75))
+	# a lumpy outline, the middle a little lighter than the folds round it
+	var count: int = 14
+	var points: PackedVector2Array = PackedVector2Array([CENTER])
+	var colours: PackedColorArray = PackedColorArray([Color(1.0, 1.0, 1.0)])
+	var uvs: PackedVector2Array = PackedVector2Array([Vector2(0.5, 0.5)])
+	for i in count + 1:
+		var angle: float = TAU * (i % count) / count
+		var reach: float = RADIUS * (1.0 + 0.16 * sin(i * 3.1) + 0.08 * sin(i * 5.7))
+		var direction: Vector2 = Vector2(cos(angle), sin(angle))
+		points.append(CENTER + direction * reach)
+		var shade: float = 0.62 + 0.18 * sin(i * 2.3)
+		colours.append(Color(shade, shade, shade))
+		uvs.append(Vector2(0.5, 0.5) + direction * 0.5 * (reach / RADIUS) * 0.9)
+	var indices: PackedInt32Array = PackedInt32Array()
+	for i in count:
+		indices.append_array([0, i + 1, i + 2])
+	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), indices, points, colours, uvs)
+	# crease lines over it
+	var crease: Color = Color(0.25, 0.08, 0.1, 0.55)
+	draw_line(CENTER + Vector2(-14.0, -8.0), CENTER + Vector2(6.0, 6.0), crease, 1.5)
+	draw_line(CENTER + Vector2(2.0, -18.0), CENTER + Vector2(14.0, -4.0), crease, 1.5)
+	draw_line(CENTER + Vector2(-6.0, 10.0), CENTER + Vector2(10.0, 16.0), crease, 1.5)

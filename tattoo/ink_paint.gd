@@ -12,7 +12,9 @@ extends Node
 ##   dose builds up;
 ## - `coverage` B, the capped film: the thick needle's film within the stencil's edge margin (`set_edge()`), which
 ##   the ink shader never lets close up;
-## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`.
+## - `wetness`: a dab sets it to 1 and it decays every frame, so fresh ink stays glossy for `dry_time`. `add_wet()`
+##   wets a spot without ink (a wet paper towel wiped over the skin): the ink there looks fresh again and the skin
+##   glistens, drying the same way. Those spots ignore the blocked ellipses (the hand wiping is one of them).
 ## New dabs skip the blocked ellipses, as the logic does, so ink never lands under an open eye.
 ## `resize()` (the window changed size mid-session) moves the ink into buffers of the new size; `resized` then
 ## says `coverage`, `wetness` and `texel()` changed.
@@ -98,6 +100,8 @@ var _cover: SubViewport
 var _wet: SubViewport
 var _cover_brush: Node2D = Node2D.new()
 var _wet_brush: Node2D = Node2D.new()
+## Draws `add_wet()` spots into the wetness buffer, blocks or not.
+var _wipe_brush: Node2D = Node2D.new()
 var _fader: Node2D = Node2D.new()
 ## Dabs to draw, each [centre: Vector2, basis: Transform2D, amount: float, dot: bool] in cells: a film dab, or
 ## a dot (its own small basis, a full dose).
@@ -112,6 +116,8 @@ var _wanted_size: Vector2i = Vector2i.ZERO
 var _dry_time: float = 6.0
 var _dab: GradientTexture2D = GradientTexture2D.new()
 var _dot: GradientTexture2D = GradientTexture2D.new()
+## A wet spot: full in the middle, soft toward its rim, so a wiped stripe has no hard edge.
+var _wipe: GradientTexture2D = GradientTexture2D.new()
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _brush_materials: Array[ShaderMaterial] = []
 var _drew_last_frame: bool = false
@@ -138,6 +144,15 @@ func _init() -> void:
 	_dot.fill_to = Vector2(1.0, 0.5)
 	_dot.width = 64
 	_dot.height = 64
+	var soft: Gradient = Gradient.new()
+	soft.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	soft.colors = PackedColorArray([Color(1, 1, 1, 0.9), Color(1, 1, 1, 0.6), Color(1, 1, 1, 0.0)])
+	_wipe.gradient = soft
+	_wipe.fill = GradientTexture2D.FILL_RADIAL
+	_wipe.fill_from = Vector2(0.5, 0.5)
+	_wipe.fill_to = Vector2(1.0, 0.5)
+	_wipe.width = 128
+	_wipe.height = 128
 	_rng.randomize()
 	_cover = _buffer("Coverage")
 	_wet = _buffer("Wetness")
@@ -156,6 +171,8 @@ func _init() -> void:
 	_wet_brush.material = _brush_material("blend_mix")
 	_wet_brush.draw.connect(_draw_dabs.bind(_wet_brush, true))
 	_wet.add_child(_wet_brush)
+	_wipe_brush.draw.connect(_draw_wipes)
+	_wet.add_child(_wipe_brush)
 	RenderingServer.frame_post_draw.connect(_on_frame_drawn)
 
 
@@ -242,6 +259,12 @@ func add_ink(dabs: Array[Array], strokes: Array[Array]) -> void:
 			_pending.append([from.lerp(to, float(i + 1) / steps), basis,
 					float(stroke[3]) / maxf(thick, 0.001) / steps, false])
 		_add_dots(from, to, basis, stroke[3], stroke[4] if stroke.size() > 5 else 0.0, stroke[5] if stroke.size() > 5 else 1.0)
+
+
+## Wets an ellipse (centre and half size, in cells) without laying ink: drawn this frame like a dab.
+func add_wet(center: Vector2, radius: Vector2) -> void:
+	_pending.append([center, Transform2D(Vector2(radius.x, 0.0), Vector2(0.0, radius.y), Vector2.ZERO), 0.0, false,
+			true])
 
 
 ## The film dab's profile over the elliptic radius: without a core, the logic's (InkCanvas.stamp() lays
@@ -354,6 +377,7 @@ func _process(delta: float) -> void:
 	if not _frame.is_empty() or _drew_last_frame:
 		_cover_brush.queue_redraw()
 		_wet_brush.queue_redraw()
+		_wipe_brush.queue_redraw()
 	_drew_last_frame = not _frame.is_empty()
 
 
@@ -373,6 +397,7 @@ func _finish_move() -> void:
 	(_cover_brush.material as ShaderMaterial).set_shader_parameter("buffer_size", Vector2(_cover.size))
 	_fader.reparent(_wet, false)
 	_wet_brush.reparent(_wet, false)
+	_wipe_brush.reparent(_wet, false)
 	_fader.queue_redraw()
 	for old: SubViewport in _old_views:
 		old.queue_free()
@@ -387,6 +412,8 @@ func _buffer_size(pixels: Vector2) -> Vector2i:
 
 func _draw_dabs(brush: Node2D, wet: bool) -> void:
 	for dab: Array in _frame:
+		if dab.size() > 4:
+			continue   # a wet spot without ink: _draw_wipes()
 		var dot: bool = dab[3]
 		if wet and dot:
 			continue   # the film's dab already wets the whole brush
@@ -406,6 +433,18 @@ func _draw_dabs(brush: Node2D, wet: bool) -> void:
 			var channels: Color = Color(0.0, dose, 0.0) if dot else Color(dose, 0.0, 0.0)
 			brush.draw_texture_rect(_dot if dot else _dab, rect, false, Color(channels.linear_to_srgb(), 1.0))
 	brush.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## The wet spots of this frame (add_wet()), each a soft disc that sets the wetness toward 1.
+func _draw_wipes() -> void:
+	for dab: Array in _frame:
+		if dab.size() <= 4:
+			continue
+		var basis: Transform2D = dab[1]
+		_wipe_brush.draw_set_transform_matrix(Transform2D(basis.x * _cell_pixels, basis.y * _cell_pixels,
+				(dab[0] as Vector2) * _cell_pixels))
+		_wipe_brush.draw_texture_rect(_wipe, Rect2(-1.0, -1.0, 2.0, 2.0), false, Color.WHITE)
+	_wipe_brush.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 func _buffer(buffer_name: String) -> SubViewport:

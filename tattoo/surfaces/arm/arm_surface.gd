@@ -11,6 +11,8 @@ extends SkinSurface
 
 ## The left hand holding a paper towel asks the session to throw it in the bin (Space).
 signal paper_discard_requested
+## The wet paper towel was rubbed over the skin: an ellipse (centre and half size, in cells) to wet.
+signal skin_wetted(center: Vector2, radius: Vector2)
 
 const MECHANICS: Mechanics = preload("res://data/mechanics.tres")
 const PAPER_STACK: Script = preload("res://tattoo/blood/paper_stack.gd")
@@ -651,6 +653,12 @@ func _wipe(moved: float) -> void:
 	var at: Vector2 = Vector2((skin.x / _wrap + 1.0) * 0.5 * layer.x, (skin.y / stencil_height + 0.5) * layer.y)
 	var taken: float = _blood.wipe(at, wipe_radius, moved)
 	_paper.stained += taken * 0.12
+	var cells: Vector2 = Vector2(grid) / layer
+	skin_wetted.emit(at * cells, Vector2.ONE * wipe_radius * cells)
+
+
+func set_wet_map(wet: Texture2D) -> void:
+	_material.set_shader_parameter("wet_map", wet)
 
 
 func _place_paper_stack() -> void:
