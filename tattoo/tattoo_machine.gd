@@ -19,7 +19,7 @@ const MAX_STEP: float = 1.0 / 120.0
 
 ## Visual buzz while working, in pixels. Doesn't move where the ink goes.
 @export var buzz: float = 1.5
-@export var model_scale: float = 0.45
+@export var model_scale: float = 0.675
 
 @export_group("Hold")
 ## Angle to the skin at the left edge of the screen, in degrees (90 = straight up).

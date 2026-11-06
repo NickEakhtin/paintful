@@ -27,7 +27,7 @@ signal throw_finished(in_bin: bool)
 @export var bin_bottom_radius: float = 0.16
 @export var bin_height: float = 0.36
 
-const BALL_RADIUS: float = 0.045
+const BALL_RADIUS: float = 0.0675
 ## How closed the left hand is round the paper ball.
 const HOLD_FIST: float = 0.55
 const HAND_SCRIPT: Script = preload("res://tattoo/glove_hand.gd")
@@ -89,6 +89,7 @@ func _ready() -> void:
 	_hand = Node2D.new()
 	_hand.set_script(HAND_SCRIPT)
 	_hand.name = "Hand"
+	_hand.scale = Vector2.ONE * 1.5   # as big as the hand on the skin (the ball in it too)
 	add_child(_hand)
 	var held: Node2D = Node2D.new()
 	held.set_script(load("res://tattoo/blood/held_ball.gd"))
