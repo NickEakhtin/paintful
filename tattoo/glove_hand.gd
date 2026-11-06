@@ -23,8 +23,27 @@ const SUPERSAMPLE: float = 3.0
 @export var open_rate: float = 12.0
 ## The fingers lean away from us by this much (degrees), so the hand reads as lying on something, not flat.
 @export var lean: float = 18.0
+@export_group("Alive")
+## The hand follows its own motion (measured from its position on screen, so it works wherever it's used): moving
+## sideways the fingers turn that way up to `turn_max` degrees (the whole node turns, its towel and ball with it;
+## off with `follow_motion` where the owner turns it itself) and the glove twists up to `twist_max` in 3D; moving up
+## the fingers lean `lean_motion` further away. Full at `full_speed` px/s, eased at `turn_rate`. Standing still it
+## sways `idle_sway` degrees and the open fingers flex a little (`idle_flex` of a fist).
+@export var follow_motion: bool = true
+@export var turn_max: float = 16.0
+@export var twist_max: float = 14.0
+@export var lean_motion: float = 10.0
+@export var full_speed: float = 600.0
+@export var turn_rate: float = 7.0
+@export var idle_sway: float = 1.5
+@export var idle_flex: float = 0.06
 
 var rig: GloveRig
+var _pivot: Node3D
+var _time: float = 0.0
+var _last_position: Vector2 = Vector2.INF
+var _velocity: Vector2 = Vector2.ZERO
+var _motion: Vector2 = Vector2.ZERO
 var _viewport: SubViewport
 var _glove: Node3D
 
@@ -70,6 +89,7 @@ func _ready() -> void:
 	var pivot: Node3D = Node3D.new()
 	pivot.rotation_degrees.x = -lean
 	_viewport.add_child(pivot)
+	_pivot = pivot
 	_glove = GLOVE.instantiate()
 	_glove.scale = Vector3(1.0, 1.0, -1.0)
 	_glove.position = -PALM
@@ -83,16 +103,35 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if rig == null or not is_visible_in_tree():
+		_last_position = Vector2.INF
 		return
-	var rate: float = clench_rate if fist > rig.fist else open_rate
-	var eased: float = lerpf(rig.fist, fist, 1.0 - exp(-rate * delta))
-	rig.fist = fist if absf(eased - fist) < 0.002 else eased
+	_time += delta
+	# its own speed on screen, smoothed; a jump (a reset, a swing) doesn't count
+	var here: Vector2 = global_position
+	if _last_position.is_finite() and delta > 0.0:
+		var moved: Vector2 = (here - _last_position) / delta
+		if moved.length() < full_speed * 6.0:
+			_velocity = _velocity.lerp(moved, 1.0 - exp(-10.0 * delta))
+	_last_position = here
+	_motion = _motion.lerp((_velocity / full_speed).limit_length(1.0), 1.0 - exp(-turn_rate * delta))
+	if follow_motion:
+		rotation = deg_to_rad(_motion.x * turn_max + sin(_time * 1.1) * idle_sway)
+	_pivot.rotation_degrees = Vector3(-(lean - _motion.y * lean_motion + sin(_time * 0.9) * 0.8), _motion.x * twist_max, 0.0)
+	# open fingers flex a little at rest; a fist stays a fist
+	var flex: float = idle_flex * (0.5 + 0.5 * sin(_time * 1.6)) * (1.0 - smoothstep(0.2, 0.5, fist))
+	var wanted: float = fist + flex
+	var rate: float = clench_rate if wanted > rig.fist else open_rate
+	var eased: float = lerpf(rig.fist, wanted, 1.0 - exp(-rate * delta))
+	rig.fist = wanted if absf(eased - wanted) < 0.002 else eased
 
 
 ## Snaps the hand to `fist` at once (a new session).
 func snap() -> void:
 	if rig != null:
 		rig.fist = fist
+	_velocity = Vector2.ZERO
+	_motion = Vector2.ZERO
+	_last_position = Vector2.INF
 
 
 func _draw() -> void:

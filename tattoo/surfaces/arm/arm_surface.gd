@@ -76,7 +76,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export_range(0.0, 1.0) var defocus_darken: float = 0.6
 @export var defocus_dark_to: float = 350.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
-@export var wipe_radius: float = 142.0
+@export var wipe_radius: float = 121.0
 ## The towel stack peeks in from the screen's left edge (`stack_peek` of its width shows) and slides out to
 ## `stack_out` of it while the left hand is within `stack_reach` of the screen's width from that edge, at `stack_rate`.
 @export var stack_peek: float = 0.2
@@ -761,9 +761,9 @@ func set_wet_map(wet: Texture2D) -> void:
 
 
 func _place_paper_stack() -> void:
-	var width: float = 507.0
+	var width: float = 432.0
 	var shown: float = lerpf(stack_peek, stack_out, _stack_slide)
-	_paper_stack.rect = Rect2(width * (shown - 1.0), size.y * 0.5, width, 304.0)
+	_paper_stack.rect = Rect2(width * (shown - 1.0), size.y * 0.52, width, 259.0)
 
 
 ## The stack slides out while the hand nears the screen's left edge, back to peeking when it leaves.
@@ -840,7 +840,7 @@ func _update_fold(delta: float) -> void:
 
 ## How closed the hand is round a paper towel.
 const PAPER_FIST: float = 0.7
-## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 3.375 in
+## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 2.875 in
 ## the scene, which hand_rect() takes along).
 const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 
@@ -858,8 +858,7 @@ func hand_rect() -> Rect2:
 ## skin, half closed round a paper towel.
 func _place_hand() -> void:
 	_hand.visible = _overview < 0.05
-	_hand.position = _hand_position
-	_hand.rotation = 0.0
+	_hand.position = _hand_position   # it turns itself with its motion (GloveHand)
 	_hand.fist = 1.0 if _gripping else (PAPER_FIST if holding_paper else 0.0)
 
 

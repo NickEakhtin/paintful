@@ -9,7 +9,8 @@ top_level = true
 script = ExtResource("1_script")
 
 [node name="Visual" type="Node2D" parent="."]
-scale = Vector2(3.375, 3.375)
+scale = Vector2(2.875, 2.875)
+follow_motion = false
 script = ExtResource("2_visual")
 
 [node name="Swish" type="AudioStreamPlayer" parent="."]
