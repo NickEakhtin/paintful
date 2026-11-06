@@ -107,10 +107,11 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
 @export var bump_enabled: bool = true
-@export var bump: Vector4 = Vector4(-5.0, 235.0, 24.0, 60.0)
-## The bump reaches up over the skin above it (here: excess skin lying over the stencil's bottom) instead of sagging down.
-@export var bump_up: bool = true
-@export var bump_overhang: float = 45.0
+## Now a long low one above the stencil, sagging down over its top edge.
+@export var bump: Vector4 = Vector4(10.0, -310.0, 55.0, 35.0)
+## The bump reaches up over the skin above it instead of sagging down (off: it sags over the skin below).
+@export var bump_up: bool = false
+@export var bump_overhang: float = 40.0
 ## How uneven the bump is (0: an even dome), and how ragged the folds' creases are (px they wander; 0: straight).
 @export var bump_uneven: float = 0.5
 @export var fold_ragged: float = 3.0
