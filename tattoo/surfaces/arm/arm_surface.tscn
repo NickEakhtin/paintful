@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://tattoo/surfaces/arm/arm_surface.gd" id="1_script"]
 [ext_resource type="Shader" path="res://tattoo/surfaces/arm/arm_skin.gdshader" id="2_skin"]
 [ext_resource type="Shader" path="res://tattoo/surfaces/arm/studio_bokeh.gdshader" id="3_bokeh"]
-[ext_resource type="Script" path="res://tattoo/left_hand_visual.gd" id="4_hand"]
+[ext_resource type="Script" path="res://tattoo/glove_hand.gd" id="4_hand"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/skin_stretch.wav" id="5_stretch"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/skin_release.wav" id="6_release"]
 
@@ -120,7 +120,6 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Hand" type="Node2D" parent="."]
-scale = Vector2(0.9, 0.9)
 script = ExtResource("4_hand")
 
 [node name="StretchSound" type="AudioStreamPlayer" parent="."]

@@ -193,7 +193,7 @@ var _warm_rows: PackedInt32Array = PackedInt32Array()
 @onready var _arm: MeshInstance3D = $View3D/Viewport/Arm
 @onready var _ink_layer: SubViewport = $InkLayer
 @onready var _stencil: Control = $InkLayer/Stencil
-@onready var _hand: Node2D = $Hand
+@onready var _hand: GloveHand = $Hand
 @onready var _key_light: DirectionalLight3D = $View3D/Viewport/Key
 @onready var _fill_light: DirectionalLight3D = $View3D/Viewport/Fill
 @onready var _stretch_sound: AudioStreamPlayer = $StretchSound
@@ -562,6 +562,7 @@ func release() -> void:
 	_gripping = false
 	shape.drag = Vector2.ZERO
 	_reset_hand()
+	_hand.snap()
 	_sync_pull()
 
 
@@ -716,6 +717,8 @@ func _update_fold(delta: float) -> void:
 		shape.bump_amount = full if absf(eased - full) < 0.002 else eased
 
 
+## How closed the hand is round a paper towel.
+const PAPER_FIST: float = 0.7
 ## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels.
 const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 
@@ -729,13 +732,13 @@ func hand_rect() -> Rect2:
 	return _hand.get_global_transform() * shape_rect
 
 
-## The placeholder hand: palm at `_hand_position`, fingers up; a little smaller and solid while gripping.
+## The left hand (`GloveHand`, the player's glove): palm at `_hand_position`, fingers up; a fist while it holds the
+## skin, half closed round a paper towel.
 func _place_hand() -> void:
 	_hand.visible = true
 	_hand.position = _hand_position
 	_hand.rotation = 0.0
-	_hand.scale = Vector2.ONE * (0.85 if _gripping else 1.0)
-	_hand.modulate.a = 1.0 if _gripping else 0.75
+	_hand.fist = 1.0 if _gripping else (PAPER_FIST if holding_paper else 0.0)
 
 
 func _forget_projections() -> void:

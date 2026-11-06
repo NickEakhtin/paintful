@@ -28,7 +28,9 @@ signal throw_finished(in_bin: bool)
 @export var bin_height: float = 0.36
 
 const BALL_RADIUS: float = 0.045
-const HAND_SCRIPT: Script = preload("res://tattoo/left_hand_visual.gd")
+## How closed the left hand is round the paper ball.
+const HOLD_FIST: float = 0.55
+const HAND_SCRIPT: Script = preload("res://tattoo/glove_hand.gd")
 const WIRE_SHADER: String = """
 shader_type spatial;
 render_mode cull_disabled;
@@ -110,6 +112,8 @@ func arm_throw() -> void:
 	_mouse_move = Vector2.ZERO
 	_hand.visible = true
 	_hand.position = _hand_position
+	(_hand as GloveHand).fist = HOLD_FIST
+	(_hand as GloveHand).snap()
 	wake()
 	set_process(true)
 	queue_redraw()

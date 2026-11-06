@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://tattoo/left_hand.gd" id="1_script"]
-[ext_resource type="Script" path="res://tattoo/left_hand_visual.gd" id="2_visual"]
+[ext_resource type="Script" path="res://tattoo/glove_hand.gd" id="2_visual"]
 [ext_resource type="AudioStream" path="res://placeholders/sounds/swish.wav" id="3_swish"]
 
 [node name="LeftHand" type="Node2D"]
