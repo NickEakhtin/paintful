@@ -109,9 +109,8 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 ## Now one long scar across the stencil's diagonal, from its top left corner to its bottom right.
 @export var folds: Array[Vector4] = []
 ## The crease climbs this many px along the arm per degree round it (the scar's slant: 240 rows over the stencil's
-## 65° half width reaches its corners), and breaks into straight pieces whose corners are up to `fold_kinks` px off.
+## 65° half width reaches its corners).
 @export var fold_tilt: float = 3.7
-@export var fold_kinks: float = 22.0
 ## A fat bump that sags over the stencil (`ArmShape.bump`): (degrees round the arm of its middle, its top row,
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
@@ -953,7 +952,6 @@ func _apply_exports() -> void:
 	shape.bump_up = bump_up
 	shape.fold_ragged = fold_ragged
 	shape.fold_tilt = rad_to_deg(1.0) * fold_tilt   # per radian
-	shape.fold_kinks = fold_kinks
 	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)

@@ -89,13 +89,9 @@ var bump_uneven: float = 0.5
 var bump_up: bool = false
 ## How ragged the folds' creases are, in pixels the crease wanders up and down (0: straight).
 var fold_ragged: float = 9.0
-## The crease climbs this many rows per radian round the arm (a fold across the stencil's diagonal), and breaks:
-## its middle runs in straight pieces `FOLD_KINK_STEP` radians long, each corner `fold_kinks` × FOLD_KINKS[i] px off
-## the line. `arm_skin.gdshader` repeats them.
+## The crease climbs this many rows per radian round the arm (a fold across the stencil's diagonal). `arm_skin.gdshader`
+## repeats it.
 var fold_tilt: float = 0.0
-var fold_kinks: float = 0.0
-const FOLD_KINK_STEP: float = 0.23
-const FOLD_KINKS: PackedFloat32Array = [0.0, 0.85, -0.6, 0.45, -1.0, 0.7, 0.1, -0.75, 0.95, -0.35, 0.6, -0.9, 0.3, 0.0]
 
 
 ## Arm radius at row `v` (0 above the shoulder and below the fingertips).
@@ -334,16 +330,9 @@ func _fold_local(index: int, theta: float) -> Vector4:
 	var fold: Vector4 = folds[index]
 	var a: float = theta - fold.x
 	var seed: float = index * 2.3 + 0.7
-	var middle: float = fold.y + fold_tilt * a + _fold_kink(a + fold.z) \
+	var middle: float = fold.y + fold_tilt * a \
 			+ fold_ragged * (0.6 * sin(a * 9.0 + seed) + 0.3 * sin(a * 23.0 + 2.0 * seed) + 0.15 * sin(a * 53.0 + 3.0 * seed))
 	return Vector4(fold.x, middle, fold.z, fold.w * (1.0 + 0.3 * sin(a * 13.0 + 1.7 * seed)))
-
-
-## The crease's breaks `along` radians from its start: straight between corners (FOLD_KINKS), px.
-func _fold_kink(along: float) -> float:
-	var at: float = clampf(along / FOLD_KINK_STEP, 0.0, FOLD_KINKS.size() - 1.001)
-	var i: int = int(at)
-	return fold_kinks * lerpf(FOLD_KINKS[i], FOLD_KINKS[i + 1], at - i)
 
 
 ## Fold `index`'s middle row at `theta` (its tilt, breaks and wander), clamped to its ends round the arm.
@@ -507,7 +496,6 @@ func apply_to(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("bump_up", bump_up)
 	material.set_shader_parameter("fold_ragged", fold_ragged)
 	material.set_shader_parameter("fold_tilt", fold_tilt)
-	material.set_shader_parameter("fold_kinks", fold_kinks)
 
 
 func _side_sign() -> float:
