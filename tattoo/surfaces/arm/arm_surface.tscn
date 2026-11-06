@@ -120,7 +120,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Hand" type="Node2D" parent="."]
-scale = Vector2(2.25, 2.25)
+scale = Vector2(3.375, 3.375)
 script = ExtResource("4_hand")
 
 [node name="StretchSound" type="AudioStreamPlayer" parent="."]

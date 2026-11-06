@@ -69,7 +69,7 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 @export_range(0.0, 1.0) var defocus_darken: float = 0.6
 @export var defocus_dark_to: float = 950.0
 ## The wet paper towel wipes blood over this radius round the palm (skin pixels).
-@export var wipe_radius: float = 95.0
+@export var wipe_radius: float = 142.0
 ## How far past the silhouette (on the background) the hand can still take the side of the skin, in pixels.
 @export var side_grab_margin: float = 70.0
 ## How far around the grip the skin moves along, in pixels (a gaussian; keep it over 1.2 × max_drag, or the skin
@@ -587,7 +587,7 @@ func scroll_view(amount: float) -> void:
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
 func _reset_hand() -> void:
-	_hand_position = size * 0.5 + Vector2(-radius * 0.8, size.y * 0.16)
+	_hand_position = size * 0.5 + Vector2(-radius * 0.8, size.y * 0.1)
 	_hand_velocity = Vector2.ZERO
 	_place_hand()
 
@@ -654,7 +654,7 @@ func _wipe(moved: float) -> void:
 
 
 func _place_paper_stack() -> void:
-	_paper_stack.rect = Rect2(24.0, size.y * 0.56, 338.0, 203.0)
+	_paper_stack.rect = Rect2(20.0, size.y * 0.5, 507.0, 304.0)
 
 
 func has_tension() -> bool:
@@ -719,7 +719,7 @@ func _update_fold(delta: float) -> void:
 
 ## How closed the hand is round a paper towel.
 const PAPER_FIST: float = 0.7
-## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 2.25 in
+## The hand's footprint (fingers, palm and the wrist's top) in the hand node's own pixels (the node is scaled 3.375 in
 ## the scene, which hand_rect() takes along).
 const HAND_SHAPE: Rect2 = Rect2(-44.0, -106.0, 120.0, 166.0)
 

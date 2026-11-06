@@ -14,7 +14,7 @@ const PALM: Vector3 = Vector3(-0.01, 0.2, 0.0)
 const FRAME: float = 0.56
 const PX_PER_M: float = 420.0
 ## The picture is rendered this many times finer than it's drawn.
-const SUPERSAMPLE: float = 2.0
+const SUPERSAMPLE: float = 3.0
 
 ## Where the hand is heading, 0 open .. 1 a fist.
 @export_range(0.0, 1.0) var fist: float = 0.0

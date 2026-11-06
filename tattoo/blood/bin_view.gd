@@ -89,7 +89,7 @@ func _ready() -> void:
 	_hand = Node2D.new()
 	_hand.set_script(HAND_SCRIPT)
 	_hand.name = "Hand"
-	_hand.scale = Vector2.ONE * 2.25   # as big as the hand on the skin (the ball in it too)
+	_hand.scale = Vector2.ONE * 3.375   # as big as the hand on the skin (the ball in it too)
 	add_child(_hand)
 	var held: Node2D = Node2D.new()
 	held.set_script(load("res://tattoo/blood/held_ball.gd"))
@@ -107,7 +107,7 @@ func wake() -> void:
 ## The view swung here: the hand comes up holding the ball.
 func arm_throw() -> void:
 	armed = true
-	_hand_position = Vector2(size.x * 0.3, size.y * 0.72)
+	_hand_position = Vector2(size.x * 0.3, size.y * 0.62)
 	_hand_velocity = Vector2.ZERO
 	_hand_motion = Vector2.ZERO
 	_mouse_move = Vector2.ZERO
