@@ -45,6 +45,13 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 ## grip's reach) is drawn this many times bigger on screen. Screen points go to arm pixels through `_arm_point()` /
 ## `_screen_to_arm()`, cell projections come back × this.
 @export var zoom: float = 1.5
+## The mouse wheel pulls the camera back until the whole arm shows, rows `overview_top` .. `overview_bottom` (the
+## shoulder's top to the fingers), and forward again: `wheel_step` of the way per notch, eased at `overview_rate`.
+## Meanwhile nothing inks, the left hand lets go and hides.
+@export var overview_top: float = -1580.0
+@export var overview_bottom: float = 1330.0
+@export var wheel_step: float = 0.5
+@export var overview_rate: float = 7.0
 @export var hand_acceleration: float = 12.0
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
@@ -184,6 +191,15 @@ var _defocus: ColorRect
 var _defocus_copy: BackBufferCopy
 ## How far down the arm the view looks, in pixels (negative: up).
 var _pan: float = 0.0
+## How far the camera is pulled back, 0 close (`zoom`) .. 1 the whole arm, and where it's heading.
+var _overview: float = 0.0
+var _overview_target: float = 0.0
+## The camera this frame: how many screen px an arm px is, and the row in the middle of the view.
+var _z: float = 1.5
+var _view_pan: float = 0.0
+var _active: bool = false
+## The zoom the cached projections were made at.
+var _projected_scale: float = 1.5
 ## Where the scroll is heading.
 var _scroll_target: float = 0.0
 ## The arm's centre on screen as cached projections need it (`_refresh_center()`).
@@ -271,7 +287,7 @@ func stencil_layer() -> Control:
 
 
 func to_cell(screen_point: Vector2) -> Vector2:
-	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / zoom)
+	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / _z)
 	if not skin.is_finite():
 		return Vector2.INF
 	return _skin_to_cell(skin)
@@ -315,7 +331,7 @@ func _place_cell(cell: Vector2) -> Vector3:
 
 ## An arm-pixel projection (x, y, ink) as seen on screen, relative to the arm's centre.
 func _zoomed(placed: Vector3) -> Vector3:
-	return Vector3(placed.x * zoom, placed.y * zoom, placed.z)
+	return Vector3(placed.x * _z, placed.y * _z, placed.z)
 
 
 
@@ -345,7 +361,7 @@ func place_cell_at(x: int, y: int) -> Vector3:
 			at_theta += shape.drag.x / shape.radius * k
 			at_row += shape.drag.y * k
 		var r: float = shape.surface_radius(at_theta, at_row)
-		placed = Vector3(sin(at_theta) * r * zoom, at_row * zoom, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
+		placed = Vector3(sin(at_theta) * r * _z, at_row * _z, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
 	else:
 		placed = _zoomed(shape.project_layer(theta, v, layer))
 	_projected[index] = placed
@@ -360,7 +376,7 @@ func cached_projections() -> Array:
 
 
 func pixels_per_cell() -> float:
-	return 2.0 * _wrap * radius / grid.x * zoom
+	return 2.0 * _wrap * radius / grid.x * _z
 
 
 ## The preimage of a screen circle is a sheared ellipse on stretched skin: bound it with the local Jacobian.
@@ -416,13 +432,15 @@ func supports_tasks() -> bool:
 
 func hint() -> String:
 	if MECHANICS.blood:
-		return "WASD — левая рука, пробел — тянуть кожу или взять салфетку (кровь вытирать ей); машинка у края экрана — вдоль руки"
-	return "WASD — левая рука, пробел — держать и тянуть кожу; машинка у края экрана — вдоль руки"
+		return "WASD — левая рука, пробел — тянуть кожу или взять салфетку (кровь вытирать ей); машинка у края экрана — вдоль руки; колёсико — вся рука"
+	return "WASD — левая рука, пробел — держать и тянуть кожу; машинка у края экрана — вдоль руки; колёсико — вся рука"
 
 
 func update_surface(delta: float, active: bool) -> void:
 	_refresh_center()
-	var can_use: bool = active and not Transition.is_busy and not hand_locked
+	_active = active
+	_update_overview(delta)
+	var can_use: bool = active and not Transition.is_busy and not hand_locked and not is_overview()
 	if _hand_position == Vector2.ZERO and size != Vector2.ZERO:
 		_reset_hand()
 	# the hand: WASD with a little inertia, kept on the screen
@@ -430,6 +448,7 @@ func update_surface(delta: float, active: bool) -> void:
 	_hand_velocity = _hand_velocity.lerp(wanted * hand_speed, 1.0 - exp(-hand_acceleration * delta))
 	_hand_position = (_hand_position + _hand_velocity * delta).clamp(Vector2.ZERO, size)
 	_update_pan(delta)
+	_update_overview(0.0)   # the middle row follows the scroll
 	_refresh_center()
 	# Space grips the skin under the hand and the hand drags it (no farther than max_drag); Space again lets go
 	var toggled: bool = can_use and Input.is_action_just_pressed("hand_wave")
@@ -471,7 +490,7 @@ func update_surface(delta: float, active: bool) -> void:
 		if shape.drag.length() > max_drag * 0.3 or pull.amount > 0.3:
 			_release_sound.play()
 	if _gripping:
-		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag * zoom)
+		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag * _z)
 		if _grip_flap:
 			_lift_flap()
 			_slide_side_grip()
@@ -518,7 +537,7 @@ func _slide_side_grip() -> void:
 ## A side grip: how far the hand went outward lifts the flap (`max_pull` = a full one), how far up or down tilts it
 ## (the grip follows the hand: the shear is the hand's height over the grip).
 func _lift_flap() -> void:
-	var offset: Vector2 = (_hand_position - _grip_screen) / zoom
+	var offset: Vector2 = (_hand_position - _grip_screen) / _z
 	var side: int = -1 if _grip_skin.x < 0.0 else 1
 	var outward: float = maxf(0.0, offset.x * side)
 	pull.side = side
@@ -574,6 +593,8 @@ func _find_hidden(canvas: InkCanvas) -> Vector2:
 
 func release() -> void:
 	_pan = 0.0
+	_overview = 0.0
+	_overview_target = 0.0
 	_scroll_target = 0.0
 	hand_locked = false
 	finish_paper()
@@ -586,6 +607,47 @@ func release() -> void:
 	_sync_pull()
 
 
+## The mouse wheel: back to see the whole arm (down), forward again (up).
+func _input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button == null or not button.pressed or not _active or hand_locked or Transition.is_busy:
+		return
+	if button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_overview_target = minf(_overview_target + wheel_step, 1.0)
+	elif button.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_overview_target = maxf(_overview_target - wheel_step, 0.0)
+	else:
+		return
+	if _overview_target > 0.0 and _gripping:
+		_gripping = false   # pulling back lets go of the skin
+
+
+## Whether the camera is pulled back (or on its way): no ink then.
+func is_overview() -> bool:
+	return _overview > 0.001 or _overview_target > 0.0
+
+
+## Eases the camera toward the wheel's target: the zoom goes from `zoom` to the whole arm's fit (evenly in scale),
+## the middle row from the scroll's to the arm's middle. Cached projections are screen positions, so they're
+## dropped while it moves.
+func _update_overview(delta: float) -> void:
+	var eased: float = lerpf(_overview, _overview_target, 1.0 - exp(-overview_rate * delta))
+	if absf(eased - _overview_target) < 0.001:
+		eased = _overview_target
+	_overview = eased
+	var t: float = smoothstep(0.0, 1.0, _overview)
+	var fit: float = size.y / maxf(overview_bottom - overview_top, 1.0) if size.y > 0.0 else zoom
+	var z: float = zoom * pow(fit / zoom, t)
+	var pan: float = lerpf(_pan, (overview_top + overview_bottom) * 0.5, t)
+	_z = z
+	_view_pan = pan
+	if _projected_scale != _z:
+		_forget_projections()   # the cache keeps positions relative to the centre, but in screen px
+		_projected_scale = _z
+	_hand.visible = _overview < 0.05
+	_paper_stack.visible = MECHANICS.blood and _overview < 0.05
+
+
 ## The view eases toward where the scroll is heading. The left hand and a held grip ride along with the arm, so
 ## the view moving never pulls the skin by itself.
 func _update_pan(delta: float) -> void:
@@ -595,19 +657,21 @@ func _update_pan(delta: float) -> void:
 		_pan = _scroll_target
 	var moved: float = _pan - before
 	if moved != 0.0 and _gripping:
-		_grip_screen.y -= moved * zoom
-		_hand_position.y -= moved * zoom
+		_grip_screen.y -= moved * _z
+		_hand_position.y -= moved * _z
 
 
 ## Scrolls the view along the arm by `amount` px (down positive), within `scroll_min`..`scroll_max`.
 func scroll_view(amount: float) -> void:
-	var lowest: float = minf(scroll_max, scroll_bottom_row - size.y * 0.5 / zoom)
+	if is_overview():
+		return
+	var lowest: float = minf(scroll_max, scroll_bottom_row - size.y * 0.5 / _z)
 	_scroll_target = clampf(_scroll_target + amount, scroll_min, maxf(lowest, scroll_min))
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
 func _reset_hand() -> void:
-	_hand_position = size * 0.5 + Vector2(-radius * 0.8 * zoom, size.y * 0.1)
+	_hand_position = size * 0.5 + Vector2(-radius * 0.8 * _z, size.y * 0.1)
 	_hand_velocity = Vector2.ZERO
 	_place_hand()
 
@@ -616,8 +680,8 @@ func _process(_delta: float) -> void:
 	_update_defocus()
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
-		_camera.size = view_size.y / zoom
-	_camera.position.y = -_pan   # the view's y is up: looking lower down the arm
+		_camera.size = view_size.y / _z
+	_camera.position.y = -_view_pan   # the view's y is up: looking lower down the arm
 	(_background.material as ShaderMaterial).set_shader_parameter("size", view_size)
 
 
@@ -705,7 +769,7 @@ func has_tension() -> bool:
 ## a lifted flap tightens its side by the flap's amount, most at the hand's row. Holding
 ## without moving tightens nothing.
 func tension_at(screen_point: Vector2) -> float:
-	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / zoom)
+	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / _z)
 	if not skin.is_finite():
 		return 0.0
 	var tension: float = 0.0
@@ -776,7 +840,7 @@ func hand_rect() -> Rect2:
 ## The left hand (`GloveHand`, the player's glove): palm at `_hand_position`, fingers up; a fist while it holds the
 ## skin, half closed round a paper towel.
 func _place_hand() -> void:
-	_hand.visible = true
+	_hand.visible = _overview < 0.05
 	_hand.position = _hand_position
 	_hand.rotation = 0.0
 	_hand.fist = 1.0 if _gripping else (PAPER_FIST if holding_paper else 0.0)
@@ -789,7 +853,7 @@ func _forget_projections() -> void:
 
 ## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
-	return get_global_rect().get_center() - Vector2(0.0, _pan * zoom)
+	return get_global_rect().get_center() - Vector2(0.0, _view_pan * _z)
 
 
 ## Refreshes `_center_offset`, the arm's centre that cached projections add (a field, not a call: a stroke reads
@@ -801,7 +865,7 @@ func _refresh_center() -> void:
 
 ## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
 func _arm_point(local: Vector2) -> Vector2:
-	return (local - size * 0.5) / zoom + Vector2(0.0, _pan)
+	return (local - size * 0.5) / _z + Vector2(0.0, _view_pan)
 
 
 func _skin_to_cell(skin: Vector2) -> Vector2:
@@ -873,12 +937,12 @@ func _update_defocus() -> void:
 	var scale: float = get_viewport().get_final_transform().get_scale().y
 	var centre: float = _center().y
 	var material: ShaderMaterial = _defocus.material
-	material.set_shader_parameter("from_y", (centre + defocus_from * zoom) * scale)
-	material.set_shader_parameter("full_y", (centre + defocus_full * zoom) * scale)
-	material.set_shader_parameter("max_radius", defocus_radius * zoom * scale)
+	material.set_shader_parameter("from_y", (centre + defocus_from * _z) * scale)
+	material.set_shader_parameter("full_y", (centre + defocus_full * _z) * scale)
+	material.set_shader_parameter("max_radius", defocus_radius * _z * scale)
 	material.set_shader_parameter("darken", defocus_darken)
-	material.set_shader_parameter("dark_y", (centre + defocus_dark_to * zoom) * scale)
-	_defocus.visible = centre + defocus_from * zoom < size.y + get_global_rect().position.y
+	material.set_shader_parameter("dark_y", (centre + defocus_dark_to * _z) * scale)
+	_defocus.visible = centre + defocus_from * _z < size.y + get_global_rect().position.y
 	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
 
 

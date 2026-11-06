@@ -122,6 +122,11 @@ func set_wet_map(_wet: Texture2D) -> void:
 	pass
 
 
+## The camera is pulled back to look the skin over: no inking, no scrolling.
+func is_overview() -> bool:
+	return false
+
+
 ## Lets go of anything held at once (overheat, the end).
 func release() -> void:
 	pass

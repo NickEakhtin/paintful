@@ -661,7 +661,7 @@ func _update_needle(delta: float) -> void:
 
 
 func _paint(delta: float) -> void:
-	if _turning or _discarding:
+	if _turning or _discarding or _surface.is_overview():
 		_machine.working = false
 		_was_inking = false
 		_was_heating = false
@@ -717,7 +717,7 @@ func _tension_factor() -> float:
 ## The machine in the top or bottom `edge_scroll_zone` of the screen moves the view along the skin that way, faster
 ## the deeper it is (up to `edge_scroll_speed` px/s).
 func _edge_scroll(delta: float) -> void:
-	if _turning or _discarding or _at_table:
+	if _turning or _discarding or _at_table or _surface.is_overview():
 		return
 	var height: float = get_viewport().get_visible_rect().size.y
 	var zone: float = height * edge_scroll_zone
