@@ -97,7 +97,12 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var fold_enabled: bool = true
 ## Each fold: (degrees round the arm of its middle, its middle row in px from the arm's centre (down positive),
 ## half its length round the arm in degrees, skin px tucked in). Two at most; they mustn't overlap round the arm.
-@export var folds: Array[Vector4] = [Vector4(-30.0, -90.0, 22.0, 60.0), Vector4(32.0, 110.0, 20.0, 60.0)]
+## Now one long scar across the stencil's diagonal, from its top left corner to its bottom right.
+@export var folds: Array[Vector4] = [Vector4(0.0, 0.0, 95.0, 60.0)]
+## The crease climbs this many px along the arm per degree round it (the scar's slant: 240 rows over the stencil's
+## 65° half width reaches its corners), and breaks into straight pieces whose corners are up to `fold_kinks` px off.
+@export var fold_tilt: float = 3.7
+@export var fold_kinks: float = 22.0
 ## A fat bump that sags over the stencil (`ArmShape.bump`): (degrees round the arm of its middle, its top row,
 ## half its width in degrees, its height in px); the skin below it it covers, in px. Stretching the skin near it
 ## flattens it (like the folds: any pull counts). Off with `bump_enabled`.
@@ -108,7 +113,7 @@ const PAPER_IN_HAND: Script = preload("res://tattoo/blood/paper_in_hand.gd")
 @export var bump_overhang: float = 45.0
 ## How uneven the bump is (0: an even dome), and how ragged the folds' creases are (px they wander; 0: straight).
 @export var bump_uneven: float = 0.5
-@export var fold_ragged: float = 9.0
+@export var fold_ragged: float = 3.0
 ## Width of a closed fold on the arm, in pixels.
 @export var fold_closed: float = 8.0
 ## How far beyond a fold the skin is drawn in toward it, in pixels (the rest of the arm stays put).
@@ -804,12 +809,12 @@ func _update_fold(delta: float) -> void:
 		var fold: Vector4 = shape.folds[i]
 		var opening: float = 0.0
 		if fold_enabled and shape.drag != Vector2.ZERO:
-			var away: float = shape.drag.y * (-1.0 if shape.drag_from.y < fold.y else 1.0)
+			var away: float = shape.drag.y * (-1.0 if shape.drag_from.y < shape.fold_middle(i, shape.drag_from.x) else 1.0)
 			var along: float = maxf(away, 0.0) + (shape.drag.length() - absf(shape.drag.y)) * fold_side_share \
 					+ maxf(-away, 0.0) * fold_side_share
 			# how far the grip is from the crease: past its band along the arm, past its ends round it
 			var gap: Vector2 = Vector2(maxf(absf(shape.drag_from.x - fold.x) - fold.z, 0.0) * radius,
-					maxf(absf(shape.drag_from.y - fold.y) - fold.w * 0.5, 0.0))
+					maxf(absf(shape.drag_from.y - shape.fold_middle(i, shape.drag_from.x)) - fold.w * 0.5, 0.0))
 			var reach: float = shape.drag_radius * fold_reach_spread
 			opening = clampf(along / maxf(max_drag * fold_open_at, 1.0), 0.0, 1.0) * exp(-gap.length_squared() / (reach * reach))
 		var target: float = (1.0 - opening) if fold_enabled else 0.0
@@ -910,6 +915,8 @@ func _apply_exports() -> void:
 	shape.bump_uneven = bump_uneven
 	shape.bump_up = bump_up
 	shape.fold_ragged = fold_ragged
+	shape.fold_tilt = rad_to_deg(1.0) * fold_tilt   # per radian
+	shape.fold_kinks = fold_kinks
 	shape.bump_amount = 1.0 if bump_enabled else 0.0
 	shape.fold_spread = fold_spread
 	shape.ink_soft_angle = deg_to_rad(ink_soft_angle)
