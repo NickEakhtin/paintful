@@ -9,9 +9,9 @@ extends CanvasLayer
 ## game pixel anyway, so it looks the same and costs far less (a 4K screen renders 1280x720).
 
 ## Fewest game pixels from the top of the window to the bottom.
-@export var min_rows: int = 480
+@export var min_rows: int = 360
 ## Largest game pixel, in screen pixels.
-@export var max_pixel_size: int = 3
+@export var max_pixel_size: int = 4
 
 @onready var _material: ShaderMaterial = ($Screen as ColorRect).material as ShaderMaterial
 

@@ -76,8 +76,8 @@ const SURFACE_SCENES: Dictionary = {
 @export var retro_filter: bool = true
 ## As the game's RetroPost: a game pixel is a whole number of screen pixels, as big as fits this many rows in
 ## the window, at most `retro_max_pixel`.
-@export var retro_min_rows: int = 480
-@export var retro_max_pixel: int = 3
+@export var retro_min_rows: int = 360
+@export var retro_max_pixel: int = 4
 
 @export_group("Needles")
 ## The thin needle (`Mechanics.needle_swap`): a small round brush, no dots, for careful edges.
