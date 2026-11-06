@@ -41,6 +41,10 @@ const HAND_NORMAL: String = "res://art/characters/client_hand/hand_normal.png"
 @export_group("Hand")
 ## How fast the left hand moves, pixels per second, and how quickly it gets there (per second).
 @export var hand_speed: float = 650.0
+## How close the camera is to the arm: the arm (and everything in its own pixels: the stencil, the scroll, the
+## grip's reach) is drawn this many times bigger on screen. Screen points go to arm pixels through `_arm_point()` /
+## `_screen_to_arm()`, cell projections come back × this.
+@export var zoom: float = 1.5
 @export var hand_acceleration: float = 12.0
 ## Farthest the gripped skin is dragged from where it was taken, in pixels.
 @export var max_drag: float = 160.0
@@ -267,7 +271,7 @@ func stencil_layer() -> Control:
 
 
 func to_cell(screen_point: Vector2) -> Vector2:
-	var skin: Vector2 = shape.screen_to_skin(screen_point - _center())
+	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / zoom)
 	if not skin.is_finite():
 		return Vector2.INF
 	return _skin_to_cell(skin)
@@ -305,8 +309,13 @@ func _place_cell(cell: Vector2) -> Vector3:
 		if _layers_known[index] == 0:
 			_layers[index] = shape.skin_layer(skin.x, skin.y)
 			_layers_known[index] = 1
-		return shape.project_layer(skin.x, skin.y, _layers[index])
-	return shape.project(skin.x, skin.y)
+		return _zoomed(shape.project_layer(skin.x, skin.y, _layers[index]))
+	return _zoomed(shape.project(skin.x, skin.y))
+
+
+## An arm-pixel projection (x, y, ink) as seen on screen, relative to the arm's centre.
+func _zoomed(placed: Vector3) -> Vector3:
+	return Vector3(placed.x * zoom, placed.y * zoom, placed.z)
 
 
 
@@ -336,9 +345,9 @@ func place_cell_at(x: int, y: int) -> Vector3:
 			at_theta += shape.drag.x / shape.radius * k
 			at_row += shape.drag.y * k
 		var r: float = shape.surface_radius(at_theta, at_row)
-		placed = Vector3(sin(at_theta) * r, at_row, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
+		placed = Vector3(sin(at_theta) * r * zoom, at_row * zoom, smoothstep(_ink_low, _ink_high, cos(at_theta)) * layer.y)
 	else:
-		placed = shape.project_layer(theta, v, layer)
+		placed = _zoomed(shape.project_layer(theta, v, layer))
 	_projected[index] = placed
 	_projected_known[index] = 1
 	return placed
@@ -351,7 +360,7 @@ func cached_projections() -> Array:
 
 
 func pixels_per_cell() -> float:
-	return 2.0 * _wrap * radius / grid.x
+	return 2.0 * _wrap * radius / grid.x * zoom
 
 
 ## The preimage of a screen circle is a sheared ellipse on stretched skin: bound it with the local Jacobian.
@@ -462,7 +471,7 @@ func update_surface(delta: float, active: bool) -> void:
 		if shape.drag.length() > max_drag * 0.3 or pull.amount > 0.3:
 			_release_sound.play()
 	if _gripping:
-		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag)
+		_hand_position = _grip_screen + (_hand_position - _grip_screen).limit_length(max_drag * zoom)
 		if _grip_flap:
 			_lift_flap()
 			_slide_side_grip()
@@ -509,7 +518,7 @@ func _slide_side_grip() -> void:
 ## A side grip: how far the hand went outward lifts the flap (`max_pull` = a full one), how far up or down tilts it
 ## (the grip follows the hand: the shear is the hand's height over the grip).
 func _lift_flap() -> void:
-	var offset: Vector2 = _hand_position - _grip_screen
+	var offset: Vector2 = (_hand_position - _grip_screen) / zoom
 	var side: int = -1 if _grip_skin.x < 0.0 else 1
 	var outward: float = maxf(0.0, offset.x * side)
 	pull.side = side
@@ -586,19 +595,19 @@ func _update_pan(delta: float) -> void:
 		_pan = _scroll_target
 	var moved: float = _pan - before
 	if moved != 0.0 and _gripping:
-		_grip_screen.y -= moved
-		_hand_position.y -= moved
+		_grip_screen.y -= moved * zoom
+		_hand_position.y -= moved * zoom
 
 
 ## Scrolls the view along the arm by `amount` px (down positive), within `scroll_min`..`scroll_max`.
 func scroll_view(amount: float) -> void:
-	var lowest: float = minf(scroll_max, scroll_bottom_row - size.y * 0.5)
+	var lowest: float = minf(scroll_max, scroll_bottom_row - size.y * 0.5 / zoom)
 	_scroll_target = clampf(_scroll_target + amount, scroll_min, maxf(lowest, scroll_min))
 
 
 ## The hand rests low on the left of the arm, out of the stencil's way.
 func _reset_hand() -> void:
-	_hand_position = size * 0.5 + Vector2(-radius * 0.8, size.y * 0.1)
+	_hand_position = size * 0.5 + Vector2(-radius * 0.8 * zoom, size.y * 0.1)
 	_hand_velocity = Vector2.ZERO
 	_place_hand()
 
@@ -607,7 +616,7 @@ func _process(_delta: float) -> void:
 	_update_defocus()
 	var view_size: Vector2 = size
 	if view_size.y > 0.0:
-		_camera.size = view_size.y
+		_camera.size = view_size.y / zoom
 	_camera.position.y = -_pan   # the view's y is up: looking lower down the arm
 	(_background.material as ShaderMaterial).set_shader_parameter("size", view_size)
 
@@ -696,7 +705,7 @@ func has_tension() -> bool:
 ## a lifted flap tightens its side by the flap's amount, most at the hand's row. Holding
 ## without moving tightens nothing.
 func tension_at(screen_point: Vector2) -> float:
-	var skin: Vector2 = shape.screen_to_skin(screen_point - _center())
+	var skin: Vector2 = shape.screen_to_skin((screen_point - _center()) / zoom)
 	if not skin.is_finite():
 		return 0.0
 	var tension: float = 0.0
@@ -780,7 +789,7 @@ func _forget_projections() -> void:
 
 ## The arm's centre on screen: the middle of this control, moved up by the view's pan.
 func _center() -> Vector2:
-	return get_global_rect().get_center() - Vector2(0.0, _pan)
+	return get_global_rect().get_center() - Vector2(0.0, _pan * zoom)
 
 
 ## Refreshes `_center_offset`, the arm's centre that cached projections add (a field, not a call: a stroke reads
@@ -792,7 +801,7 @@ func _refresh_center() -> void:
 
 ## A point in this control's pixels -> the same point relative to the arm's centre (with the pan).
 func _arm_point(local: Vector2) -> Vector2:
-	return local - size * 0.5 + Vector2(0.0, _pan)
+	return (local - size * 0.5) / zoom + Vector2(0.0, _pan)
 
 
 func _skin_to_cell(skin: Vector2) -> Vector2:
@@ -864,12 +873,12 @@ func _update_defocus() -> void:
 	var scale: float = get_viewport().get_final_transform().get_scale().y
 	var centre: float = _center().y
 	var material: ShaderMaterial = _defocus.material
-	material.set_shader_parameter("from_y", (centre + defocus_from) * scale)
-	material.set_shader_parameter("full_y", (centre + defocus_full) * scale)
-	material.set_shader_parameter("max_radius", defocus_radius * scale)
+	material.set_shader_parameter("from_y", (centre + defocus_from * zoom) * scale)
+	material.set_shader_parameter("full_y", (centre + defocus_full * zoom) * scale)
+	material.set_shader_parameter("max_radius", defocus_radius * zoom * scale)
 	material.set_shader_parameter("darken", defocus_darken)
-	material.set_shader_parameter("dark_y", (centre + defocus_dark_to) * scale)
-	_defocus.visible = centre + defocus_from < size.y + get_global_rect().position.y
+	material.set_shader_parameter("dark_y", (centre + defocus_dark_to * zoom) * scale)
+	_defocus.visible = centre + defocus_from * zoom < size.y + get_global_rect().position.y
 	_defocus_copy.visible = _defocus.visible   # no screen copy (and its mipmaps) while nothing is blurred
 
 
